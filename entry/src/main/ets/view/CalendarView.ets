@@ -33,45 +33,47 @@ export struct CalendarView {
     if (this.showAsSheet) {
       // ===== 抽屉模式：有蒙层、底部弹出 =====
       Column() {
-        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => {
-          this.onClose()
-        })
-        Column(){
+        Blank().width('100%').height('100%')
+        // .backgroundColor(0x66000000)
+          .onClick(() => {
+            this.onClose()
+          })
+        Column() {
           this.SheetBody()
         }
-          .width('100%')
-          .backgroundColor(0xFFFFFFFF)
-          .borderRadius({
-            topLeft: 20,
-            topRight: 20,
-            bottomLeft: 0,
-            bottomRight: 0
-          })
-          .position({ x: 0, y: 'calc(100% - 82%)' })
-          .shadow({
-            radius: 24,
-            color: 0x33000000,
-            offsetX: 0,
-            offsetY: -6
-          })
-          .animation({ duration: 200, curve: Curve.Sharp })
+        .width('100%')
+        // .backgroundColor(0xFFFFFFFF)
+        // .borderRadius({
+        //   topLeft: 20,
+        //   topRight: 20,
+        //   bottomLeft: 0,
+        //   bottomRight: 0
+        // })
+        .position({ x: 0, y: 'calc(100% - 82%)' })
+        .shadow({
+          radius: 24,
+          // color: 0x33000000,
+          offsetX: 0,
+          offsetY: -6
+        })
+        .animation({ duration: 200, curve: Curve.Sharp })
       }
       .width('100%').height('100%')
     } else {
       // ===== 内嵌模式：直接铺在父级布局里 =====
-      Column(){
+      Column() {
         this.SheetBody()
       }
-        .width('100%')
-        .backgroundColor(0xFFFFFFFF)
-        .borderRadius(16)
-        .shadow({
-          radius: 16,
-          color: 0x14000000,
-          offsetX: 0,
-          offsetY: 4
-        })
-        .padding({ bottom: 6 })
+      .width('100%')
+      .backgroundColor(0xFFFFFFFF)
+      .borderRadius(16)
+      .shadow({
+        radius: 16,
+        color: 0x14000000,
+        offsetX: 0,
+        offsetY: 4
+      })
+      .padding({ bottom: 6 })
     }
   }
 
@@ -79,58 +81,60 @@ export struct CalendarView {
   @Builder
   SheetBody() {
     Column() {
-      // 标题与切月（内嵌/抽屉共用）
-      Row() {
-        Text('‹').fontSize(20).fontColor(0xFF1565C0).onClick(() => {
-          this.prevMonth()
-        })
-        Text(this.monthTitle(this.y, this.m))
-          .fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
-          .margin({ left: 10, right: 10 })
-        Text('›').fontSize(20).fontColor(0xFF1565C0).onClick(() => {
-          this.nextMonth()
-        })
-        Blank()
-        if (this.showAsSheet) {
-          Text('✕').fontSize(18).onClick(() => {
-            this.onClose()
-          })
-        }
-      }
-      .padding({
-        left: 16,
-        right: 16,
-        top: 12,
-        bottom: 6
-      })
-
-      // 周标题
-      Row() {
-        this.WeekLabel('日');
-        this.WeekLabel('一');
-        this.WeekLabel('二');
-        this.WeekLabel('三');
-        this.WeekLabel('四');
-        this.WeekLabel('五');
-        this.WeekLabel('六')
-      }.padding({ left: 12, right: 12, bottom: 4 })
-
-      // 6×7 网格
       Column() {
-        ForEach(this.rows(), (row: Array<_DayCell>) => {
-          Row() {
-            ForEach(row, (d: _DayCell) => {
-              this.DayCell(d)
-            }, (d: _DayCell) => d.key)
-          }
-          .padding({
-            left: 10,
-            right: 10,
-            top: 4,
-            bottom: 4
+        // 标题与切月（内嵌/抽屉共用）
+        Row() {
+          Text('‹').fontSize(20).fontColor(0xFF1565C0).onClick(() => {
+            this.prevMonth()
           })
-        }, (_: Array<_DayCell>, idx: number) => `r${idx}`)
-      }
+          Text(this.monthTitle(this.y, this.m))
+            .fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+            .margin({ left: 10, right: 10 })
+          Text('›').fontSize(20).fontColor(0xFF1565C0).onClick(() => {
+            this.nextMonth()
+          })
+          Blank()
+          // if (this.showAsSheet) {
+          //   Text('✕').fontSize(18).onClick(() => {
+          //     this.onClose()
+          //   })
+          // }
+        }
+        .padding({
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: 6
+        })
+
+        // 周标题
+        Row() {
+          this.WeekLabel('日');
+          this.WeekLabel('一');
+          this.WeekLabel('二');
+          this.WeekLabel('三');
+          this.WeekLabel('四');
+          this.WeekLabel('五');
+          this.WeekLabel('六')
+        }.padding({ left: 12, right: 12, bottom: 4 })
+
+        // 6×7 网格
+        Column() {
+          ForEach(this.rows(), (row: Array<_DayCell>) => {
+            Row() {
+              ForEach(row, (d: _DayCell) => {
+                this.DayCell(d)
+              }, (d: _DayCell) => d.key)
+            }
+            .padding({
+              left: 10,
+              right: 10,
+              top: 4,
+              // bottom: 4
+            })
+          }, (_: Array<_DayCell>, idx: number) => `r${idx}`)
+        }
+      }.backgroundColor('#fff').borderRadius(16)
 
       // 类型筛选
       Row() {
@@ -158,7 +162,7 @@ export struct CalendarView {
                 this.TaskRow(t)
               }
             }, (t: PlantTask) => t.id.toString())
-          }.edgeEffect(EdgeEffect.Spring)
+          }.edgeEffect(EdgeEffect.Spring).scrollBar(BarState.Off)
         }
       }
       .padding({
@@ -167,7 +171,11 @@ export struct CalendarView {
         bottom: 16,
         top: 6
       })
-    }
+    }.padding({
+      left: 16,
+      right: 16,
+      top: 12,
+    })
   }
 
   /** —— 子区域 —— */
@@ -251,7 +259,9 @@ export struct CalendarView {
       .borderRadius(12)
       .backgroundColor(this.typeFilter === label ? 0xFFE8F5E9 : 0xFFFFFFFF)
       .onClick(() => {
-        animateTo({ duration: 120, curve: Curve.EaseInOut }, () => { this.typeFilter = label})
+        animateTo({ duration: 120, curve: Curve.EaseInOut }, () => {
+          this.typeFilter = label
+        })
 
       })
       .margin({ right: 8 })
@@ -280,6 +290,7 @@ export struct CalendarView {
         this.onDelete(t.id)
       })
     }
+    .width('100%')
     .padding(12).borderRadius(12).backgroundColor(0xFFFFFFFF)
     .shadow({
       radius: 10,

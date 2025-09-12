@@ -700,7 +700,7 @@ struct Index {
           })
         }.tabBar(this.TabChip('统计', 4))
 
-      }.barWidth('100%').barHeight(54).border({width:2,color:Color.Red}).height('100%').scrollable(false)
+      }.barWidth('100%').barHeight(54).height('100%').scrollable(false)
       .onChange((index: number) => {
         this.tabBarIndex = index;
       })
