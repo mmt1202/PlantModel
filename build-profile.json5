@@ -1,0 +1,56 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BCD1AE93B991C41398FB0FC884C6F026BBA333B36FBED626C54B0B46449395E946CB0E9A782A3D8",
+          "profile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p12",
+          "storePassword": "0000001B67712AE125C8C548F90A4DEF8B17C02E4E27BA03E44854E7E8248566F25A7A3D583CAF58C44203"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "5.0.5(17)",
+        "compatibleSdkVersion": "5.0.5(17)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
