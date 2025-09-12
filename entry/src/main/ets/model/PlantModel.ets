@@ -83,11 +83,11 @@ export class LogEntry {
   }
 }
 
-export  class _DayCell {
+export class _DayCell {
   key: string
-  day: number        // 1~31（非当月为 0）
+  day: number        // 1..31（0 表示占位）
   inMonth: number    // 1: 当前月；0: 其他月
-  iso: string        // YYYY-MM-DD（非当月时为 ''）
+  iso: string        // YYYY-MM-DD（占位为空串）
   isToday: number    // 1/0
   constructor(key: string, day: number, inMonth: number, iso: string, isToday: number) {
     this.key = key; this.day = day; this.inMonth = inMonth; this.iso = iso; this.isToday = isToday

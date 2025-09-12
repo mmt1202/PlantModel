@@ -7,6 +7,7 @@ import { EditPlantSheet } from '../view/EditPlantSheet'
 import { PlantListPage } from '../view/PlantListPage'
 import { PlantLogSheet } from '../view/PlantLogSheet'
 import { StatsPage } from '../view/StatsPage'
+import { TaskCalendarGate } from '../view/TaskCalendarGate'
 import { TaskListPage } from '../view/TaskListPage'
 import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
 
@@ -533,6 +534,11 @@ struct Index {
           }
         })
       } else if (this.tabBarIndex === 1) {
+        TaskCalendarGate({
+          tasks: this.tasks,
+          onToggle: (t: PlantTask) => { this.toggleTaskDone(t) },
+          onDelete: (id: number) => { this.deleteTask(id) }
+        })
         TaskListPage({
           tasks: this.tasks,
           plants: this.plants,

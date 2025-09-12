@@ -3,7 +3,7 @@ import { PlantTask, _DayCell } from "../model/PlantModel"
 // 日历内部使用的数据模型（仅本组件内部，不暴露）
 
 
- @ComponentV2
+@ComponentV2
 export struct CalendarSheet {
   /** 传入需要展示的年月（例如 2025 / 9），父层可给当前日期 */
   @Param @Require year: number

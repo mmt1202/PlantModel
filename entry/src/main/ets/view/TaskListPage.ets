@@ -214,6 +214,13 @@ export struct TaskListPage {
         }
       } else {
         // 日历模式：保持不变（不重复输出 CalendarGridV2）
+        // CalendarGrid({
+        //   year: y,
+        //   month: m,
+        //   tasks: this.tasks,
+        //   onToggle: (t) => this.toggleTaskDone(t),
+        //   onDelete: (id) => this.deleteTask(id)
+        // })
         CalendarGrid({
           monthISO: this.currentMonthISO,
           tasks: this.tasks,
