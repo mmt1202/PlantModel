@@ -76,6 +76,7 @@ export  struct PlantCard {
       // 快捷添加
       Row() { this.QuickChip('浇水'); this.QuickChip('施肥'); this.QuickChip('修剪') }.margin({ top: 10 })
     }
+    .width('100%')
     .padding(14).borderRadius(16).backgroundColor(0xFFFFFFFF)
     .linearGradient({ direction: GradientDirection.Right, colors: [[0x10A5D6A7, 0], [0x1000BCD4, 1]] })
     .shadow({ radius: 16, color: 0x1F000000, offsetX: 0, offsetY: 4 })

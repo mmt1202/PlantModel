@@ -14,7 +14,8 @@ export struct PlantListPage {
   @Event onOpenMetrics: (p: Plant) => void
   // —— 新增本地状态：筛选与排序 —— //
   @Local selectedSpecies: string = '全部'
-  @Local sortKey: number = 0
+  @Local sortKey: number = 0;
+  @BuilderParam Header?:()=>void
 
   private plantTaskDone(plantId: number): number {
     let i: number = 0;
@@ -114,6 +115,9 @@ export struct PlantListPage {
   build() {
     Column() {
       // —— 新增：筛选与排序条 —— //
+      if (this.Header){
+        this.Header()
+      }
       // 物种筛选芯片
       Row() {
         Text('物种').fontSize(12).fontColor(0xFF607D8B).margin({ right: 8 })
@@ -176,7 +180,7 @@ export struct PlantListPage {
         })
         .edgeEffect(EdgeEffect.Spring)
       }
-    }
+    }.height('100%').width('100%')
 
   }
   // —— UI 子块（Builder 内不做计算） —— //

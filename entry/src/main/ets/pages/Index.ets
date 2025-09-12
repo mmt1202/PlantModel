@@ -18,6 +18,8 @@ import { MetricSheet } from '../view/MetricSheet'
 @Entry
 @ComponentV2
 struct Index {
+  // @StorageProp('topRectHeight')topRectHeight:number=0
+  // @StorageProp('bottomRectHeight') bottomRectHeight: number = 0
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
   // DB
   private store?: relationalStore.RdbStore
@@ -610,9 +612,9 @@ struct Index {
 
   /** ---- 视图 ---- */
   build() {
-    Column() {
+    Stack({alignContent:Alignment.Bottom}) {
       // 头部
-      this.Header()
+      // this.Header()
       Tabs({
         barPosition: BarPosition.End,
         index: this.tabBarIndex
@@ -651,7 +653,8 @@ struct Index {
               this.carePlantId = p.id
               this.carePlantName = p.name
               this.careVisible = true
-            }
+            },
+            Header: ()=>{this.Header()}
           })
         }.tabBar(this.TabChip('植物', 0))
         TabContent(){
@@ -675,13 +678,29 @@ struct Index {
           })
         }.tabBar(this.TabChip('任务', 1))
         TabContent(){
+
+        }.tabBar(this.Fab(() => {
+          this.openPanel(0)
+        }))
+        TabContent(){
+          CalendarSheet({
+            year: this.calYear,
+            month: this.calMonth,
+            tasks: this.tasks, // Array<PlantTask>
+            onToggle: (it: PlantTask) => { this.toggleTaskDone(it) },
+            onDelete: (id: number) => { this.deleteTask(id) },
+            onClose: () => { this.calendarVisible = false }
+          })
+        }.tabBar(this.TabChip('日历', 3))
+        TabContent(){
           StatsPage({
             plantCount: this.plants.length,
             taskCount: this.tasks.length,
             doneCount: this.statDoneCount()
           })
-        }.tabBar(this.TabChip('统计', 2))
-      }.barWidth('100%').barHeight(54).border({width:2,color:Color.Red}).height('100%')
+        }.tabBar(this.TabChip('统计', 4))
+
+      }.barWidth('100%').barHeight(54).border({width:2,color:Color.Red}).height('100%').scrollable(false)
       .onChange((index: number) => {
         this.tabBarIndex = index;
       })
@@ -689,11 +708,11 @@ struct Index {
       // 内容
 
       // FAButton
-      if (this.tabBarIndex === 0) {
-        this.Fab(() => {
-          this.openPanel(0)
-        })
-      }
+      // if (this.tabBarIndex === 0) {
+      //   this.Fab(() => {
+      //     this.openPanel(0)
+      //   })
+      // }
 
       // Banner
       if (this.bannerMsg.length > 0) {
@@ -881,8 +900,12 @@ struct Index {
     .linearGradient({
       direction: GradientDirection.Top,
       colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
+    }).padding({
+      top:AppStorage.get<number>('topRectHeight'),
+      bottom:AppStorage.get<number>('bottomRectHeight')
     })
   }
+
 
   private findPlantName(id: number): string {
     let i: number = 0
@@ -903,8 +926,9 @@ struct Index {
         Row() {
           Text('PlantDiary 植物养护').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
-          Text(this.initialized ? '离线 · 本地数据库' : '初始化中…').fontSize(12).fontColor(0x80263238)
-        }
+          // Text(this.initialized ? '离线 · 本地数据库' : '初始化中…').fontSize(12).fontColor(0x80263238)
+        }.width('100%')
+        .justifyContent(FlexAlign.Start)
         .padding({
           left: 20,
           right: 20,
@@ -918,7 +942,7 @@ struct Index {
             .onChange((v: string) => {
               this.keyword = v
             })
-            .width('100%')
+            .width('calc(100% - 24vp)')
             .height(36)
             .fontSize(14)
             .borderRadius(12)
@@ -926,40 +950,27 @@ struct Index {
             .padding({ left: 12, right: 12 })
         }
         .height(44).width('100%').padding({ left: 20, right: 20, bottom: 2 })
-
-        // Row() {
-        //   this.TabChip('植物', 0)
-        //   this.TabChip('任务', 1)
-        //   this.TabChip('统计', 2)
-        // }
-        // .padding({
-        //   left: 16,
-        //   right: 16,
-        //   top: 6,
-        //   bottom: 8
-        // })
-        // .justifyContent(FlexAlign.SpaceAround)
       }
       .padding({ bottom: 4 })
       .onTouch((e: TouchEvent) => {
         this.onHeaderTouch(e)
       })
 
-      if (this.pullOffset > 0) {
-        Row() {
-          if (this.canRefresh) {
-            Text('释放刷新').fontSize(12).fontColor(0xFF2E7D32)
-          } else {
-            Text('下拉刷新').fontSize(12).fontColor(0xFF607D8B)
-          }
-        }
-        .width('100%')
-        .height(24)
-        .justifyContent(FlexAlign.Center)
-        .opacity(0.9)
-        .padding({ bottom: 4 })
-      }
-    }
+      // if (this.pullOffset > 0) {
+      //   Row() {
+      //     if (this.canRefresh) {
+      //       Text('释放刷新').fontSize(12).fontColor(0xFF2E7D32)
+      //     } else {
+      //       Text('下拉刷新').fontSize(12).fontColor(0xFF607D8B)
+      //     }
+      //   }
+      //   .width('100%')
+      //   .height(24)
+      //   .justifyContent(FlexAlign.Center)
+      //   .opacity(0.9)
+      //   .padding({ bottom: 4 })
+      // }
+    }.width('100%')
   }
 
   @Builder
@@ -1018,7 +1029,6 @@ struct Index {
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .scale(this.fabPressed ? { x: 0.94, y: 0.94 } : { x: 1, y: 1 })
-    .position({ x: 'calc(100% - 76vp)', y: 'calc(100% - 96vp)' })
     .animation({ duration: 120, curve: Curve.EaseInOut })
   }
 
