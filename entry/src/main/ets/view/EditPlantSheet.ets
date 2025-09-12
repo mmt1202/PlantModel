@@ -12,6 +12,7 @@ export  struct EditPlantSheet {
   @Event onQuickWater: () => void
   @Event onBulkSchedule: (type: string, everyDays: number, times: number) => void
   @Event onOpenTpl: () => void
+  @Event onOpenLogs: () => void   // ← 新增
 
   build() {
     Column(){
@@ -29,7 +30,7 @@ export  struct EditPlantSheet {
           this.FormItem('品种', '如：龟背竹/月季', this.draft.species, (v: string) => { this.draft.species = v })
           this.FormItem('位置', '如：客厅窗边/阳台', this.draft.location, (v: string) => { this.draft.location = v })
 
-          // 快捷：周期任务批量生成（保留）
+          // 周期任务快捷 + 模板入口
           Column() {
             Text('周期任务').fontSize(12).fontColor(0xFF607D8B).margin({ bottom: 6 })
             Row() {
@@ -37,9 +38,12 @@ export  struct EditPlantSheet {
               this.BulkChip('每3天×6次(施肥)', () => { this.onBulkSchedule('施肥', 3, 6) })
               this.BulkChip('每14天×3次(修剪)', () => { this.onBulkSchedule('修剪', 14, 3) })
             }
-            // 新增：模板管理入口
             Row() {
               this.LinkChip('管理周期模板…', () => { this.onOpenTpl() })
+              // ← 新增：日志入口
+              if (this.editingId !== 0) {
+                this.LinkChip('管理日志…', () => { this.onOpenLogs() })
+              }
             }.margin({ top: 6 })
           }.margin({ top: 8 })
 
@@ -90,6 +94,7 @@ export  struct EditPlantSheet {
       .borderRadius(12)
       .backgroundColor(0x102196F3)
       .onClick(() => { onTap() })
+      .margin({ right: 12 })
   }
 
   @Builder
@@ -102,4 +107,5 @@ export  struct EditPlantSheet {
         .padding({ left: 12, right: 12 }).margin({ top: 6 })
     }.margin({ top: 6 })
   }
+
 }

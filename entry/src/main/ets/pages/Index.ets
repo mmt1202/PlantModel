@@ -5,6 +5,7 @@ import { LogEntry, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../m
 import { ConfirmDialogSheet } from '../view/ConfirmDialogSheet'
 import { EditPlantSheet } from '../view/EditPlantSheet'
 import { PlantListPage } from '../view/PlantListPage'
+import { PlantLogSheet } from '../view/PlantLogSheet'
 import { StatsPage } from '../view/StatsPage'
 import { TaskListPage } from '../view/TaskListPage'
 import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
@@ -19,8 +20,8 @@ struct Index {
   private static readonly DB_NAME: string = 'plantdiary.db'
   private static readonly T_PLANT: string = 'plant'
   private static readonly T_TASK: string = 'task'
-  private static readonly T_TPL: string = 'tpl'
-  private static readonly T_LOG: string = 'log'   // ← 新增：日志表
+  private static readonly T_TPL: string = 'tpl' // 周期模板
+  private static readonly T_LOG: string = 'log' // ← 新增：日志表
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -35,19 +36,19 @@ struct Index {
   @Local editingPlantId: number = 0
   @Local plantDraft: PlantDraft = new PlantDraft()
   @Local taskDraft: TaskDraft = new TaskDraft()
-  // 自定义弹窗（删除确认）
+  // 删除确认
   @Local confirmVisible: boolean = false
   @Local confirmText: string = ''
   @Local pendingDeletePlantId: number = 0
   @Local pendingDeleteTaskId: number = 0
-  // 下拉刷新（页头区域）
-  @Local pullOffset: number = 0 // 0~80
+  // 下拉刷新头
+  @Local pullOffset: number = 0
   @Local pulling: boolean = false
   @Local canRefresh: boolean = false
   @Local touchStartY: number = 0
   // FAB 动画
   @Local fabPressed: boolean = false
-  // —— 新增：模板管理面板状态 —— //
+  // 模板管理
   @Local tplMgrVisible: boolean = false
   @Local templates: Array<PlanTpl> = []
   // ← 新增：日志抽屉
@@ -88,7 +89,6 @@ struct Index {
         done INTEGER DEFAULT 0,
         doneAt INTEGER DEFAULT 0
       )`)
-    // ← 新增模板表
     await this.store.executeSql(
       `CREATE TABLE IF NOT EXISTS ${Index.T_TPL}(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,31 +139,24 @@ struct Index {
         [])
     const items: Array<PlantTask> = []
     while (rs.goToNextRow()) {
-      items.push(new PlantTask(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4),
-        rs.getLong(5)))
+      items.push(new PlantTask(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4), rs.getLong(5)))
     }
     rs.close()
     this.tasks = items
   }
 
-  // —— 新增：模板加载 —— //
+  // 模板
   private async loadTemplates(): Promise<void> {
     if (!this.store) {
       return
     }
     const rs =
-      await this.store.querySql(`SELECT id,name,type,everyDays,times,createdAt FROM ${Index.T_TPL} ORDER BY createdAt DESC, id DESC`,
+      await this.store.querySql(`SELECT id,name,type,everyDays,times,createdAt FROM ${Index.T_TPL} ORDER BY createdAt DESC,id DESC`,
         [])
     const items: Array<PlanTpl> = []
     while (rs.goToNextRow()) {
-      items.push(new PlanTpl(
-        rs.getLong(0),
-        rs.getString(1),
-        rs.getString(2),
-        rs.getLong(3),
-        rs.getLong(4),
-        rs.getLong(5)
-      ))
+      items.push(new PlanTpl(rs.getLong(0), rs.getString(1), rs.getString(2), rs.getLong(3), rs.getLong(4),
+        rs.getLong(5)))
     }
     rs.close()
     this.templates = items
@@ -203,14 +196,18 @@ struct Index {
     if (!this.store) {
       return
     }
+    // 级联删除任务与日志
     const pt = new relationalStore.RdbPredicates(Index.T_TASK);
     pt.equalTo('plantId', id)
     await this.store.delete(pt)
+    const pl = new relationalStore.RdbPredicates(Index.T_LOG);
+    pl.equalTo('plantId', id)
+    await this.store.delete(pl)
     const pp = new relationalStore.RdbPredicates(Index.T_PLANT);
     pp.equalTo('id', id)
     await this.store.delete(pp)
     await this.reloadAll()
-    this.showBanner('已删除植物及其任务', 'ok')
+    this.showBanner('已删除植物及其任务/日志', 'ok')
   }
 
   /** ---- 任务 CRUD ---- */
@@ -253,7 +250,7 @@ struct Index {
     this.showBanner('已删除任务', 'ok')
   }
 
-  /** ---- 批量生成周期任务（每N天×次数） ---- */
+  /** ---- 批量生成周期任务 ---- */
   private async bulkCreateRecurringTasks(plantId: number, type: string, everyDays: number,
     times: number): Promise<void> {
     if (!this.store) {
@@ -272,7 +269,7 @@ struct Index {
     this.showBanner('已生成周期任务', 'ok')
   }
 
-  // —— 模板 CRUD & 应用 —— //
+  // 模板 CRUD & 应用
   private async createTpl(name: string, type: string, everyDays: number, times: number): Promise<void> {
     if (!this.store) {
       return
@@ -330,7 +327,6 @@ struct Index {
       this.showBanner('请先选择/保存植物', 'info');
       return
     }
-    // 查模板
     let i: number = 0
     while (i < this.templates.length) {
       if (this.templates[i].id === tplId) {
@@ -345,8 +341,12 @@ struct Index {
 
   /** ---- 日志 CRUD ---- */
   private async loadLogsByPlant(plantId: number): Promise<void> {
-    if (!this.store) { return }
-    const rs = await this.store.querySql(`SELECT id,plantId,note,createdAt FROM ${Index.T_LOG} WHERE plantId=? ORDER BY createdAt DESC, id DESC`, [plantId])
+    if (!this.store) {
+      return
+    }
+    const rs =
+      await this.store.querySql(`SELECT id,plantId,note,createdAt FROM ${Index.T_LOG} WHERE plantId=? ORDER BY createdAt DESC, id DESC`,
+        [plantId])
     const arr: Array<LogEntry> = []
     while (rs.goToNextRow()) {
       arr.push(new LogEntry(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getLong(3)))
@@ -356,9 +356,14 @@ struct Index {
   }
 
   private async createLog(plantId: number, note: string): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
     const txt: string = note.trim()
-    if (txt.length === 0) { this.showBanner('日志内容不能为空', 'warn'); return }
+    if (txt.length === 0) {
+      this.showBanner('日志内容不能为空', 'warn');
+      return
+    }
     const values: relationalStore.ValuesBucket = { plantId: plantId, note: txt, createdAt: Date.now() }
     await this.store.insert(Index.T_LOG, values)
     await this.loadLogsByPlant(plantId)
@@ -366,8 +371,11 @@ struct Index {
   }
 
   private async deleteLog(id: number): Promise<void> {
-    if (!this.store) { return }
-    const p = new relationalStore.RdbPredicates(Index.T_LOG); p.equalTo('id', id)
+    if (!this.store) {
+      return
+    }
+    const p = new relationalStore.RdbPredicates(Index.T_LOG);
+    p.equalTo('id', id)
     await this.store.delete(p)
     await this.loadLogsByPlant(this.logPlantId)
     this.showBanner('已删除日志', 'ok')
@@ -394,7 +402,7 @@ struct Index {
     const y = Number.parseInt(parts[0]);
     const m = Number.parseInt(parts[1]);
     const d = Number.parseInt(parts[2])
-    const base = new Date(y, m - 1, d)
+    const base = new Date(y, m - 1, d);
     base.setDate(base.getDate() + addDays)
     const ny = base.getFullYear()
     const nm = (base.getMonth() + 1).toString().padStart(2, '0')
@@ -431,19 +439,21 @@ struct Index {
 
   private filteredPlants(): Array<Plant> {
     const kw = this.keyword.trim().toLowerCase()
-    if (kw.length === 0) { return this.plants }
+    if (kw.length === 0) {
+      return this.plants
+    }
     const out: Array<Plant> = []
     let i: number = 0
     while (i < this.plants.length) {
       const p: Plant = this.plants[i]
-      if (p.name.toLowerCase().includes(kw) || p.species.toLowerCase().includes(kw) || p.location.toLowerCase().includes(kw)) {
+      if (p.name.toLowerCase().includes(kw) || p.species.toLowerCase().includes(kw) ||
+      p.location.toLowerCase().includes(kw)) {
         out.push(p)
       }
       i = i + 1
     }
     return out
   }
-
 
   private statDoneCount(): number {
     let cnt: number = 0
@@ -457,7 +467,7 @@ struct Index {
     return cnt
   }
 
-  /** ---- 下拉刷新手势（页头区域） ---- */
+  /** ---- 下拉刷新头手势 ---- */
   private onHeaderTouch(e: TouchEvent): void {
     if (e.type === TouchType.Down) {
       this.touchStartY = e.touches[0].y;
@@ -466,11 +476,11 @@ struct Index {
     } else if (e.type === TouchType.Move && this.pulling) {
       const dy: number = e.touches[0].y - this.touchStartY
       if (dy > 0) {
-        let v: number = dy
+        let v: number = dy;
         if (v > 80) {
           v = 80
         }
-        this.pullOffset = v
+        this.pullOffset = v;
         this.canRefresh = v > 60
       }
     } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
@@ -486,17 +496,21 @@ struct Index {
   }
 
   private async refreshAll(): Promise<void> {
-    await this.reloadAll()
+    await this.reloadAll();
+    await this.loadTemplates()
+    if (this.logSheetVisible && this.logPlantId !== 0) {
+      await this.loadLogsByPlant(this.logPlantId)
+    }
     this.showBanner('已刷新数据', 'ok')
   }
 
   /** ---- 视图 ---- */
   build() {
     Column() {
-      // 顶部栏 + 下拉刷新头
+      // 头部
       this.Header()
 
-      // 内容区
+      // 内容
       if (this.tabBarIndex === 0) {
         PlantListPage({
           plants: this.filteredPlants(),
@@ -540,19 +554,19 @@ struct Index {
         })
       }
 
-      // FAB（仅植物页显示）
+      // FAB
       if (this.tabBarIndex === 0) {
         this.Fab(() => {
           this.openPanel(0)
         })
       }
 
-      // 顶部 Banner
+      // Banner
       if (this.bannerMsg.length > 0) {
         this.Banner(this.bannerMsg, this.bannerType)
       }
 
-      // 自定义弹窗：删除确认
+      // 删除确认
       if (this.confirmVisible) {
         ConfirmDialogSheet({
           text: this.confirmText,
@@ -571,7 +585,7 @@ struct Index {
         })
       }
 
-      // 新建/编辑面板（增加：周期任务批量生成）
+      // 编辑抽屉
       if (this.panelVisible) {
         EditPlantSheet({
           title: this.editingPlantId === 0 ? '添加植物' : '编辑植物',
@@ -619,19 +633,60 @@ struct Index {
           onOpenTpl: async () => {
             await this.loadTemplates()
             this.tplMgrVisible = true
+          },
+          // ← 新增：打开日志
+          onOpenLogs: async () => {
+            if (this.editingPlantId === 0) {
+              this.showBanner('请先保存植物再写日志', 'info');
+              return
+            }
+            await this.openLogSheetFor(this.editingPlantId)
           }
         })
       }
 
+      // 模板管理
       if (this.tplMgrVisible) {
         TemplateManagerSheet({
           templates: this.templates,
           editingPlantId: this.editingPlantId,
-          onClose: () => { this.tplMgrVisible = false },
-          onCreate: async (n: string, t: string, d: number, times: number) => { await this.createTpl(n, t, d, times) },
-          onUpdate: async (id: number, n: string, t: string, d: number, times: number) => { await this.updateTpl(id, n, t, d, times) },
-          onDelete: async (id: number) => { await this.deleteTpl(id) },
-          onApply: async (id: number) => { await this.applyTplToPlant(id) }
+          onClose: () => {
+            this.tplMgrVisible = false
+          },
+          onCreate: async (n: string, t: string, d: number, times: number) => {
+            await this.createTpl(n, t, d, times)
+          },
+          onUpdate: async (id: number, n: string, t: string, d: number, times: number) => {
+            await this.updateTpl(id, n, t, d, times)
+          },
+          onDelete: async (id: number) => {
+            await this.deleteTpl(id)
+          },
+          onApply: async (id: number) => {
+            await this.applyTplToPlant(id)
+          }
+        })
+      }
+
+      // ← 新增：日志抽屉
+      if (this.logSheetVisible) {
+        PlantLogSheet({
+          logs: this.logList,
+          plantName: this.findPlantName(this.logPlantId),
+          inputText: this.logInput,
+          onChangeInput: (v: string) => {
+            this.logInput = v
+          },
+          onAdd: async () => {
+            await this.createLog(this.logPlantId, this.logInput);
+            this.logInput = ''
+          },
+          onDelete: async (id: number) => {
+            await this.deleteLog(id)
+          },
+          onClose: () => {
+            this.logSheetVisible = false
+          }
         })
       }
     }
@@ -642,11 +697,21 @@ struct Index {
     })
   }
 
-  /** ---- Header：搜索 / Tabs / 下拉刷新 ---- */
+  private findPlantName(id: number): string {
+    let i: number = 0
+    while (i < this.plants.length) {
+      if (this.plants[i].id === id) {
+        return this.plants[i].name
+      }
+      i = i + 1
+    }
+    return '植物'
+  }
+
+  /** ---- Header / TabChip / Fab / Banner（保持与你现有实现一致） ---- */
   @Builder
   Header() {
     Column() {
-      // 可下拉的头部刷新区
       Column() {
         Row() {
           Text('PlantDiary 植物养护').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
@@ -660,7 +725,6 @@ struct Index {
           bottom: 8
         })
 
-        // 搜索
         Row() {
           Text('🔎').fontSize(18).margin({ right: 8 })
           TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword })
@@ -676,7 +740,6 @@ struct Index {
         }
         .height(44).width('100%').padding({ left: 20, right: 20, bottom: 2 })
 
-        // Tabs
         Row() {
           this.TabChip('植物', 0)
           this.TabChip('任务', 1)
@@ -695,7 +758,6 @@ struct Index {
         this.onHeaderTouch(e)
       })
 
-      // 下拉刷新提示条（根据 pullOffset 显示）
       if (this.pullOffset > 0) {
         Row() {
           if (this.canRefresh) {
@@ -734,7 +796,6 @@ struct Index {
       })
   }
 
-  /** ---- FAB（带按压缩放波纹感） ---- */
   @Builder
   Fab(onTap: () => void) {
     Row() {
@@ -747,11 +808,11 @@ struct Index {
         })
         .onTouch((e: TouchEvent) => {
           if (e.type === TouchType.Down) {
-            this.fabPressed = true
+            this.fabPressed = true;
             animateTo({ duration: 90, curve: Curve.EaseOut }, () => {
             })
           } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
-            this.fabPressed = false
+            this.fabPressed = false;
             animateTo({ duration: 120, curve: Curve.EaseInOut }, () => {
             })
           }
@@ -772,7 +833,6 @@ struct Index {
     .animation({ duration: 120, curve: Curve.EaseInOut })
   }
 
-  /** ---- 顶部提示条 ---- */
   @Builder
   Banner(text: string, type: 'ok' | 'warn' | 'info') {
     Row() {
@@ -805,6 +865,7 @@ struct Index {
     .animation({ duration: 220, curve: Curve.EaseInOut })
   }
 }
+
 
 
 
