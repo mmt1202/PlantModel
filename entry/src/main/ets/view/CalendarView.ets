@@ -20,7 +20,7 @@ export struct CalendarView {
   @Local y: number = 1970
   @Local m: number = 1
   @Local selectedISO: string = ''
-  @Local typeFilter: string = '全部'
+  @Local typeFilter: string = ''
   @Local pressedCellISO: string = ''
 
   aboutToAppear(): void {
@@ -251,7 +251,8 @@ export struct CalendarView {
       .borderRadius(12)
       .backgroundColor(this.typeFilter === label ? 0xFFE8F5E9 : 0xFFFFFFFF)
       .onClick(() => {
-        this.typeFilter = label
+        animateTo({ duration: 120, curve: Curve.EaseInOut }, () => { this.typeFilter = label})
+
       })
       .margin({ right: 8 })
   }

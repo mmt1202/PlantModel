@@ -1,7 +1,9 @@
 // entry/src/main/ets/pages/Index.ets
 import common from '@ohos.app.ability.common'
 import relationalStore from '@ohos.data.relationalStore'
-import { LogEntry, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
+import { LogEntry, Metric, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
+import { CalendarSheet } from '../view/CalendarView'
+import { CareTemplateSheet } from '../view/CareTemplateSheet'
 import { ConfirmDialogSheet } from '../view/ConfirmDialogSheet'
 import { EditPlantSheet } from '../view/EditPlantSheet'
 import { PlantListPage } from '../view/PlantListPage'
@@ -23,6 +25,7 @@ struct Index {
   private static readonly T_TASK: string = 'task'
   private static readonly T_TPL: string = 'tpl' // 周期模板
   private static readonly T_LOG: string = 'log' // ← 新增：日志表
+  private static readonly T_METRIC: string = 'metric'
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -58,6 +61,28 @@ struct Index {
   @Local logList: Array<LogEntry> = []
   @Local logInput: string = ''
 
+  // —— 日志抽屉状态 —— //
+  @Local logVisible: boolean = false
+  // @Local logPlantId: number = 0
+  @Local logPlantName: string = ''
+  @Local logs: Array<LogEntry> = []
+  @Local logInputText: string = ''
+
+  // —— 指标抽屉状态 —— //
+  @Local metricVisible: boolean = false
+  @Local metricPlantId: number = 0
+  @Local metricPlantName: string = ''
+  @Local metrics: Array<Metric> = []
+  // —— 日历入口状态 ——
+  @Local calendarVisible: boolean = false
+  @Local calYear: number = 1970
+  @Local calMonth: number = 1
+
+  // —— 养护模板入口 ——
+  @Local careVisible: boolean = false
+  @Local carePlantId: number = 0
+  @Local carePlantName: string = ''
+
   /** ---- 生命周期 ---- */
   aboutToAppear(): void {
     this.initDb().then(() => {
@@ -67,6 +92,9 @@ struct Index {
       this.showBanner('数据库初始化失败', 'warn')
       console.error(e.message)
     })
+    const __now = new Date()
+    this.calYear = __now.getFullYear()
+    this.calMonth = __now.getMonth() + 1
   }
 
   /** ---- DB 初始化/加载 ---- */
@@ -106,6 +134,15 @@ struct Index {
         plantId INTEGER NOT NULL,
         note TEXT NOT NULL,
         createdAt INTEGER
+      )`)
+    await this.store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${Index.T_METRIC}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plantId INTEGER NOT NULL,
+        height REAL DEFAULT 0,
+        width REAL DEFAULT 0,
+        score INTEGER DEFAULT 0,
+        createdAt INTEGER NOT NULL
       )`)
     await this.reloadAll()
     await this.loadTemplates()
@@ -161,6 +198,45 @@ struct Index {
     }
     rs.close()
     this.templates = items
+  }
+
+
+  /** ---- 指标 DB ---- */
+  private async loadMetricsByPlant(plantId: number): Promise<void> {
+    if (!this.store) { return }
+    const rs = await this.store.querySql(
+      `SELECT id,plantId,height,width,score,createdAt FROM ${Index.T_METRIC} WHERE plantId=? ORDER BY createdAt DESC`, [plantId])
+    const arr: Array<Metric> = []
+    while (rs.goToNextRow()) {
+      arr.push(new Metric(rs.getLong(0), rs.getLong(1), rs.getDouble(2), rs.getDouble(3), rs.getLong(4), rs.getLong(5)))
+    }
+    rs.close()
+    this.metrics = arr
+  }
+
+  private async createMetric(plantId: number, height: number, width: number, score: number, dateISO: string): Promise<void> {
+    if (!this.store) { return }
+    const ts: number = this.isoToTs(dateISO)
+    const v: relationalStore.ValuesBucket = { plantId: plantId, height: height, width: width, score: score, createdAt: ts }
+    await this.store.insert(Index.T_METRIC, v)
+    await this.loadMetricsByPlant(plantId)
+  }
+
+  private isoToTs(iso: string): number {
+    // 简单解析 YYYY-MM-DD -> 本地 00:00:00
+    if (iso.length !== 10) { return Date.now() }
+    const y: number = Number(iso.substring(0, 4))
+    const m: number = Number(iso.substring(5, 7)) - 1
+    const d: number = Number(iso.substring(8, 10))
+    const dt = new Date(y, m, d, 0, 0, 0, 0)
+    return dt.getTime()
+  }
+
+  private async deleteMetric(id: number): Promise<void> {
+    if (!this.store) { return }
+    const p = new relationalStore.RdbPredicates(Index.T_METRIC); p.equalTo('id', id)
+    await this.store.delete(p)
+    if (this.metricPlantId !== 0) { await this.loadMetricsByPlant(this.metricPlantId) }
   }
 
   /** ---- 植物 CRUD ---- */
@@ -389,6 +465,32 @@ struct Index {
     this.logSheetVisible = true
   }
 
+  //
+  private async createTaskDirect(plantId: number, type: string, dateISO: string): Promise<void> {
+    if (!this.store) { return }
+    const v: relationalStore.ValuesBucket = { plantId: plantId, type: type, planDate: dateISO.trim(), done: 0, doneAt: 0 }
+    await this.store.insert(Index.T_TASK, v)
+  }
+
+  private async generateTemplateTasks(plantId: number, waterInt: number, fertInt: number, pruneInt: number, startISO: string, days: number): Promise<void> {
+    if (plantId === 0) { return }
+    // 逐日生成：对每个非 0 的间隔，在范围内按步长生成日期
+    const base = this.isoToTs(startISO)
+    if (days <= 0) { return }
+    let offset: number = 0
+    while (offset < days) {
+      const d = new Date(base + offset * 24 * 3600 * 1000)
+      const y = d.getFullYear()
+      const m = (d.getMonth() + 1).toString().padStart(2, '0')
+      const day = d.getDate().toString().padStart(2, '0')
+      const iso = `${y}-${m}-${day}`
+      if (waterInt > 0 && (offset % waterInt === 0)) { await this.createTaskDirect(plantId, '浇水', iso) }
+      if (fertInt  > 0 && (offset % fertInt  === 0)) { await this.createTaskDirect(plantId, '施肥', iso) }
+      if (pruneInt > 0 && (offset % pruneInt === 0)) { await this.createTaskDirect(plantId, '修剪', iso) }
+      offset = offset + 1
+    }
+  }
+
   /** ---- 辅助 ---- */
   private todayISO(): string {
     const d = new Date();
@@ -526,14 +628,30 @@ struct Index {
           onEdit: (p: Plant) => {
             this.openPanel(p.id, p)
           },
+          onOpenLogs: async (p: Plant) => {
+            this.logPlantId = p.id; this.logPlantName = p.name; this.logInputText = ''
+            await this.loadLogsByPlant(p.id)
+            this.logVisible = true
+          },
           onDeleteAsk: (pid: number) => {
             this.pendingDeletePlantId = pid;
             this.pendingDeleteTaskId = 0
             this.confirmText = '删除该植物及其任务？'
             this.confirmVisible = true
+          },
+          onOpenMetrics: async (p: Plant) => {
+            this.metricPlantId = p.id; this.metricPlantName = p.name
+            await this.loadMetricsByPlant(p.id)
+            this.metricVisible = true
+          },
+          onOpenTemplate: (p: Plant) => {
+            this.carePlantId = p.id
+            this.carePlantName = p.name
+            this.careVisible = true
           }
         })
-      } else if (this.tabBarIndex === 1) {
+      } else
+        if (this.tabBarIndex === 1) {
         TaskCalendarGate({
           tasks: this.tasks,
           onToggle: (t: PlantTask) => { this.toggleTaskDone(t) },
@@ -570,6 +688,60 @@ struct Index {
       // Banner
       if (this.bannerMsg.length > 0) {
         this.Banner(this.bannerMsg, this.bannerType)
+      }
+
+      if (this.careVisible) {
+        CareTemplateSheet({
+          plantName: this.carePlantName,
+          onClose: () => { this.careVisible = false },
+          onApply: async (waterInt: number, fertInt: number, pruneInt: number, startISO: string, days: number) => {
+            await this.generateTemplateTasks(this.carePlantId, waterInt, fertInt, pruneInt, startISO, days)
+            this.careVisible = false
+            this.showBanner('已按模板生成任务', 'ok')
+            await this.loadTasks()
+          }
+        })
+      }
+
+      // —— 日志抽屉 ——（使用你已有的 PlantLogSheet）
+      if (this.logVisible) {
+        PlantLogSheet({
+          logs: this.logs,
+          plantName: this.logPlantName,
+          inputText: this.logInputText,
+          onChangeInput: (v: string) => { this.logInputText = v },
+          onAdd: async () => {
+            await this.createLog(this.logPlantId, this.logInputText)
+            this.logInputText = ''
+          },
+          onDelete: async (id: number) => { await this.deleteLog(id) },
+          onClose: () => { this.logVisible = false }
+        })
+      }
+
+      // —— 指标抽屉 ——（新增组件 MetricSheet）
+      if (this.metricVisible) {
+        // MetricSheet({
+        //   plantName: this.metricPlantName,
+        //   metrics: this.metrics,
+        //   onClose: () => { this.metricVisible = false },
+        //   onAdd: async (h: number, w: number, s: number, iso: string) => {
+        //     await this.createMetric(this.metricPlantId, h, w, s, iso)
+        //   },
+        //   onDelete: async (id: number) => { await this.deleteMetric(id) }
+        // })
+      }
+
+
+      if (this.calendarVisible) {
+        CalendarSheet({
+          year: this.calYear,
+          month: this.calMonth,
+          tasks: this.tasks, // Array<PlantTask>
+          onToggle: (it: PlantTask) => { this.toggleTaskDone(it) },
+          onDelete: (id: number) => { this.deleteTask(id) },
+          onClose: () => { this.calendarVisible = false }
+        })
       }
 
       // 删除确认
@@ -834,6 +1006,8 @@ struct Index {
       offsetX: 0,
       offsetY: 6
     })
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
     .scale(this.fabPressed ? { x: 0.94, y: 0.94 } : { x: 1, y: 1 })
     .position({ x: 'calc(100% - 76vp)', y: 'calc(100% - 96vp)' })
     .animation({ duration: 120, curve: Curve.EaseInOut })

@@ -158,11 +158,7 @@ export struct TaskListPage {
         Row() {
           Text('类型').fontSize(12).fontColor(0xFF607D8B).margin({ right: 8 })
           ForEach(this.typesChips(), (tp: string) => {
-            this.TypeChip(tp, this.typeFilter === tp, () => {
-              animateTo({ duration: 120, curve: Curve.EaseInOut }, () => {
-                this.typeFilter = tp
-              })
-            })
+            this.TypeChip(tp)
           }, (tp: string) => `tp-${tp}`)
         }
         .padding({ left: 12, right: 12, bottom: 6 })
@@ -305,10 +301,10 @@ export struct TaskListPage {
   }
 
   @Builder
-  TypeChip(text: string, active: boolean, onTap: () => void) {
-    Text(text)
+  TypeChip(tp: string) {
+    Text(tp)
       .fontSize(11)
-      .fontColor(active ? 0xFF1565C0 : 0xFF263238)
+      .fontColor(this.typeFilter === tp ? 0xFF1565C0 : 0xFF263238)
       .padding({
         left: 10,
         right: 10,
@@ -316,16 +312,16 @@ export struct TaskListPage {
         bottom: 6
       })
       .borderRadius(12)
-      .backgroundColor(active ? 0xFFE3F2FD : 0xFFFFFFFF)
+      .backgroundColor(this.typeFilter === tp ? 0xFFE3F2FD : 0xFFFFFFFF)
       .onClick(() => {
-        onTap()
+        animateTo({ duration: 120, curve: Curve.EaseInOut }, () => {this.typeFilter = tp})
       })
       .margin({ right: 8 })
       .shadow({
-        radius: active ? 10 : 6,
+        radius: this.typeFilter === tp ? 10 : 6,
         color: 0x10000000,
         offsetX: 0,
-        offsetY: active ? 2 : 1
+        offsetY: this.typeFilter === tp ? 2 : 1
       })
   }
 }

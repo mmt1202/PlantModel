@@ -85,11 +85,36 @@ export class LogEntry {
 
 export class _DayCell {
   key: string
-  day: number        // 1..31（0 表示占位）
-  inMonth: number    // 1: 当前月；0: 其他月
-  iso: string        // YYYY-MM-DD（占位为空串）
-  isToday: number    // 1/0
+  day: number // 1..31（0 表示占位）
+  inMonth: number // 1: 当前月；0: 其他月
+  iso: string // YYYY-MM-DD（占位为空串）
+  isToday: number // 1/0
   constructor(key: string, day: number, inMonth: number, iso: string, isToday: number) {
-    this.key = key; this.day = day; this.inMonth = inMonth; this.iso = iso; this.isToday = isToday
+    this.key = key;
+    this.day = day;
+    this.inMonth = inMonth;
+    this.iso = iso;
+    this.isToday = isToday
   }
 }
+
+@ObservedV2
+export class Metric {
+  @Trace id: number
+  @Trace plantId: number
+  @Trace height: number // cm
+  @Trace width: number // cm
+  @Trace score: number // 0~100
+  @Trace createdAt: number
+
+  constructor(id: number, plantId: number, height: number, width: number, score: number, createdAt: number) {
+    this.id = id;
+    this.plantId = plantId;
+    this.height = height;
+    this.width = width;
+    this.score = score;
+    this.createdAt = createdAt
+  }
+}
+
+//

@@ -9,6 +9,9 @@ export struct PlantListPage {
   @Event onQuickAdd: (plantId: number, type: string) => void
   @Event onEdit: (p: Plant) => void
   @Event onDeleteAsk: (plantId: number) => void
+  @Event onOpenTemplate: (p: Plant) => void
+  @Event onOpenLogs: (p: Plant) => void
+  @Event onOpenMetrics: (p: Plant) => void
   // —— 新增本地状态：筛选与排序 —— //
   @Local selectedSpecies: string = '全部'
   @Local sortKey: number = 0
@@ -115,12 +118,8 @@ export struct PlantListPage {
       Row() {
         Text('物种').fontSize(12).fontColor(0xFF607D8B).margin({ right: 8 })
         // ForEach 渲染物种芯片
-        ForEach(this.speciesChips(), (sp: string) => {
-          this.SpeciesChip(sp, this.selectedSpecies === sp, () => {
-            animateTo({ duration: 120, curve: Curve.EaseInOut }, () => {
-              this.selectedSpecies = sp
-            })
-          })
+        ForEach(this.speciesChips(), (sp: string, index:number) => {
+          this.SpeciesChip(sp)
         }, (sp: string) => `sp-${sp}`)
       }
       .padding({
@@ -161,7 +160,10 @@ export struct PlantListPage {
                 },
                 onDeleteAsk: () => {
                   this.onDeleteAsk(p.id)
-                }
+                },
+                onOpenLogs: () => { this.onOpenLogs(p) },
+                onOpenMetrics: () => { this.onOpenMetrics(p) },
+                onOpenTemplate: () => { this.onOpenTemplate(p) }  // ← 新增透传
               })
             }
           }, (p: Plant) => p.id.toString())
@@ -179,16 +181,16 @@ export struct PlantListPage {
   }
   // —— UI 子块（Builder 内不做计算） —— //
   @Builder
-  SpeciesChip(text: string, active: boolean, onTap: () => void) {
+  SpeciesChip(text: string) {
     Text(text)
       .fontSize(11)
-      .fontColor(active ? 0xFF1B5E20 : 0xFF263238)
+      .fontColor(this.selectedSpecies === text ? 0xFF1B5E20 : 0xFF263238)
       .padding({ left: 10, right: 10, top: 6, bottom: 6 })
       .borderRadius(12)
-      .backgroundColor(active ? 0xFFE8F5E9 : 0xFFFFFFFF)
-      .onClick(() => { onTap() })
+      .backgroundColor(this.selectedSpecies === text ? 0xFFE8F5E9 : 0xFFFFFFFF)
+      .onClick(() => { animateTo({ duration: 120, curve: Curve.EaseInOut }, () => { this.selectedSpecies = text})})
       .margin({ right: 8, bottom: 4 })
-      .shadow({ radius: active ? 10 : 6, color: 0x10000000, offsetX: 0, offsetY: active ? 2 : 1 })
+      .shadow({ radius: this.selectedSpecies === text ? 10 : 6, color: 0x10000000, offsetX: 0, offsetY: this.selectedSpecies === text ? 2 : 1 })
   }
 
   @Builder
