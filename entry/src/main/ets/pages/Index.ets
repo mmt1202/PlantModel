@@ -12,6 +12,7 @@ import { StatsPage } from '../view/StatsPage'
 import { TaskCalendarGate } from '../view/TaskCalendarGate'
 import { TaskListPage } from '../view/TaskListPage'
 import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
+import { MetricSheet } from '../view/MetricSheet'
 
 /** -------- 入口页面（V2） -------- */
 @Entry
@@ -612,73 +613,82 @@ struct Index {
     Column() {
       // 头部
       this.Header()
+      Tabs({
+        barPosition: BarPosition.End,
+        index: this.tabBarIndex
+      }){
+        TabContent(){
+          PlantListPage({
+            plants: this.filteredPlants(),
+            allTasks: this.tasks,
+            onQuickAdd: (pid: number, type: string) => {
+              this.taskDraft = new TaskDraft();
+              this.taskDraft.plantId = pid;
+              this.taskDraft.type = type;
+              this.taskDraft.planDate = this.todayISO()
+              this.createTask(this.taskDraft)
+            },
+            onEdit: (p: Plant) => {
+              this.openPanel(p.id, p)
+            },
+            onOpenLogs: async (p: Plant) => {
+              this.logPlantId = p.id; this.logPlantName = p.name; this.logInputText = ''
+              await this.loadLogsByPlant(p.id)
+              this.logVisible = true
+            },
+            onDeleteAsk: (pid: number) => {
+              this.pendingDeletePlantId = pid;
+              this.pendingDeleteTaskId = 0
+              this.confirmText = '删除该植物及其任务？'
+              this.confirmVisible = true
+            },
+            onOpenMetrics: async (p: Plant) => {
+              this.metricPlantId = p.id; this.metricPlantName = p.name
+              await this.loadMetricsByPlant(p.id)
+              this.metricVisible = true
+            },
+            onOpenTemplate: (p: Plant) => {
+              this.carePlantId = p.id
+              this.carePlantName = p.name
+              this.careVisible = true
+            }
+          })
+        }.tabBar(this.TabChip('植物', 0))
+        TabContent(){
+          // TaskCalendarGate({
+          //   tasks: this.tasks,
+          //   onToggle: (t: PlantTask) => { this.toggleTaskDone(t) },
+          //   onDelete: (id: number) => { this.deleteTask(id) }
+          // })
+          TaskListPage({
+            tasks: this.tasks,
+            plants: this.plants,
+            onToggle: (t: PlantTask) => {
+              this.toggleTaskDone(t)
+            },
+            onDeleteAsk: (tid: number) => {
+              this.pendingDeleteTaskId = tid;
+              this.pendingDeletePlantId = 0;
+              this.confirmText = '删除这个任务？';
+              this.confirmVisible = true
+            }
+          })
+        }.tabBar(this.TabChip('任务', 1))
+        TabContent(){
+          StatsPage({
+            plantCount: this.plants.length,
+            taskCount: this.tasks.length,
+            doneCount: this.statDoneCount()
+          })
+        }.tabBar(this.TabChip('统计', 2))
+      }.barWidth('100%').barHeight(54).border({width:2,color:Color.Red}).height('100%')
+      .onChange((index: number) => {
+        this.tabBarIndex = index;
+      })
 
       // 内容
-      if (this.tabBarIndex === 0) {
-        PlantListPage({
-          plants: this.filteredPlants(),
-          allTasks: this.tasks,
-          onQuickAdd: (pid: number, type: string) => {
-            this.taskDraft = new TaskDraft();
-            this.taskDraft.plantId = pid;
-            this.taskDraft.type = type;
-            this.taskDraft.planDate = this.todayISO()
-            this.createTask(this.taskDraft)
-          },
-          onEdit: (p: Plant) => {
-            this.openPanel(p.id, p)
-          },
-          onOpenLogs: async (p: Plant) => {
-            this.logPlantId = p.id; this.logPlantName = p.name; this.logInputText = ''
-            await this.loadLogsByPlant(p.id)
-            this.logVisible = true
-          },
-          onDeleteAsk: (pid: number) => {
-            this.pendingDeletePlantId = pid;
-            this.pendingDeleteTaskId = 0
-            this.confirmText = '删除该植物及其任务？'
-            this.confirmVisible = true
-          },
-          onOpenMetrics: async (p: Plant) => {
-            this.metricPlantId = p.id; this.metricPlantName = p.name
-            await this.loadMetricsByPlant(p.id)
-            this.metricVisible = true
-          },
-          onOpenTemplate: (p: Plant) => {
-            this.carePlantId = p.id
-            this.carePlantName = p.name
-            this.careVisible = true
-          }
-        })
-      } else
-        if (this.tabBarIndex === 1) {
-        TaskCalendarGate({
-          tasks: this.tasks,
-          onToggle: (t: PlantTask) => { this.toggleTaskDone(t) },
-          onDelete: (id: number) => { this.deleteTask(id) }
-        })
-        TaskListPage({
-          tasks: this.tasks,
-          plants: this.plants,
-          onToggle: (t: PlantTask) => {
-            this.toggleTaskDone(t)
-          },
-          onDeleteAsk: (tid: number) => {
-            this.pendingDeleteTaskId = tid;
-            this.pendingDeletePlantId = 0;
-            this.confirmText = '删除这个任务？';
-            this.confirmVisible = true
-          }
-        })
-      } else {
-        StatsPage({
-          plantCount: this.plants.length,
-          taskCount: this.tasks.length,
-          doneCount: this.statDoneCount()
-        })
-      }
 
-      // FAB
+      // FAButton
       if (this.tabBarIndex === 0) {
         this.Fab(() => {
           this.openPanel(0)
@@ -721,17 +731,16 @@ struct Index {
 
       // —— 指标抽屉 ——（新增组件 MetricSheet）
       if (this.metricVisible) {
-        // MetricSheet({
-        //   plantName: this.metricPlantName,
-        //   metrics: this.metrics,
-        //   onClose: () => { this.metricVisible = false },
-        //   onAdd: async (h: number, w: number, s: number, iso: string) => {
-        //     await this.createMetric(this.metricPlantId, h, w, s, iso)
-        //   },
-        //   onDelete: async (id: number) => { await this.deleteMetric(id) }
-        // })
+        MetricSheet({
+          plantName: this.metricPlantName,
+          metrics: this.metrics,
+          onClose: () => { this.metricVisible = false },
+          onAdd: async (h: number, w: number, s: number, iso: string) => {
+            await this.createMetric(this.metricPlantId, h, w, s, iso)
+          },
+          onDelete: async (id: number) => { await this.deleteMetric(id) }
+        })
       }
-
 
       if (this.calendarVisible) {
         CalendarSheet({
@@ -918,18 +927,18 @@ struct Index {
         }
         .height(44).width('100%').padding({ left: 20, right: 20, bottom: 2 })
 
-        Row() {
-          this.TabChip('植物', 0)
-          this.TabChip('任务', 1)
-          this.TabChip('统计', 2)
-        }
-        .padding({
-          left: 16,
-          right: 16,
-          top: 6,
-          bottom: 8
-        })
-        .justifyContent(FlexAlign.SpaceAround)
+        // Row() {
+        //   this.TabChip('植物', 0)
+        //   this.TabChip('任务', 1)
+        //   this.TabChip('统计', 2)
+        // }
+        // .padding({
+        //   left: 16,
+        //   right: 16,
+        //   top: 6,
+        //   bottom: 8
+        // })
+        // .justifyContent(FlexAlign.SpaceAround)
       }
       .padding({ bottom: 4 })
       .onTouch((e: TouchEvent) => {

@@ -20,7 +20,7 @@ export struct CalendarView {
   @Local y: number = 1970
   @Local m: number = 1
   @Local selectedISO: string = ''
-  @Local typeFilter: string = ''
+  @Local typeFilter: string = '全部'
   @Local pressedCellISO: string = ''
 
   aboutToAppear(): void {

@@ -117,4 +117,25 @@ export class Metric {
   }
 }
 
+// —— 生长指标数据类型（若你工程里已有等价类型，可删去此定义，保持字段一致即可）——
+@ObservedV2
+export
+class PlantMetric {
+  @Trace id: number
+  @Trace plantId: number
+  @Trace height: number // 身高（cm）
+  @Trace width: number // 冠幅（cm）
+  @Trace score: number // 健康分（0~100）
+  @Trace createdAt: number // 时间戳 ms
+
+  constructor(id: number, plantId: number, height: number, width: number, score: number, createdAt: number) {
+    this.id = id;
+    this.plantId = plantId;
+    this.height = height;
+    this.width = width;
+    this.score = score;
+    this.createdAt = createdAt
+  }
+}
+
 //
