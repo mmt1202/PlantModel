@@ -15,6 +15,9 @@ import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
 import { MetricSheet } from '../view/MetricSheet'
 import { CalendarSheet1 } from '../view/CalendarSheet'
 import { PlantTaskFilter, PlantTaskFilterSheet } from '../view/PlantTaskFilterSheet'
+import picker from '@ohos.file.picker'
+import fs from '@ohos.file.fs'
+import fileAccess from '@ohos.file.fileAccess'
 
 /** -------- 入口页面（V2） -------- */
 @Entry
@@ -80,6 +83,8 @@ struct Index {
   @Local logs: Array<LogEntry> = []
   @Local logPhotos:Array<LogPhoto> =[]
   @Local logInputText: string = ''
+  @Local picking: boolean = false   // 防连点
+
 
   // —— 指标抽屉状态 —— //
   @Local metricVisible: boolean = false
@@ -97,6 +102,8 @@ struct Index {
   @Local careVisible: boolean = false
   @Local carePlantId: number = 0
   @Local carePlantName: string = ''
+
+  // @Local logPhotos: Array<LogPhoto> = []
 
   /** ---- 生命周期 ---- */
   aboutToAppear(): void {
@@ -215,6 +222,121 @@ struct Index {
     }
     rs.close()
     this.tasks = items
+  }
+
+  private async loadLogPhotos(logId: number): Promise<void> {
+    if (!this.store) { return }
+    // const predicates1 = new relationalStore.RdbPredicates(tableName);
+    const rs = await this.store.querySql(
+      `SELECT id, logId, filePath, createdAt FROM log_photo WHERE logId = ? ORDER BY id DESC`, [logId]
+    )
+    const items: Array<LogPhoto> = []
+    while (rs.goToNextRow()) {
+      items.push(new LogPhoto(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3),rs.getLong(4)))
+    }
+    rs.close()
+    this.logPhotos = items
+  }
+
+  private async pickPhotosForLog(logId: number): Promise<void> {
+    if (this.picking) { return }
+    this.picking = true
+    try {
+      const selected = await this.selectImagesFromAlbum(12) // 最多 12 张，可改
+      if (selected.length === 0) { return }
+
+      // 确保目录存在
+      const dir = await this.ensurePhotosDir()
+
+      let i: number = 0
+      while (i < selected.length) {
+        const srcUri: string = selected[i]
+        const dstPath: string = await this.copyImageToAppFiles(srcUri, dir)
+        await this.insertLogPhoto(logId, this.ensureFileUri(dstPath))
+        i = i + 1
+      }
+      await this.loadLogPhotos(logId)
+      this.showBanner('已添加照片', 'ok')
+    } catch (e) {
+      console.error(`pickPhotosForLog error: ${(e as Error).message}`)
+      this.showBanner('添加照片失败', 'warn')
+    } finally {
+      this.picking = false
+    }
+  }
+
+  // —— 打开相册多选 —— //
+  private async selectImagesFromAlbum(maxCount: number): Promise<Array<string>> {
+    const photoPicker = new picker.PhotoViewPicker()
+    const opt = new picker.PhotoSelectOptions()
+    opt.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE
+    opt.maxSelectNumber = maxCount
+
+    // 兼容不同版本的返回结构（有的叫 photoUris，有的叫 uris）
+    const res = await photoPicker.select(opt)
+    const out: Array<string> = []
+    const urisA: Array<string> = (res && (res.photoUris as Array<string>)) ? (res.photoUris as Array<string>) : []
+    const urisB: Array<string> = (res && (res.uris as Array<string>)) ? (res.uris as Array<string>) : []
+    if (urisA.length > 0) { return urisA }
+    if (urisB.length > 0) { return urisB }
+    return out
+  }
+  private async ensurePhotosDir(): Promise<string> {
+    const base: string = (this.ctx as common.UIAbilityContext).filesDir
+    const dir: string = `${base}/photos`
+    try {
+      await fs.mkdir(dir)   // 若存在会抛错，交由 catch 吞掉
+    } catch (e) {
+      // ignore if exists
+    }
+    return dir
+  }
+
+  // 确保以 file:// 前缀返回，便于 Image 显示
+  private ensureFileUri(path: string): string {
+    if (path.startsWith('file://')) { return path }
+    return `file://${path}`
+  }
+
+  // 生成文件名：时间戳_随机数.jpg
+  private genPhotoName(): string {
+    const now: number = Date.now()
+    const rnd: number = Math.floor(Math.random() * 100000)
+    return `p_${now}_${rnd}.jpg`
+  }
+
+  // 从 URI 复制到 app filesDir/photos/xxx.jpg
+  private async copyImageToAppFiles(srcUri: string, dstDir: string): Promise<string> {
+    // const name: string = this.genPhotoName()
+    // const dstPath: string = `${dstDir}/${name}`
+    //
+    // // 1) file:// 直拷
+    // if (srcUri.startsWith('file://')) {
+    //   const srcPath: string = srcUri.substring(7)
+    //   await fs.copyFile(srcPath, dstPath)
+    //   return dstPath
+    // }
+    //
+    // // 2) 走文件访问助手拷贝 datashare:// 等 URI
+    // const helper = fileAccess.createFileAccessHelper(this.ctx)
+    // const rdFd: number = await helper.openFile(srcUri, fileAccess.OpenMode.READ)
+    // const wrFd: number = fs.openSync(dstPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
+    //
+    // try {
+    //   // 小块读写，避免大图 OOM（64KB 缓冲）
+    //   const buf = new ArrayBuffer(64 * 1024)
+    //   let n: number = 0
+    //   // 注意：readSync 返回读入的字节数
+    //   n = fs.readSync(rdFd, buf)
+    //   while (n > 0) {
+    //     fs.writeSync(wrFd, buf, { length: n })
+    //     n = fs.readSync(rdFd, buf)
+    //   }
+    // } finally {
+    //   try { fs.closeSync(wrFd) } catch (_) {}
+    //   try { await helper.closeFile(rdFd) } catch (_) {}
+    // }
+    // return dstPath
   }
 
   // 批量为某植物在一组日期创建若干类型的 PlantTask（幂等，受唯一索引保护）
