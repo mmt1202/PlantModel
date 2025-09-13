@@ -252,7 +252,7 @@ struct Index {
       while (i < selected.length) {
         const srcUri: string = selected[i]
         const dstPath: string = await this.copyImageToAppFiles(srcUri, dir)
-        await this.insertLogPhoto(logId, this.ensureFileUri(dstPath))
+        // await this.insertLogPhoto(logId, this.ensureFileUri(dstPath))
         i = i + 1
       }
       await this.loadLogPhotos(logId)
@@ -275,10 +275,10 @@ struct Index {
     // 兼容不同版本的返回结构（有的叫 photoUris，有的叫 uris）
     const res = await photoPicker.select(opt)
     const out: Array<string> = []
-    const urisA: Array<string> = (res && (res.photoUris as Array<string>)) ? (res.photoUris as Array<string>) : []
-    const urisB: Array<string> = (res && (res.uris as Array<string>)) ? (res.uris as Array<string>) : []
-    if (urisA.length > 0) { return urisA }
-    if (urisB.length > 0) { return urisB }
+    // const urisA: Array<string> = (res && (res.photoUris as Array<string>)) ? (res.photoUris as Array<string>) : []
+    // const urisB: Array<string> = (res && (res.uris as Array<string>)) ? (res.uris as Array<string>) : []
+    // if (urisA.length > 0) { return urisA }
+    // if (urisB.length > 0) { return urisB }
     return out
   }
   private async ensurePhotosDir(): Promise<string> {
@@ -307,8 +307,8 @@ struct Index {
 
   // 从 URI 复制到 app filesDir/photos/xxx.jpg
   private async copyImageToAppFiles(srcUri: string, dstDir: string): Promise<string> {
-    // const name: string = this.genPhotoName()
-    // const dstPath: string = `${dstDir}/${name}`
+    const name: string = this.genPhotoName()
+    const dstPath: string = `${dstDir}/${name}`
     //
     // // 1) file:// 直拷
     // if (srcUri.startsWith('file://')) {
@@ -336,7 +336,7 @@ struct Index {
     //   try { fs.closeSync(wrFd) } catch (_) {}
     //   try { await helper.closeFile(rdFd) } catch (_) {}
     // }
-    // return dstPath
+    return dstPath
   }
 
   // 批量为某植物在一组日期创建若干类型的 PlantTask（幂等，受唯一索引保护）
@@ -642,11 +642,104 @@ struct Index {
     this.showBanner('已删除日志', 'ok')
   }
 
+  // 删除一条日志及其关联照片（含本地文件），并自动刷新当前植物的日志列表
+  private async deleteLogAndPhotos(logId: number): Promise<void> {
+    if (!this.store) { return }
+
+    // 1) 取该日志的 plantId（用于刷新）
+    let plantId: number = 0
+    {
+      const rs = await this.store.querySql(`SELECT plantId FROM ${Index.T_LOG} WHERE id=?`, [logId])
+      if (rs.goToNextRow()) { plantId = rs.getLong(0) }
+      rs.close()
+    }
+
+    // 2) 收集所有照片路径（优先 filePath，兼容老字段 path）
+    const paths: Array<string> = []
+    try {
+      const rs1 = await this.store.querySql(`SELECT filePath FROM ${Index.T_LOG_PHOTO} WHERE logId=?`, [logId])
+      while (rs1.goToNextRow()) {
+        const p: string = rs1.getString(0)
+        if (p.length > 0) { paths.push(p) }
+      }
+      rs1.close()
+    } catch (_) {
+      // 兼容老列名 path（如你的历史库是 path/thumbPath）
+      try {
+        const rs2 = await this.store.querySql(`SELECT path FROM ${Index.T_LOG_PHOTO} WHERE logId=?`, [logId])
+        while (rs2.goToNextRow()) {
+          const p2: string = rs2.getString(0)
+          if (p2.length > 0) { paths.push(p2) }
+        }
+        rs2.close()
+      } catch (_) {}
+    }
+
+    // 3) 先删图片表，再删日志表（确保外键语义顺序）
+    const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logId)
+    await this.store.delete(pp)
+
+    const pl = new relationalStore.RdbPredicates(Index.T_LOG); pl.equalTo('id', logId)
+    await this.store.delete(pl)
+
+    // 4) 删除本地文件（忽略不存在或权限错误）
+    let i: number = 0
+    while (i < paths.length) {
+      const uriOrPath: string = paths[i]
+      let realPath: string = uriOrPath
+      if (realPath.startsWith('file://')) { realPath = realPath.substring(7) }
+
+      let removed: number = 0
+      try {
+        await fs.unlink(realPath)
+        removed = 1
+      } catch (_) { /* 尝试用 FileAccess 助手按 URI 删除 */ }
+
+      // if (removed === 0) {
+      //   try {
+      //     const helper = fileAccess.createFileAccessHelper(this.ctx)
+      //     const uri: string = uriOrPath.startsWith('file://') ? uriOrPath : `file://${realPath}`
+      //     await helper.deleteFile(uri)
+      //   } catch (_) {}
+      // }
+      i = i + 1
+    }
+
+    // 5) 刷新 UI（若能定位到 plantId）
+    if (plantId !== 0) { await this.loadLogsByPlant(plantId) }
+    this.showBanner('已删除日志及照片', 'ok')
+  }
+
+
   private async openLogSheetFor(plantId: number): Promise<void> {
     this.logPlantId = plantId
     await this.loadLogsByPlant(plantId)
     this.logInput = ''
     this.logSheetVisible = true
+  }
+
+  // 1) 加载「日志 +（按需）照片」
+  // 说明：这里先只加载日志列表；照片仍按你当前交互在选择某条日志后，调用 loadLogPhotos(logId) 单独加载。
+  // 这样不会影响你把 logPhotos 用作“当前编辑日志照片”的语义。
+  private async loadLogsWithPhotos(plantId: number): Promise<void> {
+    await this.loadLogsByPlant(plantId)
+    // 如果你希望预取最近一条日志的照片，可解开下面两行：
+    // if (this.logs.length > 0) {
+    //   await this.loadLogPhotos(this.logs[0].id)
+    // }
+  }
+
+  // 2) 相册多选并保存到本地（复用你已有的选择/拷贝/入库逻辑）
+  private async pickAndSavePhotos(logId: number): Promise<void> {
+    // 你工程里已有 pickPhotosForLog（会走 selectImagesFromAlbum → ensurePhotosDir → copyImageToAppFiles → insertLogPhoto → loadLogPhotos）
+    await this.pickPhotosForLog(logId)
+  }
+
+  // 3) 拍照保存（按你之前要求“暂不做拍照”）
+  // 为了不让外部调用报错，这里给出占位实现，可随时替换为真实拍照流程。
+  private async captureAndSavePhoto(logId: number): Promise<void> {
+    this.showBanner('当前版本未启用拍照功能', 'info')
+    // 若后续需要接入：调用相机 → 保存到 filesDir/photos → insertLogPhoto(logId, fileUri) → loadLogPhotos(logId)
   }
 
   //
@@ -915,53 +1008,54 @@ struct Index {
 
       // —— 日志抽屉 ——（使用你已有的 PlantLogSheet）
       if (this.logVisible) {
-        // PlantLogSheet({
-        //   plantName: this.currentPlantName,
-        //   logs: this.logs,                  // ← 你已有的日志数组
-        //   photos: this.logPhotos,           // ← 你维护的 LogPhoto 数组（可在加载日志时一并查询）
-        //   keyword: this.keyword,         // ← 来自搜索框
-        //   onAddLog: async (note: string, iso: string) => {
-        //     if (!this.store) { return }
-        //     await this.store.insert(Index.T_LOG, { plantId: this.currentPlantId, note: note, createdAt: this.tsFromISO(iso) })
-        //     await this.loadLogsWithPhotos(this.currentPlantId) // 重新加载
-        //     // await this.loadLogsByPlant(this.currentPlantId)
-        //   },
-        //   onDeleteLog: async (logId: number) => {
-        //     if (!this.store) { return }
-        //     const p = new relationalStore.RdbPredicates(Index.T_LOG); p.equalTo('id', logId)
-        //     await this.store.delete(p)
-        //     const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logId)
-        //     await this.store.delete(pp)
-        //     await this.loadLogsWithPhotos(this.currentPlantId)
-        //   },
-        //   onBatchDeleteLogs: async (ids: Array<number>) => {
-        //     if (!this.store) { return }
-        //     // 删除日志本体
-        //     const p = new relationalStore.RdbPredicates(Index.T_LOG); p.in('id', ids)
-        //     await this.store.delete(p)
-        //     // 删除关联图片
-        //     const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.in('logId', ids)
-        //     await this.store.delete(pp)
-        //     await this.loadLogsWithPhotos(this.currentPlantId)
-        //   },
-        //   onPickPhotos: async (logId: number) => {
-        //     // 在这里用你现有的封装（file.picker / photoAccessHelper），复制到 filesDir，
-        //     // 生成缩略图（可选），然后批量 insert 到 ${Index.T_LOG_PHOTO}，最后刷新。
-        //     await this.pickAndSavePhotos(logId) // 你已有/将实现的方法
-        //     await this.loadLogsWithPhotos(this.currentPlantId)
-        //   },
-        //   onCapturePhoto: async (logId: number) => {
-        //     await this.captureAndSavePhoto(logId) // 你已有/将实现的方法
-        //     await this.loadLogsWithPhotos(this.currentPlantId)
-        //   },
-        //   onDeletePhoto: async (pid: number) => {
-        //     if (!this.store) { return }
-        //     const p = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); p.equalTo('id', pid)
-        //     await this.store.delete(p)
-        //     await this.loadLogsWithPhotos(this.currentPlantId)
-        //   },
-        //   onClose: () => { this.logSheetVisible = false }
-        // })
+        PlantLogSheet({
+          plantName: this.currentPlantName,
+          logs: this.logs,                  // ← 你已有的日志数组
+          photos: this.logPhotos,           // ← 你维护的 LogPhoto 数组（可在加载日志时一并查询）
+          keyword: this.keyword,         // ← 来自搜索框
+          onAddLog: async (note: string, iso: string) => {
+            if (!this.store) { return }
+            await this.store.insert(Index.T_LOG, { plantId: this.logPlantId, note: note, createdAt: Date.now() })
+            await this.loadLogsWithPhotos(this.logPlantId) // 重新加载
+            // await this.loadLogsByPlant(this.currentPlantId)
+          },
+          onDeleteLog: async (logId: number) => {
+            if (!this.store) { return }
+            const p = new relationalStore.RdbPredicates(Index.T_LOG); p.equalTo('id', logId)
+            await this.store.delete(p)
+            const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logId)
+            await this.store.delete(pp)
+            await this.loadLogsWithPhotos(this.logPlantId)
+          },
+          onBatchDeleteLogs: async (ids: Array<number>) => {
+            if (!this.store) { return }
+            // 删除日志本体
+            const p = new relationalStore.RdbPredicates(Index.T_LOG); p.in('id', ids)
+            await this.store.delete(p)
+            // 删除关联图片
+            const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.in('logId', ids)
+            await this.store.delete(pp)
+            await this.loadLogsWithPhotos(this.logPlantId)
+          },
+          onPickPhotos: async (logId: number) => {
+            // 在这里用你现有的封装（file.picker / photoAccessHelper），复制到 filesDir，
+            // 生成缩略图（可选），然后批量 insert 到 ${Index.T_LOG_PHOTO}，最后刷新。
+            await this.pickAndSavePhotos(logId) // 你已有/将实现的方法
+            await this.loadLogsWithPhotos(this.logPlantId)
+          },
+          onCapturePhoto: async (logId: number) => {
+            await this.captureAndSavePhoto(logId) // 你已有/将实现的方法
+            await this.loadLogsWithPhotos(this.logPlantId)
+          },
+          onDeletePhoto: async (pid: number) => {
+            if (!this.store) { return }
+            const p = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); p.equalTo('id', pid)
+            await this.store.delete(p)
+            await this.deleteLogAndPhotos(pid)
+            await this.loadLogsWithPhotos(this.logPlantId)
+          },
+          onClose: () => { this.logSheetVisible = false }
+        })
       }
 
       if (this.taskFilterVisible) {
