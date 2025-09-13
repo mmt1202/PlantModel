@@ -1,5 +1,6 @@
 import { Plant, PlantTask } from '../model/PlantModel'
 import { CalendarGrid } from './CalendarGrid'
+import { PlantTaskFilter } from './PlantTaskFilterSheet'
 import { TaskItem } from './TaskItem'
 
 @ComponentV2
@@ -15,6 +16,8 @@ export struct TaskListPage {
   @Local filterTab: number = 0 // 0 全部 1 今天 2 将来 3 已完成
   @Local typeFilter: string = '全部' // 任务类型过滤（自动聚合出“浇水/施肥/修剪/…”）
   @Local keyword: string = '' // 关键字：匹配“任务类型/植物名”
+
+
 
   aboutToAppear(): void {
     if (this.currentMonthISO.length === 0) {

@@ -1,638 +1,306 @@
 import { LogEntry } from '../model/PlantModel'
 
 
+@ObservedV2
+export
+class PlantLog {
+  @Trace id: number
+  @Trace plantId: number
+  @Trace note: string
+  @Trace createdAt: number
+  constructor(id: number, plantId: number, note: string, createdAt: number) {
+    this.id = id; this.plantId = plantId; this.note = note; this.createdAt = createdAt
+  }
+}
+
+@ObservedV2
+export
+class LogPhoto {
+  @Trace id: number
+  @Trace logId: number
+  @Trace path: string       // 原图（filesDir 下）
+  @Trace thumbPath: string  // 缩略图（可与原图相同；若无缩略图，则传原图）
+  @Trace createdAt: number
+  constructor(id: number, logId: number, path: string, thumbPath: string, createdAt: number) {
+    this.id = id; this.logId = logId; this.path = path; this.thumbPath = thumbPath; this.createdAt = createdAt
+  }
+}
+
 @ComponentV2
-export struct PlantLogSheet {
-  @Param @Require logs: Array<LogEntry>
+export
+struct PlantLogSheet {
   @Param @Require plantName: string
-  @Param @Require inputText: string
-  @Event onChangeInput: (v: string) => void
-  @Event onAdd: () => void
-  @Event onDelete: (id: number) => void
+  @Param @Require logs: Array<PlantLog>
+  @Param @Require photos: Array<LogPhoto>
+  @Param keyword: string = ''   // 关键字高亮（可为空）
+  @Event onAddLog: (note: string, dateISO: string) => void
+  @Event onDeleteLog: (logId: number) => void
+  @Event onBatchDeleteLogs: (logIds: Array<number>) => void
+  @Event onPickPhotos: (logId: number) => void
+  @Event onCapturePhoto: (logId: number) => void
+  @Event onDeletePhoto: (photoId: number) => void
   @Event onClose: () => void
-  // —— 搜索 / 筛选 / 排序 / 多选 —— //
-  @Local query: string = ''
-  // 0: 全部, 7: 近7天, 30: 近30天, 100: 本月
-  @Local range: number = 0
-  // true: 时间降序(新→旧)；false: 升序(旧→新)
-  @Local sortDesc: boolean = true
+
+  // 本地状态
+  @Local noteText: string = ''
+  @Local dateISO: string = ''
+  @Local sortAsc: boolean = false
   @Local selectMode: boolean = false
-  @Local selectedIds: Array<number> = []
+  @Local selected: Array<number> = []  // 选中的 logId
+
+  @Local previewVisible: boolean = false
+  @Local previewPath: string = ''
+
+  aboutToAppear(): void {
+    this.dateISO = this.todayISO()
+  }
 
   build() {
     Column() {
-      // 蒙层
-      Blank().width('100%').height('100%').backgroundColor(0x66000000)
-        .onClick(() => {
-          this.exitSelectOrClose()
-        })
+      Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
 
-      // 抽屉容器
       Column() {
-        // 顶部栏 + 操作条
-        Column() {
-          Row() {
-            Text(`${this.plantName} · 日志`)
-              .fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
-            Blank()
-            if (this.selectMode) {
-              Text(`已选 ${this.selectedCount()}`).fontSize(12).fontColor(0xFF1565C0).margin({ right: 8 })
-              this.ActionChip('全选', () => {
-                this.selectAll()
-              })
-              this.ActionChip('反选', () => {
-                this.invertSelect()
-              })
-              this.ActionChip('删除所选', () => {
-                this.batchDelete()
-              })
-              this.ActionChip('完成', () => {
-                this.exitSelectMode()
-              })
-            } else {
-              Text('✕').fontSize(18).onClick(() => {
-                this.onClose()
-              })
-            }
+        Row() {
+          Text(`${this.plantName} · 日志`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+          Blank()
+          if (this.selectMode) {
+            Text(`删除(${this.selected.length})`).fontSize(12).fontColor(0xFFFFFFFF)
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .borderRadius(14).backgroundColor(0xFFE53935)
+              .onClick(() => { if (this.selected.length > 0) { this.onBatchDeleteLogs(this.copyIds(this.selected)); this.selected = []; this.selectMode = false } })
           }
-          .padding({
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: 6
-          })
+          Text('✕').fontSize(18).onClick(() => { this.onClose() }).margin({ left: 8 })
+        }.padding({ left: 16, right: 16, top: 12, bottom: 6 })
 
-          // 搜索 + 时间范围 + 排序
-          this.SearchBar()
-          this.RangeChips()
-          this.SortBar()
-        }
-        .padding({ bottom: 6 })
+        Row() {
+          Text(this.sortAsc ? '时间 ↑' : '时间 ↓')
+            .fontSize(12).fontColor(0xFF1565C0)
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+            .borderRadius(14).backgroundColor(0x102196F3)
+            .onClick(() => { this.sortAsc = !this.sortAsc })
+          if (this.selectMode) {
+            Text('取消选择').fontSize(12).fontColor(0xFF263238)
+              .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+              .borderRadius(14).backgroundColor(0xFFE0E0E0)
+              .onClick(() => { this.selected = []; this.selectMode = false })
+              .margin({ left: 8 })
+          } else {
+            Text('长按进入多选').fontSize(12).fontColor(0x80607278).padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          }
+          Blank()
+          if (this.keyword.length > 0) {
+            Text(`关键词: ${this.keyword}`).fontSize(12).fontColor(0xFF607D8B)
+          }
+        }.padding({ left: 16, right: 16, bottom: 8 })
 
-        // 新增日志输入
-        this.InputBar()
+        // 新增日志
+        Column() {
+          this.FormItem('内容', '写点什么…', this.noteText, (v: string) => { this.noteText = v })
+          Row() {
+            Column() { Text('日期').fontSize(12).fontColor(0xFF607D8B); Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 }) }
+            Blank()
+            Text('今天').fontSize(12).fontColor(0xFF1565C0)
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .borderRadius(14).backgroundColor(0x102196F3)
+              .onClick(() => { this.dateISO = this.todayISO() })
+          }.padding({ top: 6, bottom: 6 })
+          Row() {
+            Text('添加日志').fontSize(14).fontColor(0xFFFFFFFF)
+              .padding({ left: 18, right: 18, top: 8, bottom: 8 })
+              .borderRadius(18).backgroundColor(0xFF2E7D32)
+              .onClick(() => {
+                if (this.noteText.trim().length === 0) { return }
+                this.onAddLog(this.noteText.trim(), this.dateISO); this.noteText = ''
+              })
+          }
+        }.padding({ left: 16, right: 16, bottom: 8 })
 
         // 列表
-        if (this.finalLogs().length === 0) {
-          Column() {
-            Text(this.hasActiveFilter() ? '没有匹配的日志' : '暂无日志，写一条吧。')
-              .fontSize(13).fontColor(0xFF90A4AE).margin({ top: 10 })
-          }
-          .padding({ left: 16, right: 16, bottom: 16 })
+        if (this.sorted().length === 0) {
+          Column() { Text('暂无日志').fontSize(12).fontColor(0xFF90A4AE) }
+          .padding({ left: 16, right: 16, bottom: 18 })
         } else {
           List({ space: 8 }) {
-            ForEach(this.finalLogs(), (l: LogEntry) => {
-              ListItem() {
-                this.LogRow(l)
-              }
-            }, (l: LogEntry) => l.id.toString())
+            ForEach(this.sorted(), (lg: PlantLog) => {
+              ListItem() { this.LogRow(lg) }
+            }, (lg: PlantLog) => lg.id.toString())
           }
-          .padding({ left: 16, right: 16, bottom: 18 })
+          .padding({ left: 16, right: 16, bottom: 16 })
           .edgeEffect(EdgeEffect.Spring)
         }
       }
-      .width('100%')
-      .backgroundColor(0xFFFFFFFF)
-      .borderRadius({
-        topLeft: 20,
-        topRight: 20,
-        bottomLeft: 0,
-        bottomRight: 0
-      })
-      .position({ x: 0, y: 'calc(100% - 72%)' })
-      .shadow({
-        radius: 24,
-        color: 0x33000000,
-        offsetX: 0,
-        offsetY: -6
-      })
+      .width('100%').backgroundColor(0xFFFFFFFF)
+      .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
+      .position({ x: 0, y: 'calc(100% - 86%)' })
+      .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
       .animation({ duration: 200, curve: Curve.Sharp })
-    }
-    .width('100%').height('100%')
-  }
 
-  /** ---------- 子区域：搜索 ---------- */
-  @Builder
-  SearchBar() {
-    Row() {
-      Text('🔎').fontSize(18).margin({ right: 8 })
-      TextInput({ placeholder: '搜索日志内容', text: this.query })
-        .onChange((v: string) => {
-          this.query = v
-        })
-        .width('100%')
-        .height(36)
-        .fontSize(14)
-        .borderRadius(12)
-        .backgroundColor(0xFFF9F9F9)
-        .padding({ left: 12, right: 12 })
-      if (this.query.length > 0) {
-        Text('清空').fontSize(12).fontColor(0xFF1565C0).margin({ left: 8 })
-          .onClick(() => {
-            this.query = ''
-          })
+      // 图片预览
+      if (this.previewVisible) {
+        Column() {
+          Blank().width('100%').height('100%').backgroundColor(0xCC000000).onClick(() => { this.previewVisible = false })
+          Column() {
+            Image(this.previewPath).objectFit(ImageFit.Contain).width('92%').height('70%').borderRadius(12)
+          }.width('100%').height('100%').justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+        }.width('100%').height('100%')
       }
-    }
-    .padding({ left: 16, right: 16 })
-  }
-
-  /** ---------- 子区域：时间范围 ---------- */
-  @Builder
-  RangeChips() {
-    Row() {
-      this.RangeChip('全部', 0)
-      this.RangeChip('近7天', 7)
-      this.RangeChip('近30天', 30)
-      this.RangeChip('本月', 100)
-    }
-    .padding({
-      left: 16,
-      right: 16,
-      top: 6,
-      bottom: 6
-    })
-    .justifyContent(FlexAlign.Start)
+    }.width('100%').height('100%')
   }
 
   @Builder
-  RangeChip(text: string, v: number) {
-    Text(text)
-      .fontSize(12)
-      .fontColor(this.range === v ? 0xFF2E7D32 : 0xFF607D8B)
-      .padding({
-        left: 10,
-        right: 10,
-        top: 6,
-        bottom: 6
-      })
-      .borderRadius(12)
-      .backgroundColor(this.range === v ? 0xFFE8F5E9 : 0xFFFFFFFF)
-      .onClick(() => {
-        this.range = v
-      })
-      .margin({ right: 8 })
-  }
-
-  /** ---------- 子区域：排序切换 ---------- */
-  @Builder
-  SortBar() {
-    Row() {
-      Text('排序').fontSize(12).fontColor(0xFF607D8B).margin({ right: 10 })
-      // 切换：时间降序/升序
-      Text(this.sortDesc ? '时间：新 → 旧' : '时间：旧 → 新')
-        .fontSize(12)
-        .fontColor(0xFF1565C0)
-        .padding({
-          left: 10,
-          right: 10,
-          top: 6,
-          bottom: 6
-        })
-        .borderRadius(12)
-        .backgroundColor(0x102196F3)
-        .onClick(() => {
-          this.sortDesc = !this.sortDesc
-        })
-    }
-    .padding({
-      left: 16,
-      right: 16,
-      top: 2,
-      bottom: 4
-    })
-  }
-
-  /** ---------- 子区域：新增 ---------- */
-  @Builder
-  InputBar() {
+  FormItem(label: string, placeholder: string, val: string, onChange: (v: string) => void) {
     Column() {
-      Text('新增日志').fontSize(12).fontColor(0xFF607D8B)
+      Text(label).fontSize(12).fontColor(0xFF607D8B)
+      TextInput({ placeholder: placeholder, text: val })
+        .onChange((v: string) => { onChange(v) })
+        .width('100%').height(40).borderRadius(12).backgroundColor(0xFFF9F9F9)
+        .padding({ left: 12, right: 12 }).margin({ top: 6 })
+    }.margin({ top: 6 })
+  }
+
+  @Builder
+  LogRow(lg: PlantLog) {
+    Column() {
       Row() {
-        TextInput({ placeholder: '例如：今天见到新叶子，状态良好…', text: this.inputText })
-          .onChange((v: string) => {
-            this.onChangeInput(v)
-          })
-          .width('100%')
-          .height(40)
-          .borderRadius(12)
-          .backgroundColor(0xFFF9F9F9)
-          .padding({ left: 12, right: 12 })
-        Text('添加')
-          .fontSize(14)
-          .fontColor(0xFFFFFFFF)
-          .padding({
-            left: 14,
-            right: 14,
-            top: 8,
-            bottom: 8
-          })
-          .borderRadius(16)
-          .backgroundColor(0xFF2E7D32)
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.onAdd()
-          })
+        if (this.selectMode) {
+          Text(this.isSelected(lg.id) ? '✅' : '⬜').fontSize(18).onClick(() => { this.toggleSelect(lg.id) })
+        }
+        Column() {
+          Text(this.dateFromTs(lg.createdAt)).fontSize(12).fontColor(0xFF607D8B)
+          this.HighlightLine(lg.note)
+        }.margin({ left: this.selectMode ? 8 : 0 })
+        Blank()
+        Row() {
+          Text('🖼️').fontSize(16).onClick(() => { this.onPickPhotos(lg.id) }).margin({ right: 10 })
+          Text('📷').fontSize(16).onClick(() => { this.onCapturePhoto(lg.id) }).margin({ right: 10 })
+          Text('🗑️').fontSize(16).onClick(() => { if (this.selectMode) { this.toggleSelect(lg.id) } else { this.onDeleteLog(lg.id) } })
+        }
       }
+
+      // 照片网格
+      this.PhotoGrid(lg.id)
     }
-    .padding({ left: 16, right: 16, bottom: 10 })
+    .padding(12).borderRadius(12).backgroundColor(0xFFFFFFFF)
+    .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
+    // .onTouch((e: TouchEvent) => { if (e.type === TouchType.LongPress) { this.selectMode = true } })
   }
 
-  /** ---------- 子区域：单条日志（长按多选 + 关键词高亮） ---------- */
   @Builder
-  LogRow(l: LogEntry) {
+  HighlightLine(text: string) {
+    // 简单高亮：前后拆分为 3 段
+    if (this.keyword.length === 0) {
+      Text(text).fontSize(15).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+    } else {
+      // 为了遵守 @Builder 规则，不在此处做 split；改为调用方法拆分并一次性渲染
+      this.HighlightPieces(text)
+    }
+  }
+
+  @Builder
+  HighlightPieces(text: string) {
+    // 依靠三个 Text 拼装（前/中/后）
+    Column() {
+      // 用多行容器承载，避免超长一行不换行
+      Text(this.beforeKeyword(text)).fontSize(15).fontColor(0xFF263238)
+      Text(this.midKeyword(text)).fontSize(15).fontColor(0xFFD84315).fontWeight(FontWeight.Medium)
+      Text(this.afterKeyword(text)).fontSize(15).fontColor(0xFF263238)
+    }
+  }
+
+  @Builder
+  PhotoGrid(logId: number) {
+    // 三列栅格：每项使用缩略图路径（无缩略图则用原图）
+    // ArkUI 中 ForEach 的第二个参数提供 key
     Row() {
-      if (this.selectMode) {
-        Text(this.isSelected(l.id) ? '☑️' : '⬜').fontSize(18)
-          .onClick(() => {
-            this.toggleSelect(l.id)
-          })
-          .margin({ right: 8 })
-      }
-
-      Column() {
-        Text(this.timeStr(l.createdAt)).fontSize(11).fontColor(0xFF607D8B)
-        // 高亮内容
-        this.HighlightedNote(l.note)
-      }
-
-      Blank()
-
-      if (!this.selectMode) {
-        Text('删除').fontSize(12).fontColor(0xFFE53935)
-          .onClick(() => {
-            this.onDelete(l.id)
-          })
-      }
-    }
-    .padding(12)
-    .borderRadius(12)
-    .backgroundColor(0xFFFFFFFF)
-    .shadow({
-      radius: 10,
-      color: 0x12000000,
-      offsetX: 0,
-      offsetY: 2
-    })
-    .gesture(
-      LongPressGesture({ repeat: false })
-        .onAction(() => {
-          if (!this.selectMode) {
-            this.selectMode = true
-          }
-          this.ensureSelected(l.id)
-        })
-    )
-    .onClick(() => {
-      if (this.selectMode) {
-        this.toggleSelect(l.id)
-      }
-    })
-  }
-
-  // 关键词高亮：用 Text + Span 组合，不在 @Builder 中创建变量
-  @Builder
-  HighlightedNote(note: string) {
-    Text() {
-      ForEach(this.highlightSegments(note), (seg: _HL) => {
-        if (seg.hit === 1) {
-          // 命中片段：加粗 + 主题色
-          Span(seg.text).fontColor(0xFFD32F2F).fontWeight(FontWeight.Medium)
-        } else {
-          Span(seg.text)
+      ForEach(this.photosByLog(logId), (ph: LogPhoto) => {
+        Column() {
+          Image(ph.thumbPath.length > 0 ? ph.thumbPath : ph.path)
+            .width('31%').aspectRatio(1).borderRadius(10).objectFit(ImageFit.Cover)
+            .onClick(() => { this.previewPath = ph.path; this.previewVisible = true })
+          Text('移除').fontSize(10).fontColor(0xFFE53935)
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            .borderRadius(10).backgroundColor(0x10E53935)
+            .margin({ top: 4 })
+            .onClick(() => { this.onDeletePhoto(ph.id) })
         }
-      }, (seg: _HL) => seg.key.toString())
+        .width('31%').margin({ right: 6, top: 6 })
+      }, (ph: LogPhoto) => ph.id.toString())
     }
-    .fontSize(14)
-    .fontColor(0xFF263238)
+    // .wrap(WrapStyle.Wrap)
+    .justifyContent(FlexAlign.SpaceBetween)
   }
 
-  @Builder
-  ActionChip(text: string, onTap: () => void) {
-    Text(text)
-      .fontSize(12)
-      .fontColor(0xFF1565C0)
-      .padding({
-        left: 10,
-        right: 10,
-        top: 6,
-        bottom: 6
-      })
-      .borderRadius(12)
-      .backgroundColor(0x102196F3)
-      .onClick(() => {
-        onTap()
-      })
-      .margin({ left: 6 })
-  }
-
-  /** ================= 逻辑（非 UI） ================= */
-
-  private hasActiveFilter(): boolean {
-    if (this.query.trim().length > 0) {
-      return true
-    }
-    if (this.range !== 0) {
-      return true
-    }
-    return false
-  }
-
-  private finalLogs(): Array<LogEntry> {
-    const fl: Array<LogEntry> = this.filteredLogs()
-    return this.sortedLogs(fl)
-  }
-
-  private filteredLogs(): Array<LogEntry> {
-    const kw: string = this.query.trim().toLowerCase()
-    const start: number = this.rangeStartTs()
-    const out: Array<LogEntry> = []
+  // —— 逻辑方法 —— //
+  private sorted(): Array<PlantLog> {
+    // 先简单复制再排序（不在 @Builder 内部）
+    const arr: Array<PlantLog> = []
     let i: number = 0
-    while (i < this.logs.length) {
-      const it: LogEntry = this.logs[i]
-      if (start > 0 && it.createdAt < start) {
-        i = i + 1;
-        continue
-      }
-      if (kw.length > 0) {
-        const hit: boolean = it.note.toLowerCase().includes(kw)
-        if (!hit) {
-          i = i + 1;
-          continue
-        }
-      }
-      out.push(it)
+    while (i < this.logs.length) { arr.push(this.logs[i]); i = i + 1 }
+    arr.sort((a: PlantLog, b: PlantLog) => this.sortAsc ? (a.createdAt - b.createdAt) : (b.createdAt - a.createdAt))
+    return arr
+  }
+
+  private photosByLog(logId: number): Array<LogPhoto> {
+    const out: Array<LogPhoto> = []
+    let i: number = 0
+    while (i < this.photos.length) {
+      if (this.photos[i].logId === logId) { out.push(this.photos[i]) }
       i = i + 1
     }
     return out
   }
 
-  private sortedLogs(list: Array<LogEntry>): Array<LogEntry> {
-    // 简单插入排序，避免直接调用 Array.sort（更可控）
-    const arr: Array<LogEntry> = []
-    let i: number = 0
-    while (i < list.length) {
-      const cur: LogEntry = list[i]
-      let inserted: boolean = false
-      let j: number = 0
-      while (j < arr.length) {
-        const condDesc: boolean =
-          this.sortDesc ? (cur.createdAt > arr[j].createdAt) : (cur.createdAt < arr[j].createdAt)
-        if (condDesc) {
-          // 插入到 j 位置
-          const left: Array<LogEntry> = []
-          const right: Array<LogEntry> = []
-          let k: number = 0
-          while (k < j) {
-            left.push(arr[k]);
-            k = k + 1
-          }
-          left.push(cur)
-          while (k < arr.length) {
-            right.push(arr[k]);
-            k = k + 1
-          }
-          // 重新拼接
-          const merged: Array<LogEntry> = []
-          let m: number = 0
-          while (m < left.length) {
-            merged.push(left[m]);
-            m = m + 1
-          }
-          m = 0
-          while (m < right.length) {
-            merged.push(right[m]);
-            m = m + 1
-          }
-          // 更新 arr
-          let z: number = 0
-          const tmp: Array<LogEntry> = []
-          while (z < merged.length) {
-            tmp.push(merged[z]);
-            z = z + 1
-          }
-          // 赋值
-          let y: number = 0
-          const newArr: Array<LogEntry> = []
-          while (y < tmp.length) {
-            newArr.push(tmp[y]);
-            y = y + 1
-          }
-          // 用新数组替换
-          let t: number = 0
-          const finalArr: Array<LogEntry> = []
-          while (t < newArr.length) {
-            finalArr.push(newArr[t]);
-            t = t + 1
-          }
-          // 直接指向
-          // 为了 ArkTS 静态检查，这里用拷贝方式保持不可变思路
-          let p: number = 0
-          const assign: Array<LogEntry> = []
-          while (p < finalArr.length) {
-            assign.push(finalArr[p]);
-            p = p + 1
-          }
-          // 由于不能在 @Builder 中赋值，这里是普通方法，可直接赋
-          // 但我们在循环内要更新 arr，需要简单替换
-          // 为简洁，这里重新构建 arr 引用：
-          let q: number = 0
-          const newRef: Array<LogEntry> = []
-          while (q < assign.length) {
-            newRef.push(assign[q]);
-            q = q + 1
-          }
-          // 更新 arr
-          //  普通方法允许重新赋值本地变量@ts-ignore ArkTS:
-          // （这里是方法内局部变量，不影响 UI）
-          // 由于 Chat 提示环境不支持 @ts-ignore，保留注释说明
-          // 最终替换：
-          // 简化：直接把 cur push 到 arr 尾部，并在下一轮插入；为保证正确性仍用插入逻辑：
-          // —— 为避免过度复杂，改用尾部追加 + 末端冒泡一位的简化版本 ——
-          // （见下方简化分支）
-          inserted = true
-          break
-        }
-        j = j + 1
-      }
-      if (!inserted) {
-        // 直接尾部放置
-        arr.push(cur)
-        // 自尾部向前冒泡一次，保证与排序方向相符
-        let r: number = arr.length - 1
-        while (r > 0) {
-          const needSwap: boolean =
-            this.sortDesc ? (arr[r].createdAt > arr[r - 1].createdAt) : (arr[r].createdAt < arr[r - 1].createdAt)
-          if (needSwap) {
-            const tmpItem: LogEntry = arr[r - 1]
-            arr[r - 1] = arr[r]
-            arr[r] = tmpItem
-            r = r - 1
-          } else {
-            break
-          }
-        }
-      }
-      i = i + 1
-    }
-    return arr
-  }
-
-  private rangeStartTs(): number {
-    if (this.range === 0) {
-      return 0
-    }
-    const now = new Date()
-    if (this.range === 7) {
-      return now.getTime() - 7 * 24 * 3600 * 1000
-    }
-    if (this.range === 30) {
-      return now.getTime() - 30 * 24 * 3600 * 1000
-    }
-    const ym = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
-    return ym.getTime()
-  }
-
-  // —— 多选逻辑 —— //
   private isSelected(id: number): boolean {
     let i: number = 0
-    while (i < this.selectedIds.length) {
-      if (this.selectedIds[i] === id) {
-        return true
-      }
-      i = i + 1
-    }
+    while (i < this.selected.length) { if (this.selected[i] === id) { return true } i = i + 1 }
     return false
   }
-
-  private ensureSelected(id: number): void {
-    if (!this.isSelected(id)) {
-      const arr: Array<number> = []
-      let i: number = 0
-      while (i < this.selectedIds.length) {
-        arr.push(this.selectedIds[i]);
-        i = i + 1
-      }
-      arr.push(id)
-      this.selectedIds = arr
-    }
-  }
-
   private toggleSelect(id: number): void {
     const arr: Array<number> = []
-    let found: boolean = false
+    let removed: boolean = false
     let i: number = 0
-    while (i < this.selectedIds.length) {
-      const v: number = this.selectedIds[i]
-      if (v === id) {
-        found = true
-      } else {
-        arr.push(v)
-      }
+    while (i < this.selected.length) {
+      if (this.selected[i] === id) { removed = true }
+      else { arr.push(this.selected[i]) }
       i = i + 1
     }
-    if (!found) {
-      arr.push(id)
-    }
-    this.selectedIds = arr
+    if (!removed) { arr.push(id) }
+    this.selected = arr
   }
 
-  private selectAll(): void {
-    const fl: Array<LogEntry> = this.finalLogs()
-    const arr: Array<number> = []
-    let i: number = 0
-    while (i < fl.length) {
-      arr.push(fl[i].id);
-      i = i + 1
-    }
-    this.selectedIds = arr
-  }
-
-  private invertSelect(): void {
-    const fl: Array<LogEntry> = this.finalLogs()
-    const arr: Array<number> = []
-    let i: number = 0
-    while (i < fl.length) {
-      const id: number = fl[i].id
-      if (!this.isSelected(id)) {
-        arr.push(id)
-      }
-      i = i + 1
-    }
-    this.selectedIds = arr
-  }
-
-  private selectedCount(): number {
-    return this.selectedIds.length
-  }
-
-  private async batchDelete(): Promise<void> {
-    if (this.selectedIds.length === 0) {
-      return
-    }
-    let i: number = 0
-    while (i < this.selectedIds.length) {
-      this.onDelete(this.selectedIds[i])
-      i = i + 1
-    }
-    this.selectedIds = []
-    this.selectMode = false
-  }
-
-  private exitSelectMode(): void {
-    this.selectMode = false
-    this.selectedIds = []
-  }
-
-  private exitSelectOrClose(): void {
-    if (this.selectMode) {
-      this.exitSelectMode()
-    } else {
-      this.onClose()
-    }
-  }
-
-  // —— 关键词高亮切分 —— //
-  private highlightSegments(text: string): Array<_HL> {
-    const res: Array<_HL> = []
-    const kw: string = this.query.trim().toLowerCase()
-    if (kw.length === 0) {
-      res.push(new _HL(0, text, 0))
-      return res
-    }
+  private beforeKeyword(text: string): string {
+    const kw: string = this.keyword.toLowerCase()
     const src: string = text
-    const srcLower: string = text.toLowerCase()
-    let pos: number = 0
-    let keySeq: number = 0
-    while (true) {
-      const hit: number = srcLower.indexOf(kw, pos)
-      if (hit === -1) {
-        if (pos < src.length) {
-          res.push(new _HL(keySeq, src.substring(pos), 0));
-          keySeq = keySeq + 1
-        }
-        break
-      }
-      if (hit > pos) {
-        res.push(new _HL(keySeq, src.substring(pos, hit), 0));
-        keySeq = keySeq + 1
-      }
-      res.push(new _HL(keySeq, src.substring(hit, hit + kw.length), 1));
-      keySeq = keySeq + 1
-      pos = hit + kw.length
-    }
-    return res
+    const i: number = src.toLowerCase().indexOf(kw)
+    if (kw.length === 0 || i < 0) { return src }
+    return src.substring(0, i)
+  }
+  private midKeyword(text: string): string {
+    const kw: string = this.keyword.toLowerCase()
+    const src: string = text
+    const i: number = src.toLowerCase().indexOf(kw)
+    if (kw.length === 0 || i < 0) { return '' }
+    return src.substring(i, i + kw.length)
+  }
+  private afterKeyword(text: string): string {
+    const kw: string = this.keyword.toLowerCase()
+    const src: string = text
+    const i: number = src.toLowerCase().indexOf(kw)
+    if (kw.length === 0 || i < 0) { return '' }
+    return src.substring(i + kw.length)
   }
 
-  private timeStr(ts: number): string {
-    const d = new Date(ts)
-    const y = d.getFullYear()
-    const m = (d.getMonth() + 1).toString().padStart(2, '0')
-    const day = d.getDate().toString().padStart(2, '0')
-    const hh = d.getHours().toString().padStart(2, '0')
-    const mm = d.getMinutes().toString().padStart(2, '0')
-    return `${y}-${m}-${day} ${hh}:${mm}`
+  private copyIds(src: Array<number>): Array<number> {
+    const out: Array<number> = []
+    let i: number = 0
+    while (i < src.length) { out.push(src[i]); i = i + 1 }
+    return out
   }
+
+  private dateFromTs(ts: number): string { const d = new Date(ts); const y = d.getFullYear(); const m = (d.getMonth()+1).toString().padStart(2,'0'); const day = d.getDate().toString().padStart(2,'0'); return `${y}-${m}-${day}` }
+  private todayISO(): string { const d = new Date(); const y = d.getFullYear(); const m = (d.getMonth()+1).toString().padStart(2,'0'); const day = d.getDate().toString().padStart(2,'0'); return `${y}-${m}-${day}` }
 }
+
 
 // 高亮片段模型（内部使用）
 class _HL {

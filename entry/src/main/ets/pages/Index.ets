@@ -7,12 +7,14 @@ import { CareTemplateSheet } from '../view/CareTemplateSheet'
 import { ConfirmDialogSheet } from '../view/ConfirmDialogSheet'
 import { EditPlantSheet } from '../view/EditPlantSheet'
 import { PlantListPage } from '../view/PlantListPage'
-import { PlantLogSheet } from '../view/PlantLogSheet'
+import { LogPhoto, PlantLogSheet } from '../view/PlantLogSheet'
 import { StatsPage } from '../view/StatsPage'
 import { TaskCalendarGate } from '../view/TaskCalendarGate'
 import { TaskListPage } from '../view/TaskListPage'
 import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
 import { MetricSheet } from '../view/MetricSheet'
+import { CalendarSheet1 } from '../view/CalendarSheet'
+import { PlantTaskFilter, PlantTaskFilterSheet } from '../view/PlantTaskFilterSheet'
 
 /** -------- 入口页面（V2） -------- */
 @Entry
@@ -29,6 +31,7 @@ struct Index {
   private static readonly T_TPL: string = 'tpl' // 周期模板
   private static readonly T_LOG: string = 'log' // ← 新增：日志表
   private static readonly T_METRIC: string = 'metric'
+  private static readonly T_LOG_PHOTO: string = 'log_photo'
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -38,6 +41,10 @@ struct Index {
   // Tab 与搜索
   @Local tabBarIndex: number = 0 // 0 植物 1 任务 2 统计
   @Local keyword: string = ''
+
+  // —— 任务筛选 ——
+  @Local taskFilterVisible: boolean = false
+  @Local taskFilter: PlantTaskFilter = new PlantTaskFilter()
   // 新建/编辑面板
   @Local panelVisible: boolean = false
   @Local editingPlantId: number = 0
@@ -68,7 +75,10 @@ struct Index {
   @Local logVisible: boolean = false
   // @Local logPlantId: number = 0
   @Local logPlantName: string = ''
+  @Local currentPlantName: string = ''
+  @Local currentPlantId: string = ''
   @Local logs: Array<LogEntry> = []
+  @Local logPhotos:Array<LogPhoto> =[]
   @Local logInputText: string = ''
 
   // —— 指标抽屉状态 —— //
@@ -80,6 +90,8 @@ struct Index {
   @Local calendarVisible: boolean = false
   @Local calYear: number = 1970
   @Local calMonth: number = 1
+  @Local calendarYear: number = new Date().getFullYear()
+  @Local calendarMonth: number = new Date().getMonth() + 1
 
   // —— 养护模板入口 ——
   @Local careVisible: boolean = false
@@ -147,6 +159,25 @@ struct Index {
         score INTEGER DEFAULT 0,
         createdAt INTEGER NOT NULL
       )`)
+    // —— 日志图片表 ——
+    await this.store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${Index.T_LOG_PHOTO}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        logId INTEGER NOT NULL,
+        path TEXT NOT NULL,
+        thumbPath TEXT NOT NULL,
+        createdAt INTEGER NOT NULL
+      )`)
+    // // 任务唯一：同一植物 + 类型 + 计划日 不重复
+    // await this.store.executeSql(`CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique ON ${Index.T_TASK}(plantId, type, planDate)`)
+    // // 任务查询索引
+    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_task_planDate ON ${Index.T_TASK}(planDate)`)
+    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_task_plantId  ON ${Index.T_TASK}(plantId)`)
+    // // 日志/指标查询索引
+    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_log_plantId   ON ${Index.T_LOG}(plantId)`)
+    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_metric_plantId ON ${Index.T_METRIC}(plantId)`)
+    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_logphoto_logId ON ${Index.T_LOG_PHOTO}(logId)`)
+
     await this.reloadAll()
     await this.loadTemplates()
   }
@@ -185,6 +216,34 @@ struct Index {
     rs.close()
     this.tasks = items
   }
+
+  // 批量为某植物在一组日期创建若干类型的 PlantTask（幂等，受唯一索引保护）
+  private async createTemplateTasksWithTx(plantId: number, datesISO: Array<string>, types: Array<string>): Promise<boolean> {
+    if (!this.store) { return false }
+    try {
+      const tx = await this.store.createTransaction()
+      // 循环插入；违反唯一索引时忽略错误继续（你也可以先 SELECT 再 INSERT）
+      let di: number = 0
+      while (di < datesISO.length) {
+        let ti: number = 0
+        while (ti < types.length) {
+          try {
+            await tx.insert(Index.T_TASK, {
+              plantId: plantId, type: types[ti], planDate: datesISO[di], done: 0, doneAt: 0
+            })
+          } catch (_) { /* ignore duplicate */ }
+          ti = ti + 1
+        }
+        di = di + 1
+      }
+      await tx.commit()
+      return true
+    } catch (e) {
+      console.error('createTemplateTasksWithTx error: ' + (e as Error).message)
+      return false
+    }
+  }
+
 
   // 模板
   private async loadTemplates(): Promise<void> {
@@ -664,7 +723,7 @@ struct Index {
           //   onDelete: (id: number) => { this.deleteTask(id) }
           // })
           TaskListPage({
-            tasks: this.tasks,
+            tasks: this.filteredTasks() || this.tasks,
             plants: this.plants,
             onToggle: (t: PlantTask) => {
               this.toggleTaskDone(t)
@@ -734,17 +793,62 @@ struct Index {
 
       // —— 日志抽屉 ——（使用你已有的 PlantLogSheet）
       if (this.logVisible) {
-        PlantLogSheet({
-          logs: this.logs,
-          plantName: this.logPlantName,
-          inputText: this.logInputText,
-          onChangeInput: (v: string) => { this.logInputText = v },
-          onAdd: async () => {
-            await this.createLog(this.logPlantId, this.logInputText)
-            this.logInputText = ''
-          },
-          onDelete: async (id: number) => { await this.deleteLog(id) },
-          onClose: () => { this.logVisible = false }
+        // PlantLogSheet({
+        //   plantName: this.currentPlantName,
+        //   logs: this.logs,                  // ← 你已有的日志数组
+        //   photos: this.logPhotos,           // ← 你维护的 LogPhoto 数组（可在加载日志时一并查询）
+        //   keyword: this.keyword,         // ← 来自搜索框
+        //   onAddLog: async (note: string, iso: string) => {
+        //     if (!this.store) { return }
+        //     await this.store.insert(Index.T_LOG, { plantId: this.currentPlantId, note: note, createdAt: this.tsFromISO(iso) })
+        //     await this.loadLogsWithPhotos(this.currentPlantId) // 重新加载
+        //     // await this.loadLogsByPlant(this.currentPlantId)
+        //   },
+        //   onDeleteLog: async (logId: number) => {
+        //     if (!this.store) { return }
+        //     const p = new relationalStore.RdbPredicates(Index.T_LOG); p.equalTo('id', logId)
+        //     await this.store.delete(p)
+        //     const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logId)
+        //     await this.store.delete(pp)
+        //     await this.loadLogsWithPhotos(this.currentPlantId)
+        //   },
+        //   onBatchDeleteLogs: async (ids: Array<number>) => {
+        //     if (!this.store) { return }
+        //     // 删除日志本体
+        //     const p = new relationalStore.RdbPredicates(Index.T_LOG); p.in('id', ids)
+        //     await this.store.delete(p)
+        //     // 删除关联图片
+        //     const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.in('logId', ids)
+        //     await this.store.delete(pp)
+        //     await this.loadLogsWithPhotos(this.currentPlantId)
+        //   },
+        //   onPickPhotos: async (logId: number) => {
+        //     // 在这里用你现有的封装（file.picker / photoAccessHelper），复制到 filesDir，
+        //     // 生成缩略图（可选），然后批量 insert 到 ${Index.T_LOG_PHOTO}，最后刷新。
+        //     await this.pickAndSavePhotos(logId) // 你已有/将实现的方法
+        //     await this.loadLogsWithPhotos(this.currentPlantId)
+        //   },
+        //   onCapturePhoto: async (logId: number) => {
+        //     await this.captureAndSavePhoto(logId) // 你已有/将实现的方法
+        //     await this.loadLogsWithPhotos(this.currentPlantId)
+        //   },
+        //   onDeletePhoto: async (pid: number) => {
+        //     if (!this.store) { return }
+        //     const p = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); p.equalTo('id', pid)
+        //     await this.store.delete(p)
+        //     await this.loadLogsWithPhotos(this.currentPlantId)
+        //   },
+        //   onClose: () => { this.logSheetVisible = false }
+        // })
+      }
+
+      if (this.taskFilterVisible) {
+        PlantTaskFilterSheet({
+          filter: this.taskFilter,
+          plants: this.plants,
+          onApply: (f: PlantTaskFilter) => { this.taskFilter = f; this.taskFilterVisible = false },
+          onReset: () => { this.taskFilter = new PlantTaskFilter() },
+          onClose: () => { this.taskFilterVisible = false }
         })
       }
 
@@ -762,12 +866,20 @@ struct Index {
       }
 
       if (this.calendarVisible) {
-        CalendarSheet({
-          year: this.calYear,
-          month: this.calMonth,
-          tasks: this.tasks, // Array<PlantTask>
-          onToggle: (it: PlantTask) => { this.toggleTaskDone(it) },
-          onDelete: (id: number) => { this.deleteTask(id) },
+        CalendarSheet1({
+          year: this.calendarYear,
+          month: this.calendarMonth,
+          tasks: this.tasks,          // 这里的 tasks 请确保是 PlantTask[]
+          plants: this.plants,
+          onChangeMonth: (y: number, m: number) => { this.calendarYear = y; this.calendarMonth = m },
+          onQuickAdd: async (pid: number, type: string, iso: string) => {
+            this.taskDraft = new TaskDraft();
+            this.taskDraft.plantId = pid;
+            this.taskDraft.type = type;
+            this.taskDraft.planDate = iso
+            await this.createTask(this.taskDraft);  // 你现有的方法
+          },
+          onToggle: async (t: PlantTask) => { await this.toggleTaskDone(t) },
           onClose: () => { this.calendarVisible = false }
         })
       }
@@ -876,24 +988,24 @@ struct Index {
 
       // ← 新增：日志抽屉
       if (this.logSheetVisible) {
-        PlantLogSheet({
-          logs: this.logList,
-          plantName: this.findPlantName(this.logPlantId),
-          inputText: this.logInput,
-          onChangeInput: (v: string) => {
-            this.logInput = v
-          },
-          onAdd: async () => {
-            await this.createLog(this.logPlantId, this.logInput);
-            this.logInput = ''
-          },
-          onDelete: async (id: number) => {
-            await this.deleteLog(id)
-          },
-          onClose: () => {
-            this.logSheetVisible = false
-          }
-        })
+        // PlantLogSheet({
+        //   logs: this.logList,
+        //   plantName: this.findPlantName(this.logPlantId),
+        //   inputText: this.logInput,
+        //   onChangeInput: (v: string) => {
+        //     this.logInput = v
+        //   },
+        //   onAdd: async () => {
+        //     await this.createLog(this.logPlantId, this.logInput);
+        //     this.logInput = ''
+        //   },
+        //   onDelete: async (id: number) => {
+        //     await this.deleteLog(id)
+        //   },
+        //   onClose: () => {
+        //     this.logSheetVisible = false
+        //   }
+        // })
       }
     }
     .width('100%').height('100%')
@@ -918,6 +1030,63 @@ struct Index {
     return '植物'
   }
 
+
+  private filteredTasks(): Array<PlantTask> {
+    const out: Array<PlantTask> = []
+    const f = this.taskFilter
+    const kw = f.keyword.trim().toLowerCase()
+
+    let i: number = 0
+    while (i < this.tasks.length) {
+      const t = this.tasks[i]
+      // 状态
+      if (f.status === 'done' && t.done !== 1) { i = i + 1; continue }
+      if (f.status === 'undone' && t.done !== 0) { i = i + 1; continue }
+      // 类型
+      if (t.type === '浇水' && !f.typeWater) { i = i + 1; continue }
+      if (t.type === '施肥' && !f.typeFertilize) { i = i + 1; continue }
+      if (t.type === '修剪' && !f.typePrune) { i = i + 1; continue }
+      // 日期范围
+      if (f.dateFromISO.length === 10 && t.planDate < f.dateFromISO) { i = i + 1; continue }
+      if (f.dateToISO.length === 10 && t.planDate > f.dateToISO) { i = i + 1; continue }
+      // 关键词（植物名 / 类型）
+      if (kw.length > 0) {
+        const pn = this.plantNameById(t.plantId).toLowerCase()
+        const hit = pn.indexOf(kw) >= 0 || t.type.toLowerCase().indexOf(kw) >= 0
+        if (!hit) { i = i + 1; continue }
+      }
+      out.push(t)
+      i = i + 1
+    }
+
+    // 排序
+    out.sort((a: PlantTask, b: PlantTask) => {
+      if (f.sortKey === 'date') {
+        return f.sortAsc ? this.cmpStr(a.planDate, b.planDate) : this.cmpStr(b.planDate, a.planDate)
+      }
+      if (f.sortKey === 'type') {
+        return f.sortAsc ? this.cmpStr(a.type, b.type) : this.cmpStr(b.type, a.type)
+      }
+      // plant
+      const pa = this.plantNameById(a.plantId)
+      const pb = this.plantNameById(b.plantId)
+      return f.sortAsc ? this.cmpStr(pa, pb) : this.cmpStr(pb, pa)
+    })
+    return out
+  }
+
+  // 字符串比较（避免 locale 差异）
+  cmpStr(x: string, y: string): number {
+    if (x < y) { return -1 }
+    if (x > y) { return 1 }
+    return 0
+  }
+
+  private plantNameById(id: number): string {
+    let i: number = 0
+    while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name } i = i + 1 }
+    return ''
+  }
   /** ---- Header / TabChip / Fab / Banner（保持与你现有实现一致） ---- */
   @Builder
   Header() {
@@ -950,6 +1119,10 @@ struct Index {
             .padding({ left: 12, right: 12 })
         }
         .height(44).width('100%').padding({ left: 20, right: 20, bottom: 2 })
+        Text('📅 日历').fontSize(12).fontColor(0xFF1565C0)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          .borderRadius(12).backgroundColor(0x102196F3)
+          .onClick(() => { this.calendarVisible = true })
       }
       .padding({ bottom: 4 })
       .onTouch((e: TouchEvent) => {
