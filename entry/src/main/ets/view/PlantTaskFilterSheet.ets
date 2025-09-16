@@ -1,8 +1,7 @@
 import { Plant } from "../model/PlantModel"
 
 @ObservedV2
-export
-class PlantTaskFilter {
+export class PlantTaskFilter {
   @Trace status: 'all' | 'undone' | 'done' = 'all'   // 状态
   @Trace typeWater: boolean = true
   @Trace typeFertilize: boolean = true
@@ -15,8 +14,7 @@ class PlantTaskFilter {
 }
 
 @ComponentV2
-export
-struct PlantTaskFilterSheet {
+export struct PlantTaskFilterSheet {
   @Param @Require filter: PlantTaskFilter
   @Param @Require plants: Array<Plant>   // 用于 Plant 排序说明/展示（不改数据）
   @Event onApply: (f: PlantTaskFilter) => void

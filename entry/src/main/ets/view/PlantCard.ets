@@ -13,6 +13,7 @@ export  struct PlantCard {
   @Event onOpenLogs: () => void
   @Event onOpenMetrics: () => void
   @Event onOpenTemplate: () => void  // ← 新增
+  @Event onOpenMetric: (plantId: number) => void
 
   @Local pressed: boolean = false
 
@@ -62,6 +63,8 @@ export  struct PlantCard {
           Text('🗑️').fontSize(16).onClick(() => { this.onDeleteAsk() })
         }
       }
+
+      Text('📈').fontSize(16).onClick(() => { this.onOpenMetric(this.p.id) }).margin({ right: 8 })
 
       // 进度条
       Row() {

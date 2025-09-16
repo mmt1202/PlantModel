@@ -18,6 +18,8 @@ import { PlantTaskFilter, PlantTaskFilterSheet } from '../view/PlantTaskFilterSh
 import picker from '@ohos.file.picker'
 import fs from '@ohos.file.fs'
 import fileAccess from '@ohos.file.fileAccess'
+import { PhotoPreviewSheet } from '../view/PhotoPreviewSheet'
+import { MetricChartSheet } from '../view/MetricChartSheet'
 
 /** -------- 入口页面（V2） -------- */
 @Entry
@@ -71,18 +73,18 @@ struct Index {
   // ← 新增：日志抽屉
   @Local logSheetVisible: boolean = false
   @Local logPlantId: number = 0
-  @Local logList: Array<LogEntry> = []
+  // @Local logList: Array<LogEntry> = []
   @Local logInput: string = ''
 
   // —— 日志抽屉状态 —— //
-  @Local logVisible: boolean = false
+  // @Local logVisible: boolean = false
   // @Local logPlantId: number = 0
   @Local logPlantName: string = ''
   @Local currentPlantName: string = ''
   @Local currentPlantId: string = ''
   @Local logs: Array<LogEntry> = []
   @Local logPhotos:Array<LogPhoto> =[]
-  @Local logInputText: string = ''
+  // @Local logInputText: string = ''
   @Local picking: boolean = false   // 防连点
 
 
@@ -102,6 +104,25 @@ struct Index {
   @Local careVisible: boolean = false
   @Local carePlantId: number = 0
   @Local carePlantName: string = ''
+
+  @Local photoPreviewVisible: boolean = false
+  @Local previewFiles: Array<string> = []
+  @Local previewIndex: number = 0
+  @Local previewLogId: number = 0
+  // —— 任务筛选 / 排序状态 —— //
+  @Local filterVisible: boolean = false
+  @Local filterStatus: number = 0   // 0=全部 1=未完成 2=已完成
+  @Local filterType: string = ''    // '' | '浇水' | '施肥' | '修剪' ...
+  @Local filterFrom: string = ''    // 'YYYY-MM-DD' 或空
+  @Local filterTo: string = ''      // 同上
+  @Local filterKeyword: string = ''
+  @Local sortKey: string = 'date'   // 'date' | 'type' | 'status' | 'plant'
+  @Local sortAsc: boolean = false
+
+  // —— 趋势图状态 —— //
+  @Local metricChartVisible: boolean = false
+  @Local metricChartPlantName: string = ''
+  @Local metricChartData: Array<Metric> = []
 
   // @Local logPhotos: Array<LogPhoto> = []
 
@@ -175,15 +196,43 @@ struct Index {
         thumbPath TEXT NOT NULL,
         createdAt INTEGER NOT NULL
       )`)
-    // // 任务唯一：同一植物 + 类型 + 计划日 不重复
-    // await this.store.executeSql(`CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique ON ${Index.T_TASK}(plantId, type, planDate)`)
-    // // 任务查询索引
-    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_task_planDate ON ${Index.T_TASK}(planDate)`)
-    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_task_plantId  ON ${Index.T_TASK}(plantId)`)
-    // // 日志/指标查询索引
-    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_log_plantId   ON ${Index.T_LOG}(plantId)`)
-    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_metric_plantId ON ${Index.T_METRIC}(plantId)`)
-    // await this.store.executeSql(`CREATE INDEX IF NOT EXISTS idx_logphoto_logId ON ${Index.T_LOG_PHOTO}(logId)`)
+    // ===== TASK（任务）=====
+    // 唯一：同一植物 + 类型 + 计划日 不重复
+    await this.store.executeSql(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique
+   ON ${Index.T_TASK}(plantId, type, planDate)`
+    )
+    // 常用查询/排序：按日期、按植物
+    await this.store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_task_planDate
+   ON ${Index.T_TASK}(planDate)`
+    )
+    await this.store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_task_plantId
+   ON ${Index.T_TASK}(plantId)`
+    )
+
+    // ===== LOG（日志）=====
+    // 典型查询：WHERE plantId=? ORDER BY createdAt DESC
+    // 用组合索引即可，避免再单独建 plantId / createdAt 两个索引的重复
+    await this.store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_log_plant_created
+   ON ${Index.T_LOG}(plantId, createdAt)`
+    )
+
+    // ===== LOG_PHOTO（日志照片）=====
+    await this.store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_logphoto_logId
+   ON ${Index.T_LOG_PHOTO}(logId)`
+    )
+
+    // ===== METRIC（指标）=====
+    // 典型查询：按植物 + 时间范围/排序
+    await this.store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_metric_plant_created
+   ON ${Index.T_METRIC}(plantId, createdAt)`
+    )
+
 
     await this.reloadAll()
     await this.loadTemplates()
@@ -224,18 +273,79 @@ struct Index {
     this.tasks = items
   }
 
+  private plantNameById(id: number): string {
+    let i: number = 0
+    while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name } i = i + 1 }
+    return ''
+  }
+
+  private inDateRange(d: string): boolean {
+    if (this.filterFrom.length > 0 && d < this.filterFrom) { return false }
+    if (this.filterTo.length > 0 && d > this.filterTo) { return false }
+    return true
+  }
+
+  private filteredTasks(): Array<PlantTask> {
+    const out: Array<PlantTask> = []
+    const kw: string = this.filterKeyword.trim().toLowerCase()
+    let i: number = 0
+    while (i < this.tasks.length) {
+      const it = this.tasks[i]
+      // 状态
+      if (this.filterStatus === 1 && it.done === 1) { i = i + 1; continue }
+      if (this.filterStatus === 2 && it.done === 0) { i = i + 1; continue }
+      // 类型
+      if (this.filterType.length > 0 && it.type !== this.filterType) { i = i + 1; continue }
+      // 日期
+      if (!this.inDateRange(it.planDate)) { i = i + 1; continue }
+      // 关键字（类型 / 植物名）
+      if (kw.length > 0) {
+        const pn: string = this.plantNameById(it.plantId).toLowerCase()
+        if (it.type.toLowerCase().indexOf(kw) < 0 && pn.indexOf(kw) < 0) { i = i + 1; continue }
+      }
+      out.push(it)
+      i = i + 1
+    }
+    // 排序
+    out.sort((a: PlantTask, b: PlantTask) => {
+      let va: string = ''; let vb: string = ''
+      if (this.sortKey === 'date') { va = a.planDate; vb = b.planDate }
+      else if (this.sortKey === 'type') { va = a.type; vb = b.type }
+      else if (this.sortKey === 'status') { va = a.done.toString(); vb = b.done.toString() }
+      else if (this.sortKey === 'plant') { va = this.plantNameById(a.plantId); vb = this.plantNameById(b.plantId) }
+      if (this.sortAsc) { return va < vb ? -1 : (va > vb ? 1 : 0) }
+      return va > vb ? -1 : (va < vb ? 1 : 0)
+    })
+    return out
+  }
+
   private async loadLogPhotos(logId: number): Promise<void> {
     if (!this.store) { return }
-    // const predicates1 = new relationalStore.RdbPredicates(tableName);
     const rs = await this.store.querySql(
-      `SELECT id, logId, filePath, createdAt FROM log_photo WHERE logId = ? ORDER BY id DESC`, [logId]
+      `SELECT id, logId, path, thumbPath, createdAt
+     FROM ${Index.T_LOG_PHOTO}
+     WHERE logId = ?
+     ORDER BY id DESC`, [logId]
     )
     const items: Array<LogPhoto> = []
     while (rs.goToNextRow()) {
-      items.push(new LogPhoto(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3),rs.getLong(4)))
+      items.push(new LogPhoto(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4)))
     }
     rs.close()
     this.logPhotos = items
+  }
+
+  private async insertLogPhoto(logId: number, fileUri: string): Promise<void> {
+    if (!this.store) { return }
+    const uri: string = this.ensureFileUri(fileUri)
+    const now: number = Date.now()
+    const v: relationalStore.ValuesBucket = {
+      logId: logId,
+      path: uri,          // 原图
+      thumbPath: uri,     // 先用原图占位，后续如需生成缩略图再更新
+      createdAt: now
+    }
+    await this.store.insert(Index.T_LOG_PHOTO, v)
   }
 
   private async pickPhotosForLog(logId: number): Promise<void> {
@@ -252,7 +362,7 @@ struct Index {
       while (i < selected.length) {
         const srcUri: string = selected[i]
         const dstPath: string = await this.copyImageToAppFiles(srcUri, dir)
-        // await this.insertLogPhoto(logId, this.ensureFileUri(dstPath))
+        await this.insertLogPhoto(logId, this.ensureFileUri(dstPath))
         i = i + 1
       }
       await this.loadLogPhotos(logId)
@@ -264,6 +374,43 @@ struct Index {
       this.picking = false
     }
   }
+
+  private openPhotoPreview(logId: number, files: Array<LogPhoto>, startPath: string): void {
+    this.previewLogId = logId
+    const arr: Array<string> = []
+    let i: number = 0
+    while (i < files.length) { arr.push(files[i].path); i = i + 1 }
+    this.previewFiles = arr
+    this.previewIndex = this.indexOfPath(arr, startPath)
+    this.photoPreviewVisible = true
+  }
+
+  private indexOfPath(arr: Array<string>, path: string): number {
+    let i: number = 0
+    while (i < arr.length) { if (arr[i] === path) { return i }; i = i + 1 }
+    return 0
+  }
+
+  // 通过 filePath 定位并删除该照片（含本地文件），随后刷新当前日志照片与预览列表
+  private async deletePhotoByFilePath(fp: string): Promise<void> {
+    if (!this.store) { return }
+    // 取照片 id/logId
+    const rs = await this.store.querySql(`SELECT id, logId FROM ${Index.T_LOG_PHOTO} WHERE filePath = ? LIMIT 1`, [fp])
+    let pid: number = 0; let lid: number = 0
+    if (rs.goToNextRow()) { pid = rs.getLong(0); lid = rs.getLong(1) }
+    rs.close()
+    if (pid !== 0) {
+      // await this.deleteLogPhoto(pid, lid)
+      await this.loadLogPhotos(lid)
+      // 重建预览数组
+      const arr: Array<string> = []
+      let i: number = 0
+      while (i < this.logPhotos.length) { arr.push(this.logPhotos[i].path); i = i + 1 }
+      this.previewFiles = arr
+      this.previewLogId = lid
+    }
+  }
+
 
   // —— 打开相册多选 —— //
   private async selectImagesFromAlbum(maxCount: number): Promise<Array<string>> {
@@ -300,43 +447,55 @@ struct Index {
 
   // 生成文件名：时间戳_随机数.jpg
   private genPhotoName(): string {
-    const now: number = Date.now()
-    const rnd: number = Math.floor(Math.random() * 100000)
-    return `p_${now}_${rnd}.jpg`
+    const d = new Date()
+    const y = d.getFullYear().toString()
+    const m = (d.getMonth() + 1).toString().padStart(2, '0')
+    const day = d.getDate().toString().padStart(2, '0')
+    const h = d.getHours().toString().padStart(2, '0')
+    const mi = d.getMinutes().toString().padStart(2, '0')
+    const s = d.getSeconds().toString().padStart(2, '0')
+    const ms = d.getMilliseconds().toString().padStart(3, '0')
+    return `IMG_${y}${m}${day}_${h}${mi}${s}_${ms}.jpg`
   }
 
   // 从 URI 复制到 app filesDir/photos/xxx.jpg
   private async copyImageToAppFiles(srcUri: string, dstDir: string): Promise<string> {
     const name: string = this.genPhotoName()
     const dstPath: string = `${dstDir}/${name}`
-    //
-    // // 1) file:// 直拷
-    // if (srcUri.startsWith('file://')) {
-    //   const srcPath: string = srcUri.substring(7)
-    //   await fs.copyFile(srcPath, dstPath)
-    //   return dstPath
-    // }
-    //
-    // // 2) 走文件访问助手拷贝 datashare:// 等 URI
-    // const helper = fileAccess.createFileAccessHelper(this.ctx)
-    // const rdFd: number = await helper.openFile(srcUri, fileAccess.OpenMode.READ)
-    // const wrFd: number = fs.openSync(dstPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
-    //
-    // try {
-    //   // 小块读写，避免大图 OOM（64KB 缓冲）
-    //   const buf = new ArrayBuffer(64 * 1024)
-    //   let n: number = 0
-    //   // 注意：readSync 返回读入的字节数
-    //   n = fs.readSync(rdFd, buf)
-    //   while (n > 0) {
-    //     fs.writeSync(wrFd, buf, { length: n })
-    //     n = fs.readSync(rdFd, buf)
-    //   }
-    // } finally {
-    //   try { fs.closeSync(wrFd) } catch (_) {}
-    //   try { await helper.closeFile(rdFd) } catch (_) {}
-    // }
-    return dstPath
+
+    // 1) file:// 直拷
+    if (srcUri.length >= 7 && srcUri.substring(0, 7) === 'file://') {
+      const srcPath: string = srcUri.substring(7)
+      try {
+        await fs.copyFile(srcPath, dstPath)
+        return dstPath
+      } catch (_e) {
+        // 复制失败则回退到原路径（尽量不阻断）
+        return srcPath
+      }
+    }
+
+    // 2) 用 fileAccess 处理 datashare:// 等
+    try {
+      // const helper = fileAccess.createFileAccessHelper(this.ctx)
+      // const rdFd: number = await helper.openFile(srcUri, fileAccess.OpenMode.READ)
+      // const wrFd:  fs.File = fs.openSync(dstPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
+      // try {
+      //   const buf = new ArrayBuffer(64 * 1024)
+      //   let n: number = await helper.read(rdFd, buf)
+      //   while (n > 0) {
+      //     fs.writeSync(wrFd.fd, buf, { offset: 0, length: n })
+      //     n = await helper.read(rdFd, buf)
+      //   }
+      // } finally {
+      //   try { fs.closeSync(wrFd) } catch (_e1) {}
+      //   try { await helper.closeFile(rdFd) } catch (_e2) {}
+      // }
+      return dstPath
+    } catch (_e3) {
+      // 再次兜底：返回一个“尽量可用”的路径
+      return dstPath
+    }
   }
 
   // 批量为某植物在一组日期创建若干类型的 PlantTask（幂等，受唯一索引保护）
@@ -367,6 +526,21 @@ struct Index {
   }
 
 
+  // private plantNameById(id: number): string {
+  //   let i: number = 0
+  //   while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name }; i = i + 1 }
+  //   return ''
+  // }
+
+  // 打开趋势图（外部只需传 plantId）
+  private async openMetricChart(plantId: number): Promise<void> {
+    // 假设你已有 loadMetricsByPlant(plantId) 并把结果放到 this.metrics
+    await this.loadMetricsByPlant(plantId)
+    this.metricChartData = this.metrics  // 若你的字段名不是 this.metrics，请替换为你的实际数组
+    this.metricChartPlantName = this.plantNameById(plantId)
+    this.metricChartVisible = true
+  }
+
   // 模板
   private async loadTemplates(): Promise<void> {
     if (!this.store) {
@@ -389,10 +563,17 @@ struct Index {
   private async loadMetricsByPlant(plantId: number): Promise<void> {
     if (!this.store) { return }
     const rs = await this.store.querySql(
-      `SELECT id,plantId,height,width,score,createdAt FROM ${Index.T_METRIC} WHERE plantId=? ORDER BY createdAt DESC`, [plantId])
+      `SELECT id, plantId, height, width, score, createdAt
+     FROM ${Index.T_METRIC}
+     WHERE plantId = ?
+     ORDER BY createdAt ASC`, [plantId]
+    )
     const arr: Array<Metric> = []
     while (rs.goToNextRow()) {
-      arr.push(new Metric(rs.getLong(0), rs.getLong(1), rs.getDouble(2), rs.getDouble(3), rs.getLong(4), rs.getLong(5)))
+      arr.push(new Metric(
+        rs.getLong(0), rs.getLong(1),
+        rs.getDouble(2), rs.getDouble(3), rs.getLong(4), rs.getLong(5)
+      ))
     }
     rs.close()
     this.metrics = arr
@@ -454,22 +635,46 @@ struct Index {
   }
 
   private async deletePlant(id: number): Promise<void> {
-    if (!this.store) {
+    if (!this.store) { return }
+
+    try {
+      await this.store.beginTransaction()
+
+      // 先级联清理日志与照片文件
+      const rs = await this.store.querySql(
+        `SELECT id FROM ${Index.T_LOG} WHERE plantId = ? ORDER BY id ASC`, [id]
+      )
+      const logIds: Array<number> = []
+      while (rs.goToNextRow()) { logIds.push(rs.getLong(0)) }
+      rs.close()
+
+      let i: number = 0
+      while (i < logIds.length) {
+        await this.deleteLogAndPhotos(logIds[i])  // 内部也会删子表
+        i = i + 1
+      }
+
+      // 删任务
+      const pt = new relationalStore.RdbPredicates(Index.T_TASK)
+      pt.equalTo('plantId', id)
+      await this.store.delete(pt)
+
+      // 删植物
+      const pp = new relationalStore.RdbPredicates(Index.T_PLANT)
+      pp.equalTo('id', id)
+      await this.store.delete(pp)
+
+      await this.store.commit()
+    } catch (e) {
+      await this.store.rollBack()
+      this.showBanner('删除失败，已回滚', 'warn')
       return
     }
-    // 级联删除任务与日志
-    const pt = new relationalStore.RdbPredicates(Index.T_TASK);
-    pt.equalTo('plantId', id)
-    await this.store.delete(pt)
-    const pl = new relationalStore.RdbPredicates(Index.T_LOG);
-    pl.equalTo('plantId', id)
-    await this.store.delete(pl)
-    const pp = new relationalStore.RdbPredicates(Index.T_PLANT);
-    pp.equalTo('id', id)
-    await this.store.delete(pp)
+
     await this.reloadAll()
-    this.showBanner('已删除植物及其任务/日志', 'ok')
+    this.showBanner('已删除植物及其任务/日志/照片', 'ok')
   }
+
 
   /** ---- 任务 CRUD ---- */
   private async createTask(draft: TaskDraft): Promise<void> {
@@ -483,11 +688,109 @@ struct Index {
       done: 0,
       doneAt: 0
     }
-    await this.store.insert(Index.T_TASK, values)
-    await this.loadTasks()
-    this.showBanner('已添加养护任务', 'ok')
+    try {
+      await this.store.insert(Index.T_TASK, values)
+      await this.loadTasks()
+      this.showBanner('已添加养护任务', 'ok')
+
+    }catch (e) {
+      this.showBanner('同日同类型任务已存在', 'info')
+    }
+
+  }
+  // —— 任务：批量切换完成状态（事务）—— //
+  private async bulkToggleTasks(ids: Array<number>, done: number): Promise<void> {
+    if (!this.store) { return }
+    await this.store.beginTransaction()
+    try {
+      const now: number = done === 1 ? Date.now() : 0
+      let i: number = 0
+      while (i < ids.length) {
+        const p = new relationalStore.RdbPredicates(Index.T_TASK)
+        p.equalTo('id', ids[i])
+        await this.store.update({ done: done, doneAt: now }, p)
+        i = i + 1
+      }
+      await this.store.commit()
+      await this.loadTasks()
+      this.showBanner('已批量更新任务状态', 'ok')
+    } catch (_e) {
+      await this.store.rollBack()
+      this.showBanner('批量更新失败，已回滚', 'warn')
+    }
   }
 
+  // —— 任务：批量删除（事务）—— //
+  private async bulkDeleteTasks(ids: Array<number>): Promise<void> {
+    if (!this.store) { return }
+    await this.store.beginTransaction()
+    try {
+      let i: number = 0
+      while (i < ids.length) {
+        const p = new relationalStore.RdbPredicates(Index.T_TASK)
+        p.equalTo('id', ids[i])
+        await this.store.delete(p)
+        i = i + 1
+      }
+      await this.store.commit()
+      await this.loadTasks()
+      this.showBanner('已批量删除任务', 'ok')
+    } catch (_e) {
+      await this.store.rollBack()
+      this.showBanner('批量删除失败，已回滚', 'warn')
+    }
+  }
+
+  // —— 日志：批量删除（事务 + 两阶段删文件）—— //
+  private async bulkDeleteLogsTx(logIds: Array<number>): Promise<void> {
+    if (!this.store) { return }
+
+    // 预收集所有将要删除的文件路径
+    const files: Array<string> = []
+    let k: number = 0
+    while (k < logIds.length) {
+      const rs = await this.store.querySql(
+        `SELECT path, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId = ?`, [logIds[k]]
+      )
+      while (rs.goToNextRow()) {
+        const p1: string = rs.getString(0)
+        const p2: string = rs.getString(1)
+        if (p1 && p1.length > 0) { files.push(p1) }
+        if (p2 && p2.length > 0) { files.push(p2) }
+      }
+      rs.close()
+      k = k + 1
+    }
+
+    // 事务：删子表 → 删日志
+    await this.store.beginTransaction()
+    try {
+      let i: number = 0
+      while (i < logIds.length) {
+        const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logIds[i])
+        await this.store.delete(pp)
+        const pl = new relationalStore.RdbPredicates(Index.T_LOG); pl.equalTo('id', logIds[i])
+        await this.store.delete(pl)
+        i = i + 1
+      }
+      await this.store.commit()
+    } catch (_e) {
+      await this.store.rollBack()
+      this.showBanner('批量删除日志失败，已回滚', 'warn')
+      return
+    }
+
+    // 事务提交后再删本地文件（无法回滚，放事务外）
+    let j: number = 0
+    while (j < files.length) {
+      try { await fs.unlink(files[j]) } catch (_e) { /* ignore */ }
+      j = j + 1
+    }
+
+    // 刷新
+    await this.loadLogsWithPhotos(parseInt(this.currentPlantId)) // 如果你有 currentPlantId；否则按你的刷新逻辑处理
+    this.showBanner('已批量删除日志与照片', 'ok')
+  }
   private async toggleTaskDone(task: PlantTask): Promise<void> {
     if (!this.store) {
       return
@@ -498,6 +801,92 @@ struct Index {
     p.equalTo('id', task.id)
     await this.store.update(values, p)
     await this.loadTasks()
+  }
+
+  // —— 守护：清理孤儿记录/文件 —— //
+  private async cleanupOrphanPhotos(): Promise<void> {
+    if (!this.store) { return }
+
+    let delDbCount: number = 0
+    let delFsCount: number = 0
+
+    // 1) 照片记录的 logId 不存在 → 删记录 & 尝试删文件
+    const rs1 = await this.store.querySql(
+      `SELECT p.id, p.path, p.thumbPath
+     FROM ${Index.T_LOG_PHOTO} p
+     LEFT JOIN ${Index.T_LOG} l ON p.logId = l.id
+     WHERE l.id IS NULL`, []
+    )
+    const orphanPhotoIds: Array<number> = []
+    const orphanFiles: Array<string> = []
+    while (rs1.goToNextRow()) {
+      orphanPhotoIds.push(rs1.getLong(0))
+      const p1: string = rs1.getString(1); const p2: string = rs1.getString(2)
+      if (p1 && p1.length > 0) { orphanFiles.push(p1) }
+      if (p2 && p2.length > 0) { orphanFiles.push(p2) }
+    }
+    rs1.close()
+
+    if (orphanPhotoIds.length > 0) {
+      await this.store.beginTransaction()
+      try {
+        let i: number = 0
+        while (i < orphanPhotoIds.length) {
+          const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+          pp.equalTo('id', orphanPhotoIds[i])
+          await this.store.delete(pp)
+          delDbCount = delDbCount + 1
+          i = i + 1
+        }
+        await this.store.commit()
+      } catch (_e) {
+        await this.store.rollBack()
+        // 记录仍在，先不删文件
+      }
+    }
+
+    // 尝试删除对应文件
+    let f: number = 0
+    while (f < orphanFiles.length) {
+      try { await fs.unlink(orphanFiles[f]); delFsCount = delFsCount + 1 } catch (_e) {}
+      f = f + 1
+    }
+
+    // 2) 记录存在但文件已丢失 → 删记录
+    const rs2 = await this.store.querySql(
+      `SELECT id, path, thumbPath FROM ${Index.T_LOG_PHOTO}`, []
+    )
+    const missIds: Array<number> = []
+    while (rs2.goToNextRow()) {
+      const pid: number = rs2.getLong(0)
+      const p1: string = rs2.getString(1)
+      const p2: string = rs2.getString(2)
+      let missing: boolean = false
+      try { fs.accessSync(p1) } catch (_e1) { missing = true }
+      if (!missing) {
+        try { fs.accessSync(p2) } catch (_e2) { /* thumb 丢失也视为缺失 */ missing = true }
+      }
+      if (missing) { missIds.push(pid) }
+    }
+    rs2.close()
+
+    if (missIds.length > 0) {
+      await this.store.beginTransaction()
+      try {
+        let m: number = 0
+        while (m < missIds.length) {
+          const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('id', missIds[m])
+          await this.store.delete(pp)
+          delDbCount = delDbCount + 1
+          m = m + 1
+        }
+        await this.store.commit()
+      } catch (_e) {
+        await this.store.rollBack()
+      }
+    }
+
+    this.showBanner(`清理完成：删记录 ${delDbCount}，删文件 ${delFsCount}`, 'ok')
   }
 
   private async deleteTask(id: number): Promise<void> {
@@ -613,7 +1002,7 @@ struct Index {
       arr.push(new LogEntry(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getLong(3)))
     }
     rs.close()
-    this.logList = arr
+    this.logs = arr
   }
 
   private async createLog(plantId: number, note: string): Promise<void> {
@@ -642,74 +1031,134 @@ struct Index {
     this.showBanner('已删除日志', 'ok')
   }
 
+  // 收集一批日志的图片与缩略图路径（去重）
+  private async collectPhotoFilesByLogIds(logIds: Array<number>): Promise<Array<string>> {
+    const files: Array<string> = []
+    if (!this.store) { return files }
+    if (logIds.length === 0) { return files }
+
+    // 逐条取（兼容性最好；避免 IN 语法差异）
+    let i: number = 0
+    while (i < logIds.length) {
+      const rs = await this.store.querySql(
+        `SELECT filePath, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId = ?`,
+        [logIds[i]]
+      )
+      while (rs.goToNextRow()) {
+        const p1: string = rs.getString(0)
+        const p2: string = rs.getString(1)
+        if (p1 && p1.length > 0 && files.indexOf(p1) < 0) { files.push(p1) }
+        if (p2 && p2.length > 0 && files.indexOf(p2) < 0) { files.push(p2) }
+      }
+      rs.close()
+      i = i + 1
+    }
+    return files
+  }
+
   // 删除一条日志及其关联照片（含本地文件），并自动刷新当前植物的日志列表
   private async deleteLogAndPhotos(logId: number): Promise<void> {
     if (!this.store) { return }
 
-    // 1) 取该日志的 plantId（用于刷新）
-    let plantId: number = 0
-    {
-      const rs = await this.store.querySql(`SELECT plantId FROM ${Index.T_LOG} WHERE id=?`, [logId])
-      if (rs.goToNextRow()) { plantId = rs.getLong(0) }
-      rs.close()
-    }
-
-    // 2) 收集所有照片路径（优先 filePath，兼容老字段 path）
-    const paths: Array<string> = []
+    await this.store.beginTransaction()
     try {
-      const rs1 = await this.store.querySql(`SELECT filePath FROM ${Index.T_LOG_PHOTO} WHERE logId=?`, [logId])
-      while (rs1.goToNextRow()) {
-        const p: string = rs1.getString(0)
-        if (p.length > 0) { paths.push(p) }
+      // 取出文件路径
+      const rs = await this.store.querySql(
+        `SELECT filePath, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId = ? ORDER BY id ASC`, [logId]
+      )
+      const files: Array<string> = []
+      while (rs.goToNextRow()) {
+        const p1: string = rs.getString(0)
+        const p2: string = rs.getString(1)
+        if (p1 && p1.length > 0) { files.push(p1) }
+        if (p2 && p2.length > 0) { files.push(p2) }
       }
-      rs1.close()
-    } catch (_) {
-      // 兼容老列名 path（如你的历史库是 path/thumbPath）
-      try {
-        const rs2 = await this.store.querySql(`SELECT path FROM ${Index.T_LOG_PHOTO} WHERE logId=?`, [logId])
-        while (rs2.goToNextRow()) {
-          const p2: string = rs2.getString(0)
-          if (p2.length > 0) { paths.push(p2) }
-        }
-        rs2.close()
-      } catch (_) {}
+      rs.close()
+
+      // 删子表
+      const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+      pp.equalTo('logId', logId)
+      await this.store.delete(pp)
+
+      // 删日志
+      const pl = new relationalStore.RdbPredicates(Index.T_LOG)
+      pl.equalTo('id', logId)
+      await this.store.delete(pl)
+
+      await this.store.commit()
+
+      // 提交后再删本地文件（避免 I/O 失败导致事务无法提交）
+      let i: number = 0
+      while (i < files.length) {
+        try { await fs.unlink(files[i]) } catch (_e) {}
+        i = i + 1
+      }
+    } catch (e) {
+      await this.store.rollBack()
+      this.showBanner('删除日志失败，已回滚', 'warn')
     }
-
-    // 3) 先删图片表，再删日志表（确保外键语义顺序）
-    const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logId)
-    await this.store.delete(pp)
-
-    const pl = new relationalStore.RdbPredicates(Index.T_LOG); pl.equalTo('id', logId)
-    await this.store.delete(pl)
-
-    // 4) 删除本地文件（忽略不存在或权限错误）
-    let i: number = 0
-    while (i < paths.length) {
-      const uriOrPath: string = paths[i]
-      let realPath: string = uriOrPath
-      if (realPath.startsWith('file://')) { realPath = realPath.substring(7) }
-
-      let removed: number = 0
-      try {
-        await fs.unlink(realPath)
-        removed = 1
-      } catch (_) { /* 尝试用 FileAccess 助手按 URI 删除 */ }
-
-      // if (removed === 0) {
-      //   try {
-      //     const helper = fileAccess.createFileAccessHelper(this.ctx)
-      //     const uri: string = uriOrPath.startsWith('file://') ? uriOrPath : `file://${realPath}`
-      //     await helper.deleteFile(uri)
-      //   } catch (_) {}
-      // }
-      i = i + 1
-    }
-
-    // 5) 刷新 UI（若能定位到 plantId）
-    if (plantId !== 0) { await this.loadLogsByPlant(plantId) }
-    this.showBanner('已删除日志及照片', 'ok')
   }
 
+
+  private async deleteFileIfExists(pathOrUri: string): Promise<void> {
+    try {
+      // 统一为 file:// 前缀
+      const uri: string = this.ensureFileUri(pathOrUri)
+      // 去掉前缀拿到真实路径
+      const realPath: string = uri.startsWith('file://') ? uri.substring(7) : uri
+      // if (fs.accessSync(realPath) === 0) {
+      //   fs.unlinkSync(realPath)
+      // }
+    } catch (_e) {
+      // 忽略任何文件不存在/权限等异常，保证级联流程不中断
+    }
+  }
+
+  private async deleteLogsBatchTx(logIds: Array<number>): Promise<void> {
+    if (!this.store) { return }
+    if (logIds.length === 0) { return }
+
+    // 1) 预先收集所有文件路径（commit 后再删）
+    const fileList: Array<string> = await this.collectPhotoFilesByLogIds(logIds)
+
+    // 2) 事务删除：log_photo -> log
+    await this.store.beginTransaction()
+    let ok: boolean = false
+    try {
+      // 逐条删，保证兼容性（也可自行换成 IN 语句）
+      let i: number = 0
+      while (i < logIds.length) {
+        const pPhoto = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+        pPhoto.equalTo('logId', logIds[i])
+        await this.store.delete(pPhoto)
+
+        const pLog = new relationalStore.RdbPredicates(Index.T_LOG)
+        pLog.equalTo('id', logIds[i])
+        await this.store.delete(pLog)
+
+        i = i + 1
+      }
+      await this.store.commit()
+      ok = true
+    } catch (_e) {
+      await this.store.rollBack()
+      ok = false
+    }
+
+    // 3) 提交成功后再删文件（容错）
+    if (ok) {
+      let j: number = 0
+      while (j < fileList.length) {
+        try { await fs.unlink(fileList[j]) } catch (_e2) { /* 忽略删除失败 */ }
+        j = j + 1
+      }
+      // 4) 刷新界面（按你工程习惯选择刷新范围）
+      await this.reloadAll()
+      this.showBanner('已批量删除日志及照片', 'ok')
+    } else {
+      this.showBanner('批量删除失败，已回滚', 'warn')
+    }
+  }
 
   private async openLogSheetFor(plantId: number): Promise<void> {
     this.logPlantId = plantId
@@ -722,12 +1171,38 @@ struct Index {
   // 说明：这里先只加载日志列表；照片仍按你当前交互在选择某条日志后，调用 loadLogPhotos(logId) 单独加载。
   // 这样不会影响你把 logPhotos 用作“当前编辑日志照片”的语义。
   private async loadLogsWithPhotos(plantId: number): Promise<void> {
-    await this.loadLogsByPlant(plantId)
-    // 如果你希望预取最近一条日志的照片，可解开下面两行：
-    // if (this.logs.length > 0) {
-    //   await this.loadLogPhotos(this.logs[0].id)
-    // }
+    if (!this.store) { return }
+
+    // 1) 加载日志（新→旧）
+    const rs1 = await this.store.querySql(
+      `SELECT id, plantId, note, createdAt
+     FROM ${Index.T_LOG}
+     WHERE plantId = ?
+     ORDER BY createdAt DESC, id DESC`, [plantId]
+    )
+    const arrLogs: Array<LogEntry> = []
+    while (rs1.goToNextRow()) {
+      arrLogs.push(new LogEntry(rs1.getLong(0), rs1.getLong(1), rs1.getString(2), rs1.getLong(3)))
+    }
+    rs1.close()
+    this.logs = arrLogs
+
+    // 2) 加载该植物所有日志的照片（按照片 id 新→旧）
+    const rs2 = await this.store.querySql(
+      `SELECT p.id, p.logId, p.path, p.thumbPath, p.createdAt
+     FROM ${Index.T_LOG_PHOTO} p
+     JOIN ${Index.T_LOG} l ON p.logId = l.id
+     WHERE l.plantId = ?
+     ORDER BY p.id DESC`, [plantId]
+    )
+    const arrPhotos: Array<LogPhoto> = []
+    while (rs2.goToNextRow()) {
+      arrPhotos.push(new LogPhoto(rs2.getLong(0), rs2.getLong(1), rs2.getString(2), rs2.getString(3), rs2.getLong(4)))
+    }
+    rs2.close()
+    this.logPhotos = arrPhotos
   }
+
 
   // 2) 相册多选并保存到本地（复用你已有的选择/拷贝/入库逻辑）
   private async pickAndSavePhotos(logId: number): Promise<void> {
@@ -908,9 +1383,9 @@ struct Index {
               this.openPanel(p.id, p)
             },
             onOpenLogs: async (p: Plant) => {
-              this.logPlantId = p.id; this.logPlantName = p.name; this.logInputText = ''
+              this.logPlantId = p.id; this.logPlantName = p.name; this.logInput = ''
               await this.loadLogsByPlant(p.id)
-              this.logVisible = true
+              this.logSheetVisible = true
             },
             onDeleteAsk: (pid: number) => {
               this.pendingDeletePlantId = pid;
@@ -928,7 +1403,8 @@ struct Index {
               this.carePlantName = p.name
               this.careVisible = true
             },
-            Header: ()=>{this.Header()}
+            onOpenMetric: async (pid: number) => { await this.openMetricChart(pid) },
+            Header: ()=>{this.Header()},
           })
         }.tabBar(this.TabChip('植物', 0))
         TabContent(){
@@ -979,14 +1455,6 @@ struct Index {
         this.tabBarIndex = index;
       })
 
-      // 内容
-
-      // FAButton
-      // if (this.tabBarIndex === 0) {
-      //   this.Fab(() => {
-      //     this.openPanel(0)
-      //   })
-      // }
 
       // Banner
       if (this.bannerMsg.length > 0) {
@@ -1007,7 +1475,7 @@ struct Index {
       }
 
       // —— 日志抽屉 ——（使用你已有的 PlantLogSheet）
-      if (this.logVisible) {
+      if (this.logSheetVisible) {
         PlantLogSheet({
           plantName: this.currentPlantName,
           logs: this.logs,                  // ← 你已有的日志数组
@@ -1021,11 +1489,9 @@ struct Index {
           },
           onDeleteLog: async (logId: number) => {
             if (!this.store) { return }
-            const p = new relationalStore.RdbPredicates(Index.T_LOG); p.equalTo('id', logId)
-            await this.store.delete(p)
-            const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logId)
-            await this.store.delete(pp)
-            await this.loadLogsWithPhotos(this.logPlantId)
+            await this.deleteLogAndPhotos(logId)
+            await this.loadLogsWithPhotos(this.logPlantId) // 按你工程里的当前 plant 状态刷新
+            this.showBanner('已删除日志与照片', 'ok')
           },
           onBatchDeleteLogs: async (ids: Array<number>) => {
             if (!this.store) { return }
@@ -1053,6 +1519,15 @@ struct Index {
             await this.store.delete(p)
             await this.deleteLogAndPhotos(pid)
             await this.loadLogsWithPhotos(this.logPlantId)
+          },
+          onDelete: async (lid: number) => { await this.deleteLogAndPhotos(lid) },
+          onBatchDelete: async (ids: Array<number>) => {
+            // let i: number = 0
+            // while (i < ids.length) { await this.deleteLogAndPhotos(ids[i]); i = i + 1 }
+            await this.bulkDeleteLogsTx(ids)
+          },
+          onPreviewPhoto: (fp: string) => {
+            // this.openPhotoPreview(this.editingLogIdForPhotos, this.logPhotos, fp)
           },
           onClose: () => { this.logSheetVisible = false }
         })
@@ -1100,6 +1575,14 @@ struct Index {
         })
       }
 
+      if (this.metricChartVisible) {
+        MetricChartSheet({
+          plantName: this.metricChartPlantName,
+          metrics: this.metricChartData,
+          onClose: () => { this.metricChartVisible = false }
+        })
+      }
+
       // 删除确认
       if (this.confirmVisible) {
         ConfirmDialogSheet({
@@ -1116,6 +1599,26 @@ struct Index {
             }
             this.confirmVisible = false
           }
+        })
+      }
+
+      if (this.photoPreviewVisible) {
+        PhotoPreviewSheet({
+          files: this.previewFiles,
+          startIndex: this.previewIndex,
+          onDelete: async (idx: number) => {
+            if (idx >= 0 && idx < this.previewFiles.length) {
+              const target: string = this.previewFiles[idx]
+              await this.deletePhotoByFilePath(target)
+              // 预览收尾：若删到没图了则关闭；否则保持当前下标合理
+              if (this.previewFiles.length === 0) {
+                this.photoPreviewVisible = false
+              } else {
+                if (idx >= this.previewFiles.length) { this.previewIndex = this.previewFiles.length - 1 } else { this.previewIndex = idx }
+              }
+            }
+          },
+          onClose: () => { this.photoPreviewVisible = false }
         })
       }
 
@@ -1247,49 +1750,49 @@ struct Index {
   }
 
 
-  private filteredTasks(): Array<PlantTask> {
-    const out: Array<PlantTask> = []
-    const f = this.taskFilter
-    const kw = f.keyword.trim().toLowerCase()
-
-    let i: number = 0
-    while (i < this.tasks.length) {
-      const t = this.tasks[i]
-      // 状态
-      if (f.status === 'done' && t.done !== 1) { i = i + 1; continue }
-      if (f.status === 'undone' && t.done !== 0) { i = i + 1; continue }
-      // 类型
-      if (t.type === '浇水' && !f.typeWater) { i = i + 1; continue }
-      if (t.type === '施肥' && !f.typeFertilize) { i = i + 1; continue }
-      if (t.type === '修剪' && !f.typePrune) { i = i + 1; continue }
-      // 日期范围
-      if (f.dateFromISO.length === 10 && t.planDate < f.dateFromISO) { i = i + 1; continue }
-      if (f.dateToISO.length === 10 && t.planDate > f.dateToISO) { i = i + 1; continue }
-      // 关键词（植物名 / 类型）
-      if (kw.length > 0) {
-        const pn = this.plantNameById(t.plantId).toLowerCase()
-        const hit = pn.indexOf(kw) >= 0 || t.type.toLowerCase().indexOf(kw) >= 0
-        if (!hit) { i = i + 1; continue }
-      }
-      out.push(t)
-      i = i + 1
-    }
-
-    // 排序
-    out.sort((a: PlantTask, b: PlantTask) => {
-      if (f.sortKey === 'date') {
-        return f.sortAsc ? this.cmpStr(a.planDate, b.planDate) : this.cmpStr(b.planDate, a.planDate)
-      }
-      if (f.sortKey === 'type') {
-        return f.sortAsc ? this.cmpStr(a.type, b.type) : this.cmpStr(b.type, a.type)
-      }
-      // plant
-      const pa = this.plantNameById(a.plantId)
-      const pb = this.plantNameById(b.plantId)
-      return f.sortAsc ? this.cmpStr(pa, pb) : this.cmpStr(pb, pa)
-    })
-    return out
-  }
+  // private filteredTasks(): Array<PlantTask> {
+  //   const out: Array<PlantTask> = []
+  //   const f = this.taskFilter
+  //   const kw = f.keyword.trim().toLowerCase()
+  //
+  //   let i: number = 0
+  //   while (i < this.tasks.length) {
+  //     const t = this.tasks[i]
+  //     // 状态
+  //     if (f.status === 'done' && t.done !== 1) { i = i + 1; continue }
+  //     if (f.status === 'undone' && t.done !== 0) { i = i + 1; continue }
+  //     // 类型
+  //     if (t.type === '浇水' && !f.typeWater) { i = i + 1; continue }
+  //     if (t.type === '施肥' && !f.typeFertilize) { i = i + 1; continue }
+  //     if (t.type === '修剪' && !f.typePrune) { i = i + 1; continue }
+  //     // 日期范围
+  //     if (f.dateFromISO.length === 10 && t.planDate < f.dateFromISO) { i = i + 1; continue }
+  //     if (f.dateToISO.length === 10 && t.planDate > f.dateToISO) { i = i + 1; continue }
+  //     // 关键词（植物名 / 类型）
+  //     if (kw.length > 0) {
+  //       const pn = this.plantNameById(t.plantId).toLowerCase()
+  //       const hit = pn.indexOf(kw) >= 0 || t.type.toLowerCase().indexOf(kw) >= 0
+  //       if (!hit) { i = i + 1; continue }
+  //     }
+  //     out.push(t)
+  //     i = i + 1
+  //   }
+  //
+  //   // 排序
+  //   out.sort((a: PlantTask, b: PlantTask) => {
+  //     if (f.sortKey === 'date') {
+  //       return f.sortAsc ? this.cmpStr(a.planDate, b.planDate) : this.cmpStr(b.planDate, a.planDate)
+  //     }
+  //     if (f.sortKey === 'type') {
+  //       return f.sortAsc ? this.cmpStr(a.type, b.type) : this.cmpStr(b.type, a.type)
+  //     }
+  //     // plant
+  //     const pa = this.plantNameById(a.plantId)
+  //     const pb = this.plantNameById(b.plantId)
+  //     return f.sortAsc ? this.cmpStr(pa, pb) : this.cmpStr(pb, pa)
+  //   })
+  //   return out
+  // }
 
   // 字符串比较（避免 locale 差异）
   cmpStr(x: string, y: string): number {
@@ -1298,11 +1801,11 @@ struct Index {
     return 0
   }
 
-  private plantNameById(id: number): string {
-    let i: number = 0
-    while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name } i = i + 1 }
-    return ''
-  }
+  // private plantNameById(id: number): string {
+  //   let i: number = 0
+  //   while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name } i = i + 1 }
+  //   return ''
+  // }
   /** ---- Header / TabChip / Fab / Banner（保持与你现有实现一致） ---- */
   @Builder
   Header() {
@@ -1311,6 +1814,11 @@ struct Index {
         Row() {
           Text('PlantDiary 植物养护').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
+          Text('清理日志/照片孤儿')
+            .fontSize(12).fontColor(0xFF1565C0)
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+            .borderRadius(12).backgroundColor(0x102196F3)
+            .onClick(async () => { await this.cleanupOrphanPhotos() })
           // Text(this.initialized ? '离线 · 本地数据库' : '初始化中…').fontSize(12).fontColor(0x80263238)
         }.width('100%')
         .justifyContent(FlexAlign.Start)

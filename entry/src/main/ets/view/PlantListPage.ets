@@ -12,10 +12,13 @@ export struct PlantListPage {
   @Event onOpenTemplate: (p: Plant) => void
   @Event onOpenLogs: (p: Plant) => void
   @Event onOpenMetrics: (p: Plant) => void
+
+  @Event onOpenMetric: (plantId: number) => void
   // —— 新增本地状态：筛选与排序 —— //
   @Local selectedSpecies: string = '全部'
   @Local sortKey: number = 0;
   @BuilderParam Header?:()=>void
+
 
   private plantTaskDone(plantId: number): number {
     let i: number = 0;
@@ -167,7 +170,8 @@ export struct PlantListPage {
                 },
                 onOpenLogs: () => { this.onOpenLogs(p) },
                 onOpenMetrics: () => { this.onOpenMetrics(p) },
-                onOpenTemplate: () => { this.onOpenTemplate(p) }  // ← 新增透传
+                onOpenTemplate: () => { this.onOpenTemplate(p) },  // ← 新增透传
+                onOpenMetric: () => { this.onOpenMetric(p.id) }
               })
             }
           }, (p: Plant) => p.id.toString())

@@ -2,6 +2,8 @@ import { Plant, PlantTask } from '../model/PlantModel'
 import { CalendarGrid } from './CalendarGrid'
 import { PlantTaskFilter } from './PlantTaskFilterSheet'
 import { TaskItem } from './TaskItem'
+import { CareFilterSheet } from './CareFilterSheet'
+import { DayTaskSheet } from './DayTaskSheet'
 
 @ComponentV2
 export struct TaskListPage {
@@ -9,6 +11,7 @@ export struct TaskListPage {
   @Param @Require plants: Array<Plant>
   @Event onToggle: (t: PlantTask) => void
   @Event onDeleteAsk: (taskId: number) => void
+  @Event onCreateTask: (plantId: number, type: string, dateISO: string) => void
   // 已有
   @Local viewMode: number = 0 // 0 列表 1 日历
   @Local currentMonthISO: string = '' // YYYY-MM
@@ -18,6 +21,19 @@ export struct TaskListPage {
   @Local keyword: string = '' // 关键字：匹配“任务类型/植物名”
 
 
+  @Local filterVisible: boolean = false;
+  @Local filterStatus: number = 0
+  @Local filterType: string = ''
+  @Local filterFrom: string = ''
+  @Local filterTo: string = ''
+  @Local filterKeyword: string = ''
+
+  @Local sortKey: string = 'data'
+  @Local sortAsc: boolean = false
+
+  @Local daySheetVisible: boolean = false
+  @Local selectedDateISO: string = ''
+
 
   aboutToAppear(): void {
     if (this.currentMonthISO.length === 0) {
@@ -26,6 +42,17 @@ export struct TaskListPage {
       const m = (d.getMonth() + 1).toString().padStart(2, '0')
       this.currentMonthISO = `${y}-${m}`
     }
+  }
+
+  private tasksOfDate(dateISO: string): Array<PlantTask> {
+    const src: Array<PlantTask> = this.filteredTasks() // 已有方法，保持与列表筛选一致
+    const out: Array<PlantTask> = []
+    let i: number = 0
+    while (i < src.length) {
+      if (src[i].planDate === dateISO) { out.push(src[i]) }
+      i = i + 1
+    }
+    return out
   }
 
   // —— 计算工具（非 Builder） —— //
@@ -142,11 +169,60 @@ export struct TaskListPage {
     Column() {
       // 顶部：视图模式切换
       Row() {
+        Text('筛选/排序')
+          .fontSize(12).fontColor(0xFF1565C0)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          .borderRadius(12).backgroundColor(0x102196F3)
+          .onClick(() => { this.filterVisible = true })
+        // 当前激活的筛选提示
+        if (this.filterStatus !== 0 || this.filterType.length > 0 || this.filterFrom.length > 0 || this.filterTo.length > 0 || this.filterKeyword.length > 0) {
+          Text('已应用条件').fontSize(10).fontColor(0xFF2E7D32)
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+            .borderRadius(12).backgroundColor(0x102E7D32).margin({ left: 8 })
+        }
+      }
+      .padding({ left: 16, right: 16, top: 6, bottom: 2 })
+      Row() {
         this.ModeChip('列表', 0)
         this.ModeChip('日历', 1)
       }
       .justifyContent(FlexAlign.Center)
       .padding({ top: 6, bottom: 6 })
+
+      if (this.filterVisible) {
+        CareFilterSheet({
+          status: this.filterStatus,
+          typeValue: this.filterType,
+          fromDate: this.filterFrom,
+          toDate: this.filterTo,
+          keyword: this.filterKeyword,
+          sortKey: this.sortKey,
+          sortAsc: this.sortAsc,
+          onChangeStatus: (v: number) => { this.filterStatus = v },
+          onChangeType: (v: string) => { this.filterType = v },
+          onChangeFrom: (v: string) => { this.filterFrom = v },
+          onChangeTo: (v: string) => { this.filterTo = v },
+          onChangeKeyword: (v: string) => { this.filterKeyword = v },
+          onChangeSortKey: (k: string) => { this.sortKey = k },
+          onToggleAsc: () => { this.sortAsc = !this.sortAsc },
+          onReset: () => {
+            this.filterStatus = 0; this.filterType = ''; this.filterFrom = ''; this.filterTo = ''; this.filterKeyword = ''; this.sortKey = 'date'; this.sortAsc = false
+          },
+          onClose: () => { this.filterVisible = false }
+        })
+      }
+
+      if (this.daySheetVisible) {
+        DayTaskSheet({
+          dateISO: this.selectedDateISO,
+          tasks: this.tasksOfDate(this.selectedDateISO),
+          plants: this.plants,
+          onToggle: (t: PlantTask) => { this.onToggle(t) },
+          onDeleteAsk: (id: number) => { this.onDeleteAsk(id) },
+          onQuickAdd: (plantId: number, type: string, dateISO: string) => { this.onCreateTask(plantId, type, dateISO) },
+          onClose: () => { this.daySheetVisible = false }
+        })
+      }
 
       if (this.viewMode === 0) {
         // —— 新增：筛选条 + 搜索 —— //
@@ -224,18 +300,14 @@ export struct TaskListPage {
           monthISO: this.currentMonthISO,
           tasks: this.tasks,
           plants: this.plants,
-          onPrev: () => {
-            this.changeMonth(-1)
-          },
-          onNext: () => {
-            this.changeMonth(1)
-          },
-          onToggle: (t: PlantTask) => {
-            this.onToggle(t)
-          },
-          onDeleteAsk: (id: number) => {
-            this.onDeleteAsk(id)
-          }
+          allItems: this.tasks,                 // 传入 PlantTask 列表
+          filterStatus: this.filterStatus,      // 传入当前筛选
+          filterType: this.filterType,
+          onSelectDate: (iso: string) => { this.selectedDateISO = iso; this.daySheetVisible = true },
+          onPrev: () => {this.changeMonth(-1)},
+          onNext: () => {this.changeMonth(1)},
+          onToggle: (t: PlantTask) => {this.onToggle(t)},
+          onDeleteAsk: (id: number) => {this.onDeleteAsk(id)}
         })
       }
     }
