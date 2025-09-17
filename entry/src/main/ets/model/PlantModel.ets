@@ -138,4 +138,8 @@ class PlantMetric {
   }
 }
 
+/** 简单模型（与 DB 字段一致即可） */
+export interface CareTemplate { id: number; name: string; desc: string }
+export interface CareRule { id: number; templateId: number; type: string; intervalDays: number; horizonDays: number }
+
 //

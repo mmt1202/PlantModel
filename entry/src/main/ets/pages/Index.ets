@@ -1,7 +1,9 @@
 // entry/src/main/ets/pages/Index.ets
 import common from '@ohos.app.ability.common'
 import relationalStore from '@ohos.data.relationalStore'
-import { LogEntry, Metric, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
+import {
+  CareRule,
+  CareTemplate, LogEntry, Metric, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
 import { CalendarSheet } from '../view/CalendarView'
 import { CareTemplateSheet } from '../view/CareTemplateSheet'
 import { ConfirmDialogSheet } from '../view/ConfirmDialogSheet'
@@ -20,6 +22,9 @@ import fs from '@ohos.file.fs'
 import fileAccess from '@ohos.file.fileAccess'
 import { PhotoPreviewSheet } from '../view/PhotoPreviewSheet'
 import { MetricChartSheet } from '../view/MetricChartSheet'
+import { runInTransaction } from '../model/DbUtils'
+import { TaskStatsSheet } from '../view/TaskStatsSheet'
+import { TemplateApplySheet } from '../view/TemplateApplySheet'
 
 /** -------- 入口页面（V2） -------- */
 @Entry
@@ -37,6 +42,8 @@ struct Index {
   private static readonly T_LOG: string = 'log' // ← 新增：日志表
   private static readonly T_METRIC: string = 'metric'
   private static readonly T_LOG_PHOTO: string = 'log_photo'
+  private static readonly T_TEMPLATE: string = 'care_template'
+  private static readonly T_RULE: string = 'care_rule'
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -124,6 +131,14 @@ struct Index {
   @Local metricChartPlantName: string = ''
   @Local metricChartData: Array<Metric> = []
 
+  @Local taskStatsVisible: boolean = false
+
+  @Local tplVisible: boolean = false
+  @Local tplTargetPlantId: number = 0
+  @Local tplTargetPlantName: string = ''
+  @Local tplList: Array<CareTemplate> = []
+  @Local ruleList: Array<CareRule> = []
+
   // @Local logPhotos: Array<LogPhoto> = []
 
   /** ---- 生命周期 ---- */
@@ -196,6 +211,22 @@ struct Index {
         thumbPath TEXT NOT NULL,
         createdAt INTEGER NOT NULL
       )`)
+    await this.store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${Index.T_TEMPLATE}(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    desc TEXT
+  )`
+    )
+    await this.store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${Index.T_RULE}(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    templateId INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    intervalDays INTEGER NOT NULL,
+    horizonDays INTEGER NOT NULL
+  )`
+    )
     // ===== TASK（任务）=====
     // 唯一：同一植物 + 类型 + 计划日 不重复
     await this.store.executeSql(
@@ -233,9 +264,48 @@ struct Index {
    ON ${Index.T_METRIC}(plantId, createdAt)`
     )
 
-
+    await this.ensureCareTemplates()
     await this.reloadAll()
     await this.loadTemplates()
+  }
+  // 启动一次性初始化 5 个模板（存在即跳过）
+  private async ensureCareTemplates(): Promise<void> {
+    if (!this.store) { return }
+    const rs = await this.store.querySql(`SELECT COUNT(1) FROM ${Index.T_TEMPLATE}`, [])
+    let count: number = 0
+    if (rs.goToNextRow()) { count = rs.getLong(0) }
+    rs.close()
+    if (count > 0) { return }
+
+    // 插入模板
+    const idSucc: number = await this.store.insert(Index.T_TEMPLATE, { name: '多肉', desc: '耐旱，少浇' })
+    const idMon: number  = await this.store.insert(Index.T_TEMPLATE, { name: '龟背竹', desc: '喜湿散光' })
+    const idRose: number = await this.store.insert(Index.T_TEMPLATE, { name: '月季', desc: '勤花，需修剪' })
+    const idPoth: number = await this.store.insert(Index.T_TEMPLATE, { name: '绿萝', desc: '易养，见光' })
+    const idIvy: number  = await this.store.insert(Index.T_TEMPLATE, { name: '常春藤', desc: '通风散光' })
+
+    // 规则：type, intervalDays, horizonDays(生成周期)
+    // 多肉：浇水 14 天，施肥 45 天
+    await this.store.insert(Index.T_RULE, { templateId: idSucc, type: '浇水', intervalDays: 14, horizonDays: 90 })
+    await this.store.insert(Index.T_RULE, { templateId: idSucc, type: '施肥', intervalDays: 45, horizonDays: 90 })
+
+    // 龟背竹：浇水 7，施肥 30，修剪 60
+    await this.store.insert(Index.T_RULE, { templateId: idMon, type: '浇水', intervalDays: 7, horizonDays: 90 })
+    await this.store.insert(Index.T_RULE, { templateId: idMon, type: '施肥', intervalDays: 30, horizonDays: 120 })
+    await this.store.insert(Index.T_RULE, { templateId: idMon, type: '修剪', intervalDays: 60, horizonDays: 180 })
+
+    // 月季：浇水 3，施肥 14，修剪 30
+    await this.store.insert(Index.T_RULE, { templateId: idRose, type: '浇水', intervalDays: 3, horizonDays: 60 })
+    await this.store.insert(Index.T_RULE, { templateId: idRose, type: '施肥', intervalDays: 14, horizonDays: 90 })
+    await this.store.insert(Index.T_RULE, { templateId: idRose, type: '修剪', intervalDays: 30, horizonDays: 120 })
+
+    // 绿萝：浇水 5，施肥 30
+    await this.store.insert(Index.T_RULE, { templateId: idPoth, type: '浇水', intervalDays: 5, horizonDays: 90 })
+    await this.store.insert(Index.T_RULE, { templateId: idPoth, type: '施肥', intervalDays: 30, horizonDays: 120 })
+
+    // 常春藤：浇水 7，施肥 30
+    await this.store.insert(Index.T_RULE, { templateId: idIvy, type: '浇水', intervalDays: 7, horizonDays: 90 })
+    await this.store.insert(Index.T_RULE, { templateId: idIvy, type: '施肥', intervalDays: 30, horizonDays: 120 })
   }
 
   private async reloadAll(): Promise<void> {
@@ -637,43 +707,71 @@ struct Index {
   private async deletePlant(id: number): Promise<void> {
     if (!this.store) { return }
 
-    try {
-      await this.store.beginTransaction()
-
-      // 先级联清理日志与照片文件
+    // 1) 找出该植物的所有日志ID
+    const logIds: Array<number> = []
+    {
       const rs = await this.store.querySql(
         `SELECT id FROM ${Index.T_LOG} WHERE plantId = ? ORDER BY id ASC`, [id]
       )
-      const logIds: Array<number> = []
       while (rs.goToNextRow()) { logIds.push(rs.getLong(0)) }
       rs.close()
+    }
 
-      let i: number = 0
-      while (i < logIds.length) {
-        await this.deleteLogAndPhotos(logIds[i])  // 内部也会删子表
-        i = i + 1
+    // 2) 批量查出这些日志关联的所有图片路径（一次性）
+    const allFiles: Array<string> = []
+    if (logIds.length > 0) {
+      const placeholders: string = Array(logIds.length).fill('?').join(',')
+      const rs2 = await this.store.querySql(
+        `SELECT filePath, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId IN (${placeholders}) ORDER BY id ASC`,
+        logIds as Array<number>
+      )
+      while (rs2.goToNextRow()) {
+        const p1: string = rs2.getString(0)
+        const p2: string = rs2.getString(1)
+        if (p1 && p1.length > 0) { allFiles.push(p1) }
+        if (p2 && p2.length > 0) { allFiles.push(p2) }
+      }
+      rs2.close()
+    }
+
+    // 3) —— 单个事务内完成所有“表数据”删除 —— //
+    await runInTransaction(this.store, async () => {
+      // 3.1 删日志照片子表
+      if (logIds.length > 0) {
+        const placeholders: string = Array(logIds.length).fill('?').join(',')
+        await this.store!.executeSql(
+          `DELETE FROM ${Index.T_LOG_PHOTO} WHERE logId IN (${placeholders})`,
+          logIds as Array<number>
+        )
       }
 
-      // 删任务
-      const pt = new relationalStore.RdbPredicates(Index.T_TASK)
-      pt.equalTo('plantId', id)
-      await this.store.delete(pt)
+      // 3.2 删日志表
+      const pLog = new relationalStore.RdbPredicates(Index.T_LOG)
+      pLog.equalTo('plantId', id)
+      await this.store!.delete(pLog)
 
-      // 删植物
-      const pp = new relationalStore.RdbPredicates(Index.T_PLANT)
-      pp.equalTo('id', id)
-      await this.store.delete(pp)
+      // 3.3 删任务表
+      const pTask = new relationalStore.RdbPredicates(Index.T_TASK)
+      pTask.equalTo('plantId', id)
+      await this.store!.delete(pTask)
 
-      await this.store.commit()
-    } catch (e) {
-      await this.store.rollBack()
-      this.showBanner('删除失败，已回滚', 'warn')
-      return
+      // 3.4 删植物表
+      const pPlant = new relationalStore.RdbPredicates(Index.T_PLANT)
+      pPlant.equalTo('id', id)
+      await this.store!.delete(pPlant)
+    })
+
+    // 4) 事务提交成功后，统一删除所有本地图片文件
+    let i: number = 0
+    while (i < allFiles.length) {
+      try { await fs.unlink(allFiles[i]) } catch (_e) { /* 忽略单文件错误 */ }
+      i = i + 1
     }
 
     await this.reloadAll()
-    this.showBanner('已删除植物及其任务/日志/照片', 'ok')
+    this.showBanner('已删除植物及其任务、日志与照片', 'ok')
   }
+
 
 
   /** ---- 任务 CRUD ---- */
@@ -1075,22 +1173,21 @@ struct Index {
       }
       rs.close()
 
-      // 删子表
-      const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
-      pp.equalTo('logId', logId)
-      await this.store.delete(pp)
+      // —— 事务：先删子表，再删日志表 —— //
+      await runInTransaction(this.store, async () => {
+        const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+        pp.equalTo('logId', logId)
+        await this.store!.delete(pp)
 
-      // 删日志
-      const pl = new relationalStore.RdbPredicates(Index.T_LOG)
-      pl.equalTo('id', logId)
-      await this.store.delete(pl)
+        const pl = new relationalStore.RdbPredicates(Index.T_LOG)
+        pl.equalTo('id', logId)
+        await this.store!.delete(pl)
+      })
 
-      await this.store.commit()
-
-      // 提交后再删本地文件（避免 I/O 失败导致事务无法提交）
+      // —— 事务提交成功后，再删本地文件（即便个别失败也不影响数据库一致性） —— //
       let i: number = 0
       while (i < files.length) {
-        try { await fs.unlink(files[i]) } catch (_e) {}
+        try { await fs.unlink(files[i]) } catch (_e) { /* 忽略单文件错误 */ }
         i = i + 1
       }
     } catch (e) {
@@ -1322,6 +1419,80 @@ struct Index {
     return cnt
   }
 
+  private openTaskStats(): void {
+    this.taskStatsVisible = true
+  }
+
+  private two(n: number): string { const s: string = n.toString(); if (s.length === 1) { return '0' + s }; return s }
+  private addDays(iso: string, delta: number): string {
+    const ps: Array<string> = iso.split('-')
+    const d = new Date(parseInt(ps[0]), parseInt(ps[1]) - 1, parseInt(ps[2])); d.setDate(d.getDate() + delta)
+    return `${d.getFullYear()}-${this.two(d.getMonth() + 1)}-${this.two(d.getDate())}`
+  }
+
+  private async loadCareTemplateData(): Promise<void> {
+    if (!this.store) { return }
+    // templates
+    const r1 = await this.store.querySql(`SELECT id,name,desc FROM ${Index.T_TEMPLATE} ORDER BY id ASC`, [])
+    const ts: Array<CareTemplate> = []
+    while (r1.goToNextRow()) { ts.push({ id: r1.getLong(0), name: r1.getString(1), desc: r1.getString(2) ?? '' }) }
+    r1.close()
+    this.tplList = ts
+    // rules
+    const r2 = await this.store.querySql(`SELECT id,templateId,type,intervalDays,horizonDays FROM ${Index.T_RULE} ORDER BY templateId ASC,id ASC`, [])
+    const rs: Array<CareRule> = []
+    while (r2.goToNextRow()) {
+      rs.push({ id: r2.getLong(0), templateId: r2.getLong(1), type: r2.getString(2), intervalDays: r2.getLong(3), horizonDays: r2.getLong(4) })
+    }
+    r2.close()
+    this.ruleList = rs
+  }
+
+  private openTemplateSheet(plantId: number): void {
+    this.tplTargetPlantId = plantId
+    this.tplTargetPlantName = this.plants.find(p => p.id === plantId)?.name ?? ''
+    this.tplVisible = true
+  }
+
+  // 事务落库：根据 templateId + startISO 生成任务，命中唯一索引自动跳过
+  private async applyTemplateToPlant(templateId: number, startISO: string): Promise<void> {
+    if (!this.store) { return }
+    await this.store.beginTransaction()
+    let inserted: number = 0
+    let skipped: number = 0
+
+    // 拿该模板的规则
+    let i: number = 0
+    while (i < this.ruleList.length) {
+      const r: CareRule = this.ruleList[i]
+      if (r.templateId === templateId) {
+        let day: number = 0
+        while (day <= r.horizonDays) {
+          const plan: string = this.addDays(startISO, day)
+          try {
+            await this.store.insert(Index.T_TASK, {
+              plantId: this.tplTargetPlantId,
+              type: r.type,
+              planDate: plan,
+              done: 0,
+              doneAt: 0
+            })
+            inserted = inserted + 1
+          } catch (_e) {
+            // 命中唯一索引（plantId+type+planDate）→ 跳过
+            skipped = skipped + 1
+          }
+          day = day + r.intervalDays
+        }
+      }
+      i = i + 1
+    }
+
+    await this.store.commit()
+    await this.loadTasks()
+    this.showBanner(`模板复制完成：新增 ${inserted} 条，跳过 ${skipped} 条`, 'ok')
+  }
+
   /** ---- 下拉刷新头手势 ---- */
   private onHeaderTouch(e: TouchEvent): void {
     if (e.type === TouchType.Down) {
@@ -1402,6 +1573,11 @@ struct Index {
               this.carePlantId = p.id
               this.carePlantName = p.name
               this.careVisible = true
+
+            },
+            onOpenTemplatenew: async (pid: number) => {
+              await this.loadCareTemplateData()
+              this.openTemplateSheet(pid)
             },
             onOpenMetric: async (pid: number) => { await this.openMetricChart(pid) },
             Header: ()=>{this.Header()},
@@ -1444,9 +1620,10 @@ struct Index {
         }.tabBar(this.TabChip('日历', 3))
         TabContent(){
           StatsPage({
-            plantCount: this.plants.length,
-            taskCount: this.tasks.length,
-            doneCount: this.statDoneCount()
+            plants: this.plants,
+            tasks: this.tasks,
+          }).onClick(()=>{
+            // this.openTaskStats()
           })
         }.tabBar(this.TabChip('统计', 4))
 
@@ -1725,6 +1902,27 @@ struct Index {
         //     this.logSheetVisible = false
         //   }
         // })
+      }
+
+      if (this.taskStatsVisible) {
+        TaskStatsSheet({
+          items: this.tasks,           // 你也可以传 this.filteredTasks()
+          onClose: () => { this.taskStatsVisible = false }
+        })
+      }
+
+      if (this.tplVisible) {
+        TemplateApplySheet({
+          plantId: this.tplTargetPlantId,
+          plantName: this.tplTargetPlantName,
+          templates: this.tplList,
+          rules: this.ruleList,
+          onApply: async (tid: number, startISO: string) => {
+            await this.applyTemplateToPlant(tid, startISO)
+            this.tplVisible = false
+          },
+          onClose: () => { this.tplVisible = false }
+        })
       }
     }
     .width('100%').height('100%')

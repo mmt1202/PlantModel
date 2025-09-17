@@ -10,6 +10,7 @@ export struct PlantListPage {
   @Event onEdit: (p: Plant) => void
   @Event onDeleteAsk: (plantId: number) => void
   @Event onOpenTemplate: (p: Plant) => void
+  @Event onOpenTemplatenew: (pid: number) => void
   @Event onOpenLogs: (p: Plant) => void
   @Event onOpenMetrics: (p: Plant) => void
 
@@ -170,7 +171,8 @@ export struct PlantListPage {
                 },
                 onOpenLogs: () => { this.onOpenLogs(p) },
                 onOpenMetrics: () => { this.onOpenMetrics(p) },
-                onOpenTemplate: () => { this.onOpenTemplate(p) },  // ← 新增透传
+                onOpenTemplate: () => { this.onOpenTemplate(p) },
+                onOpenTemplatenew: (pid:number) => { this.onOpenTemplatenew(pid) }, // ← 新增透传
                 onOpenMetric: () => { this.onOpenMetric(p.id) }
               })
             }

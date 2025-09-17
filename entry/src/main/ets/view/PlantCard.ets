@@ -13,7 +13,9 @@ export  struct PlantCard {
   @Event onOpenLogs: () => void
   @Event onOpenMetrics: () => void
   @Event onOpenTemplate: () => void  // ← 新增
+  @Event onOpenTemplatenew: (pid: number) => void
   @Event onOpenMetric: (plantId: number) => void
+
 
   @Local pressed: boolean = false
 
@@ -57,6 +59,11 @@ export  struct PlantCard {
           Text('模板').fontSize(12).fontColor(0xFF8E24AA)
             .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
             .onClick(() => { this.onOpenTemplate() })
+            .margin({ right: 8 })
+
+          Text('新模板').fontSize(12).fontColor(0xFF8E24AA)
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
+            .onClick(() => { this.onOpenTemplatenew(this.p.id) })
             .margin({ right: 8 })
 
           Text('✏️').fontSize(16).onClick(() => { this.onEdit() }).margin({ right: 8 })
