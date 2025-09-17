@@ -9,7 +9,7 @@ import { DayTaskSheet } from './DayTaskSheet'
 export struct TaskListPage {
   @Param @Require tasks: Array<PlantTask>
   @Param @Require plants: Array<Plant>
-  @Event onToggle: (t: PlantTask) => void
+  @Event onToggle: (pt: PlantTask) => void
   @Event onDeleteAsk: (taskId: number) => void
   @Event onCreateTask: (plantId: number, type: string, dateISO: string) => void
   // 已有
@@ -168,27 +168,104 @@ export struct TaskListPage {
   build() {
     Column() {
       // 顶部：视图模式切换
-      Row() {
-        Text('筛选/排序')
-          .fontSize(12).fontColor(0xFF1565C0)
-          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-          .borderRadius(12).backgroundColor(0x102196F3)
-          .onClick(() => { this.filterVisible = true })
-        // 当前激活的筛选提示
-        if (this.filterStatus !== 0 || this.filterType.length > 0 || this.filterFrom.length > 0 || this.filterTo.length > 0 || this.filterKeyword.length > 0) {
-          Text('已应用条件').fontSize(10).fontColor(0xFF2E7D32)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .borderRadius(12).backgroundColor(0x102E7D32).margin({ left: 8 })
+      // Row() {
+      //   Text('筛选/排序')
+      //     .fontSize(12).fontColor(0xFF1565C0)
+      //     .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+      //     .borderRadius(12).backgroundColor(0x102196F3)
+      //     .onClick(() => { this.filterVisible = true })
+      //   // 当前激活的筛选提示
+      //   if (this.filterStatus !== 0 || this.filterType.length > 0 || this.filterFrom.length > 0 || this.filterTo.length > 0 || this.filterKeyword.length > 0) {
+      //     Text('已应用条件').fontSize(10).fontColor(0xFF2E7D32)
+      //       .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+      //       .borderRadius(12).backgroundColor(0x102E7D32).margin({ left: 8 })
+      //   }
+      // }
+      // .padding({ left: 16, right: 16, top: 6, bottom: 2 })
+      // Row() {
+      //   this.ModeChip('列表', 0)
+      //   this.ModeChip('日历', 1)
+      // }
+      // .justifyContent(FlexAlign.Center)
+      // .padding({ top: 6, bottom: 6 })
+
+      this.Header()
+      if (this.viewMode === 0) {
+        // —— 新增：筛选条 + 搜索 —— //
+        Row() {
+          this.TabFilterChip('全部', 0)
+          this.TabFilterChip('今天', 1)
+          this.TabFilterChip('将来', 2)
+          this.TabFilterChip('已完成', 3)
+        }
+        .padding({ left: 12, right: 12, bottom: 6 })
+
+        Row() {
+          Text('类型').fontSize(12).fontColor(0xFF607D8B).margin({ right: 8 })
+          ForEach(this.typesChips(), (tp: string) => {
+            this.TypeChip(tp)
+          }, (tp: string) => `tp-${tp}`)
+        }
+        .padding({ left: 12, right: 12, bottom: 6 })
+
+        // 列表
+        if (this.filteredTasks().length === 0) {
+          Column() {
+            Text('没有符合条件的任务').fontColor(0xFF90A4AE).fontSize(14).margin({ top: 24 })
+          }.width('100%')
+        } else {
+          List({ space: 8 }) {
+            ForEach(this.filteredTasks(), (t: PlantTask,index:number) => {
+              ListItem() {
+                TaskItem({
+                  t: t,
+                  plantName: this.plantNameById(t.plantId),
+                  onToggle: (pt:PlantTask) => {
+                    this.onToggle(pt)
+                  },
+                  onDeleteAsk: () => {
+                    this.onDeleteAsk(t.id)
+                  }
+                })
+              }
+            }, (t: PlantTask) => t.id.toString())
+          }
+          .width('100%')
+          .height('calc(100% - 160vp)')
+          .padding({
+            left: 12,
+            right: 12,
+            top: 8,
+            bottom: 8
+          })
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
         }
       }
-      .padding({ left: 16, right: 16, top: 6, bottom: 2 })
-      Row() {
-        this.ModeChip('列表', 0)
-        this.ModeChip('日历', 1)
-      }
-      .justifyContent(FlexAlign.Center)
-      .padding({ top: 6, bottom: 6 })
-
+      // else {
+        // 日历模式：保持不变（不重复输出 CalendarGridV2）
+        // CalendarGrid({
+        //   year: y,
+        //   month: m,
+        //   tasks: this.tasks,
+        //   onToggle: (t) => this.toggleTaskDone(t),
+        //   onDelete: (id) => this.deleteTask(id)
+        // })
+        // CalendarGrid({
+        //   monthISO: this.currentMonthISO,
+        //   tasks: this.tasks,
+        //   plants: this.plants,
+        //   allItems: this.tasks,                 // 传入 PlantTask 列表
+        //   filterStatus: this.filterStatus,      // 传入当前筛选
+        //   filterType: this.filterType,
+        //   onSelectDate: (iso: string) => { this.selectedDateISO = iso; this.daySheetVisible = true },
+        //   onPrev: () => {this.changeMonth(-1)},
+        //   onNext: () => {this.changeMonth(1)},
+        //   onToggle: (t: PlantTask) => {this.onToggle(t)},
+        //   onDeleteAsk: (id: number) => {this.onDeleteAsk(id)}
+        // })
+      // }
+      // 过滤
       if (this.filterVisible) {
         CareFilterSheet({
           status: this.filterStatus,
@@ -223,94 +300,39 @@ export struct TaskListPage {
           onClose: () => { this.daySheetVisible = false }
         })
       }
+    }.height('100%')
 
-      if (this.viewMode === 0) {
-        // —— 新增：筛选条 + 搜索 —— //
-        Row() {
-          this.TabFilterChip('全部', 0)
-          this.TabFilterChip('今天', 1)
-          this.TabFilterChip('将来', 2)
-          this.TabFilterChip('已完成', 3)
-        }
-        .padding({ left: 12, right: 12, bottom: 6 })
-
-        Row() {
-          Text('类型').fontSize(12).fontColor(0xFF607D8B).margin({ right: 8 })
-          ForEach(this.typesChips(), (tp: string) => {
-            this.TypeChip(tp)
-          }, (tp: string) => `tp-${tp}`)
-        }
-        .padding({ left: 12, right: 12, bottom: 6 })
-
-        Row() {
-          Text('🔎').fontSize(18).margin({ right: 8 })
-          TextInput({ placeholder: '搜索任务类型/植物名称', text: this.keyword })
-            .onChange((v: string) => {
-              this.keyword = v
-            })
-            .width('100%')
-            .height(36)
-            .fontSize(14)
-            .borderRadius(12)
-            .backgroundColor(0xFFFFFFFF)
-            .padding({ left: 12, right: 12 })
-        }
-        .height(44).width('100%').padding({ left: 12, right: 12, bottom: 8 })
-
-        // 列表
-        if (this.filteredTasks().length === 0) {
-          Column() {
-            Text('没有符合条件的任务').fontColor(0xFF90A4AE).fontSize(14).margin({ top: 24 })
-          }.width('100%')
-        } else {
-          List({ space: 8 }) {
-            ForEach(this.filteredTasks(), (t: PlantTask) => {
-              ListItem() {
-                TaskItem({
-                  t: t,
-                  plantName: this.plantNameById(t.plantId),
-                  onToggle: () => {
-                    this.onToggle(t)
-                  },
-                  onDeleteAsk: () => {
-                    this.onDeleteAsk(t.id)
-                  }
-                })
-              }
-            }, (t: PlantTask) => t.id.toString())
-          }
-          .padding({
-            left: 12,
-            right: 12,
-            top: 8,
-            bottom: 8
+  }
+  @Builder
+  Header() {
+    Column(){
+      Row() {
+        Text('PlantDiary 植物养护·任务').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+        Blank()
+      }.width('100%')
+      .justifyContent(FlexAlign.Start)
+      .padding({
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: 8
+      })
+      Row() {
+        Text('🔎').fontSize(18).margin({ right: 8 })
+        TextInput({ placeholder: '搜索任务类型/植物名称', text: this.keyword })
+          .onChange((v: string) => {
+            this.keyword = v
           })
-          .edgeEffect(EdgeEffect.Spring)
-        }
-      } else {
-        // 日历模式：保持不变（不重复输出 CalendarGridV2）
-        // CalendarGrid({
-        //   year: y,
-        //   month: m,
-        //   tasks: this.tasks,
-        //   onToggle: (t) => this.toggleTaskDone(t),
-        //   onDelete: (id) => this.deleteTask(id)
-        // })
-        CalendarGrid({
-          monthISO: this.currentMonthISO,
-          tasks: this.tasks,
-          plants: this.plants,
-          allItems: this.tasks,                 // 传入 PlantTask 列表
-          filterStatus: this.filterStatus,      // 传入当前筛选
-          filterType: this.filterType,
-          onSelectDate: (iso: string) => { this.selectedDateISO = iso; this.daySheetVisible = true },
-          onPrev: () => {this.changeMonth(-1)},
-          onNext: () => {this.changeMonth(1)},
-          onToggle: (t: PlantTask) => {this.onToggle(t)},
-          onDeleteAsk: (id: number) => {this.onDeleteAsk(id)}
-        })
+          .width('calc(100% - 32vp)')
+          .height(36)
+          .fontSize(14)
+          .borderRadius(12)
+          .backgroundColor(0xFFFFFFFF)
+          .padding({ left: 12, right: 12 })
       }
-    }
+      .height(44).width('100%').padding({ left: 12, right: 12, bottom: 8 })
+    }.width('100%')
+
   }
 
   // —— 辅助（非 Builder） —— //

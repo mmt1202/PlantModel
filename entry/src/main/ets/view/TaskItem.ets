@@ -1,18 +1,27 @@
 import { PlantTask } from "../model/PlantModel"
+import { hilog } from "@kit.PerformanceAnalysisKit"
 
 /** -------- 子组件：单条任务（V2） -------- */
 @ComponentV2
 export  struct TaskItem {
   @Param @Require t: PlantTask
   @Param @Require plantName: string
-  @Event onToggle: () => void
+  @Event onToggle: (pt:PlantTask) => void
   @Event onDeleteAsk: () => void
 
   @Local pressed: boolean = false
 
+  aboutToAppear(): void {
+    hilog.info(0x0000, 'index', '%{public}s', `liheng 数据刷新${JSON.stringify(this.t)}`);
+  }
+
   build() {
     Row() {
-      Text(this.t.done === 1 ? '✅' : '⬜').fontSize(20).onClick(() => { this.onToggle() })
+      Text(this.t.done === 1 ? '✅' : '⬜').fontSize(20)
+        .onClick(() => {
+          this.onToggle(this.t)
+          this.t.done = this.t.done === 1 ? 0 : 1
+        })
 
       Column() {
         Text(`${this.t.type} · ${this.plantName}`).fontSize(15).fontWeight(FontWeight.Medium).fontColor(0xFF263238)

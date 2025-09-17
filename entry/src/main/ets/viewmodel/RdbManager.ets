@@ -1,0 +1,168 @@
+import { relationalStore } from '@kit.ArkData'
+
+export class RdbManager {
+  static instance: RdbManager | null = null
+  static readonly DB_NAME: string = 'plantdiary.db'
+  static readonly T_PLANT: string = 'plant'
+  static readonly T_TASK: string = 'task'
+  static readonly T_TPL: string = 'tpl' // 周期模板
+  static readonly T_LOG: string = 'log' // ← 新增：日志表
+  static readonly T_METRIC: string = 'metric'
+  static readonly T_LOG_PHOTO: string = 'log_photo'
+  static readonly T_TEMPLATE: string = 'care_template'
+  static readonly T_RULE: string = 'care_rule'
+
+  static getInstance(): RdbManager {
+    if (!RdbManager.instance) {
+      RdbManager.instance = new RdbManager()
+    }
+    return RdbManager.instance
+  }
+
+  async initDb(store: relationalStore.RdbStore) {
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_PLANT}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        species TEXT,
+        location TEXT,
+        createdAt INTEGER
+      )`)
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_TASK}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plantId INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        planDate TEXT NOT NULL,
+        done INTEGER DEFAULT 0,
+        doneAt INTEGER DEFAULT 0
+      )`)
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_TPL}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        everyDays INTEGER NOT NULL,
+        times INTEGER NOT NULL,
+        createdAt INTEGER
+      )`)
+    // ← 新增日志表
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_LOG}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plantId INTEGER NOT NULL,
+        note TEXT NOT NULL,
+        createdAt INTEGER
+      )`)
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_METRIC}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plantId INTEGER NOT NULL,
+        height REAL DEFAULT 0,
+        width REAL DEFAULT 0,
+        score INTEGER DEFAULT 0,
+        createdAt INTEGER NOT NULL
+      )`)
+    // —— 日志图片表 ——
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_LOG_PHOTO}(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        logId INTEGER NOT NULL,
+        path TEXT NOT NULL,
+        thumbPath TEXT NOT NULL,
+        createdAt INTEGER NOT NULL
+      )`)
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_TEMPLATE}(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    desc TEXT
+  )`
+    )
+    await store.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_RULE}(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    templateId INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    intervalDays INTEGER NOT NULL,
+    horizonDays INTEGER NOT NULL
+  )`
+    )
+    // ===== TASK（任务）=====
+    // 唯一：同一植物 + 类型 + 计划日 不重复
+    await store.executeSql(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique
+   ON ${RdbManager.T_TASK}(plantId, type, planDate)`
+    )
+    // 常用查询/排序：按日期、按植物
+    await store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_task_planDate
+   ON ${RdbManager.T_TASK}(planDate)`
+    )
+    await store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_task_plantId
+   ON ${RdbManager.T_TASK}(plantId)`
+    )
+
+    // ===== LOG（日志）=====
+    // 典型查询：WHERE plantId=? ORDER BY createdAt DESC
+    // 用组合索引即可，避免再单独建 plantId / createdAt 两个索引的重复
+    await store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_log_plant_created
+   ON ${RdbManager.T_LOG}(plantId, createdAt)`
+    )
+
+    // ===== LOG_PHOTO（日志照片）=====
+    await store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_logphoto_logId
+   ON ${RdbManager.T_LOG_PHOTO}(logId)`
+    )
+
+    // ===== METRIC（指标）=====
+    // 典型查询：按植物 + 时间范围/排序
+    await store.executeSql(
+      `CREATE INDEX IF NOT EXISTS idx_metric_plant_created
+   ON ${RdbManager.T_METRIC}(plantId, createdAt)`
+    )
+  }
+
+  // 启动一次性初始化 5 个模板（存在即跳过）
+  async ensureCareTemplates(store: relationalStore.RdbStore): Promise<void> {
+    if (!store) { return }
+    const rs = await store.querySql(`SELECT COUNT(1) FROM ${RdbManager.T_TEMPLATE}`, [])
+    let count: number = 0
+    if (rs.goToNextRow()) { count = rs.getLong(0) }
+    rs.close()
+    if (count > 0) { return }
+
+    // 插入模板
+    const idSucc: number = await store.insert(RdbManager.T_TEMPLATE, { name: '多肉', desc: '耐旱，少浇' })
+    const idMon: number  = await store.insert(RdbManager.T_TEMPLATE, { name: '龟背竹', desc: '喜湿散光' })
+    const idRose: number = await store.insert(RdbManager.T_TEMPLATE, { name: '月季', desc: '勤花，需修剪' })
+    const idPoth: number = await store.insert(RdbManager.T_TEMPLATE, { name: '绿萝', desc: '易养，见光' })
+    const idIvy: number  = await store.insert(RdbManager.T_TEMPLATE, { name: '常春藤', desc: '通风散光' })
+
+    // 规则：type, intervalDays, horizonDays(生成周期)
+    // 多肉：浇水 14 天，施肥 45 天
+    await store.insert(RdbManager.T_RULE, { templateId: idSucc, type: '浇水', intervalDays: 14, horizonDays: 90 })
+    await store.insert(RdbManager.T_RULE, { templateId: idSucc, type: '施肥', intervalDays: 45, horizonDays: 90 })
+
+    // 龟背竹：浇水 7，施肥 30，修剪 60
+    await store.insert(RdbManager.T_RULE, { templateId: idMon, type: '浇水', intervalDays: 7, horizonDays: 90 })
+    await store.insert(RdbManager.T_RULE, { templateId: idMon, type: '施肥', intervalDays: 30, horizonDays: 120 })
+    await store.insert(RdbManager.T_RULE, { templateId: idMon, type: '修剪', intervalDays: 60, horizonDays: 180 })
+
+    // 月季：浇水 3，施肥 14，修剪 30
+    await store.insert(RdbManager.T_RULE, { templateId: idRose, type: '浇水', intervalDays: 3, horizonDays: 60 })
+    await store.insert(RdbManager.T_RULE, { templateId: idRose, type: '施肥', intervalDays: 14, horizonDays: 90 })
+    await store.insert(RdbManager.T_RULE, { templateId: idRose, type: '修剪', intervalDays: 30, horizonDays: 120 })
+
+    // 绿萝：浇水 5，施肥 30
+    await store.insert(RdbManager.T_RULE, { templateId: idPoth, type: '浇水', intervalDays: 5, horizonDays: 90 })
+    await store.insert(RdbManager.T_RULE, { templateId: idPoth, type: '施肥', intervalDays: 30, horizonDays: 120 })
+
+    // 常春藤：浇水 7，施肥 30
+    await store.insert(RdbManager.T_RULE, { templateId: idIvy, type: '浇水', intervalDays: 7, horizonDays: 90 })
+    await store.insert(RdbManager.T_RULE, { templateId: idIvy, type: '施肥', intervalDays: 30, horizonDays: 120 })
+  }
+}

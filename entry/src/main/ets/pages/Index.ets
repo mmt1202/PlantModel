@@ -1,4 +1,4 @@
-// entry/src/main/ets/pages/Index.ets
+// entry/src/main/ets/pages/RdbManager.ets
 import common from '@ohos.app.ability.common'
 import relationalStore from '@ohos.data.relationalStore'
 import {
@@ -25,6 +25,8 @@ import { MetricChartSheet } from '../view/MetricChartSheet'
 import { runInTransaction } from '../model/DbUtils'
 import { TaskStatsSheet } from '../view/TaskStatsSheet'
 import { TemplateApplySheet } from '../view/TemplateApplySheet'
+import { RdbManager } from '../viewmodel/RdbManager'
+import { hilog } from '@kit.PerformanceAnalysisKit'
 
 /** -------- 入口页面（V2） -------- */
 @Entry
@@ -35,15 +37,8 @@ struct Index {
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
   // DB
   private store?: relationalStore.RdbStore
-  private static readonly DB_NAME: string = 'plantdiary.db'
-  private static readonly T_PLANT: string = 'plant'
-  private static readonly T_TASK: string = 'task'
-  private static readonly T_TPL: string = 'tpl' // 周期模板
-  private static readonly T_LOG: string = 'log' // ← 新增：日志表
-  private static readonly T_METRIC: string = 'metric'
-  private static readonly T_LOG_PHOTO: string = 'log_photo'
-  private static readonly T_TEMPLATE: string = 'care_template'
-  private static readonly T_RULE: string = 'care_rule'
+
+  @Local tabsController:TabsController = new TabsController()
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -138,6 +133,7 @@ struct Index {
   @Local tplTargetPlantName: string = ''
   @Local tplList: Array<CareTemplate> = []
   @Local ruleList: Array<CareRule> = []
+  RdbManager:RdbManager=RdbManager.getInstance()
 
   // @Local logPhotos: Array<LogPhoto> = []
 
@@ -157,155 +153,117 @@ struct Index {
 
   /** ---- DB 初始化/加载 ---- */
   private async initDb(): Promise<void> {
-    const config: relationalStore.StoreConfig = { name: Index.DB_NAME, securityLevel: relationalStore.SecurityLevel.S1 }
+    const config: relationalStore.StoreConfig = { name: RdbManager.DB_NAME, securityLevel: relationalStore.SecurityLevel.S1 }
     this.store = await relationalStore.getRdbStore(this.ctx, config)
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_PLANT}(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        species TEXT,
-        location TEXT,
-        createdAt INTEGER
-      )`)
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_TASK}(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        plantId INTEGER NOT NULL,
-        type TEXT NOT NULL,
-        planDate TEXT NOT NULL,
-        done INTEGER DEFAULT 0,
-        doneAt INTEGER DEFAULT 0
-      )`)
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_TPL}(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL,
-        everyDays INTEGER NOT NULL,
-        times INTEGER NOT NULL,
-        createdAt INTEGER
-      )`)
-    // ← 新增日志表
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_LOG}(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        plantId INTEGER NOT NULL,
-        note TEXT NOT NULL,
-        createdAt INTEGER
-      )`)
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_METRIC}(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        plantId INTEGER NOT NULL,
-        height REAL DEFAULT 0,
-        width REAL DEFAULT 0,
-        score INTEGER DEFAULT 0,
-        createdAt INTEGER NOT NULL
-      )`)
-    // —— 日志图片表 ——
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_LOG_PHOTO}(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        logId INTEGER NOT NULL,
-        path TEXT NOT NULL,
-        thumbPath TEXT NOT NULL,
-        createdAt INTEGER NOT NULL
-      )`)
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_TEMPLATE}(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    desc TEXT
-  )`
-    )
-    await this.store.executeSql(
-      `CREATE TABLE IF NOT EXISTS ${Index.T_RULE}(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    templateId INTEGER NOT NULL,
-    type TEXT NOT NULL,
-    intervalDays INTEGER NOT NULL,
-    horizonDays INTEGER NOT NULL
-  )`
-    )
-    // ===== TASK（任务）=====
-    // 唯一：同一植物 + 类型 + 计划日 不重复
-    await this.store.executeSql(
-      `CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique
-   ON ${Index.T_TASK}(plantId, type, planDate)`
-    )
-    // 常用查询/排序：按日期、按植物
-    await this.store.executeSql(
-      `CREATE INDEX IF NOT EXISTS idx_task_planDate
-   ON ${Index.T_TASK}(planDate)`
-    )
-    await this.store.executeSql(
-      `CREATE INDEX IF NOT EXISTS idx_task_plantId
-   ON ${Index.T_TASK}(plantId)`
-    )
+    this.RdbManager.initDb(this.store)
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_PLANT}(
+  //       id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //       name TEXT NOT NULL,
+  //       species TEXT,
+  //       location TEXT,
+  //       createdAt INTEGER
+  //     )`)
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_TASK}(
+  //       id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //       plantId INTEGER NOT NULL,
+  //       type TEXT NOT NULL,
+  //       planDate TEXT NOT NULL,
+  //       done INTEGER DEFAULT 0,
+  //       doneAt INTEGER DEFAULT 0
+  //     )`)
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_TPL}(
+  //       id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //       name TEXT NOT NULL,
+  //       type TEXT NOT NULL,
+  //       everyDays INTEGER NOT NULL,
+  //       times INTEGER NOT NULL,
+  //       createdAt INTEGER
+  //     )`)
+  //   // ← 新增日志表
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_LOG}(
+  //       id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //       plantId INTEGER NOT NULL,
+  //       note TEXT NOT NULL,
+  //       createdAt INTEGER
+  //     )`)
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_METRIC}(
+  //       id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //       plantId INTEGER NOT NULL,
+  //       height REAL DEFAULT 0,
+  //       width REAL DEFAULT 0,
+  //       score INTEGER DEFAULT 0,
+  //       createdAt INTEGER NOT NULL
+  //     )`)
+  //   // —— 日志图片表 ——
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_LOG_PHOTO}(
+  //       id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //       logId INTEGER NOT NULL,
+  //       path TEXT NOT NULL,
+  //       thumbPath TEXT NOT NULL,
+  //       createdAt INTEGER NOT NULL
+  //     )`)
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_TEMPLATE}(
+  //   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //   name TEXT NOT NULL,
+  //   desc TEXT
+  // )`
+  //   )
+  //   await this.store.executeSql(
+  //     `CREATE TABLE IF NOT EXISTS ${RdbManager.T_RULE}(
+  //   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //   templateId INTEGER NOT NULL,
+  //   type TEXT NOT NULL,
+  //   intervalDays INTEGER NOT NULL,
+  //   horizonDays INTEGER NOT NULL
+  // )`
+  //   )
+  //   // ===== TASK（任务）=====
+  //   // 唯一：同一植物 + 类型 + 计划日 不重复
+  //   await this.store.executeSql(
+  //     `CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique
+  //  ON ${RdbManager.T_TASK}(plantId, type, planDate)`
+  //   )
+  //   // 常用查询/排序：按日期、按植物
+  //   await this.store.executeSql(
+  //     `CREATE INDEX IF NOT EXISTS idx_task_planDate
+  //  ON ${RdbManager.T_TASK}(planDate)`
+  //   )
+  //   await this.store.executeSql(
+  //     `CREATE INDEX IF NOT EXISTS idx_task_plantId
+  //  ON ${RdbManager.T_TASK}(plantId)`
+  //   )
+  //
+  //   // ===== LOG（日志）=====
+  //   // 典型查询：WHERE plantId=? ORDER BY createdAt DESC
+  //   // 用组合索引即可，避免再单独建 plantId / createdAt 两个索引的重复
+  //   await this.store.executeSql(
+  //     `CREATE INDEX IF NOT EXISTS idx_log_plant_created
+  //  ON ${RdbManager.T_LOG}(plantId, createdAt)`
+  //   )
+  //
+  //   // ===== LOG_PHOTO（日志照片）=====
+  //   await this.store.executeSql(
+  //     `CREATE INDEX IF NOT EXISTS idx_logphoto_logId
+  //  ON ${RdbManager.T_LOG_PHOTO}(logId)`
+  //   )
+  //
+  //   // ===== METRIC（指标）=====
+  //   // 典型查询：按植物 + 时间范围/排序
+  //   await this.store.executeSql(
+  //     `CREATE INDEX IF NOT EXISTS idx_metric_plant_created
+  //  ON ${RdbManager.T_METRIC}(plantId, createdAt)`
+  //   )
 
-    // ===== LOG（日志）=====
-    // 典型查询：WHERE plantId=? ORDER BY createdAt DESC
-    // 用组合索引即可，避免再单独建 plantId / createdAt 两个索引的重复
-    await this.store.executeSql(
-      `CREATE INDEX IF NOT EXISTS idx_log_plant_created
-   ON ${Index.T_LOG}(plantId, createdAt)`
-    )
-
-    // ===== LOG_PHOTO（日志照片）=====
-    await this.store.executeSql(
-      `CREATE INDEX IF NOT EXISTS idx_logphoto_logId
-   ON ${Index.T_LOG_PHOTO}(logId)`
-    )
-
-    // ===== METRIC（指标）=====
-    // 典型查询：按植物 + 时间范围/排序
-    await this.store.executeSql(
-      `CREATE INDEX IF NOT EXISTS idx_metric_plant_created
-   ON ${Index.T_METRIC}(plantId, createdAt)`
-    )
-
-    await this.ensureCareTemplates()
+    await this.RdbManager.ensureCareTemplates(this.store)
     await this.reloadAll()
     await this.loadTemplates()
-  }
-  // 启动一次性初始化 5 个模板（存在即跳过）
-  private async ensureCareTemplates(): Promise<void> {
-    if (!this.store) { return }
-    const rs = await this.store.querySql(`SELECT COUNT(1) FROM ${Index.T_TEMPLATE}`, [])
-    let count: number = 0
-    if (rs.goToNextRow()) { count = rs.getLong(0) }
-    rs.close()
-    if (count > 0) { return }
-
-    // 插入模板
-    const idSucc: number = await this.store.insert(Index.T_TEMPLATE, { name: '多肉', desc: '耐旱，少浇' })
-    const idMon: number  = await this.store.insert(Index.T_TEMPLATE, { name: '龟背竹', desc: '喜湿散光' })
-    const idRose: number = await this.store.insert(Index.T_TEMPLATE, { name: '月季', desc: '勤花，需修剪' })
-    const idPoth: number = await this.store.insert(Index.T_TEMPLATE, { name: '绿萝', desc: '易养，见光' })
-    const idIvy: number  = await this.store.insert(Index.T_TEMPLATE, { name: '常春藤', desc: '通风散光' })
-
-    // 规则：type, intervalDays, horizonDays(生成周期)
-    // 多肉：浇水 14 天，施肥 45 天
-    await this.store.insert(Index.T_RULE, { templateId: idSucc, type: '浇水', intervalDays: 14, horizonDays: 90 })
-    await this.store.insert(Index.T_RULE, { templateId: idSucc, type: '施肥', intervalDays: 45, horizonDays: 90 })
-
-    // 龟背竹：浇水 7，施肥 30，修剪 60
-    await this.store.insert(Index.T_RULE, { templateId: idMon, type: '浇水', intervalDays: 7, horizonDays: 90 })
-    await this.store.insert(Index.T_RULE, { templateId: idMon, type: '施肥', intervalDays: 30, horizonDays: 120 })
-    await this.store.insert(Index.T_RULE, { templateId: idMon, type: '修剪', intervalDays: 60, horizonDays: 180 })
-
-    // 月季：浇水 3，施肥 14，修剪 30
-    await this.store.insert(Index.T_RULE, { templateId: idRose, type: '浇水', intervalDays: 3, horizonDays: 60 })
-    await this.store.insert(Index.T_RULE, { templateId: idRose, type: '施肥', intervalDays: 14, horizonDays: 90 })
-    await this.store.insert(Index.T_RULE, { templateId: idRose, type: '修剪', intervalDays: 30, horizonDays: 120 })
-
-    // 绿萝：浇水 5，施肥 30
-    await this.store.insert(Index.T_RULE, { templateId: idPoth, type: '浇水', intervalDays: 5, horizonDays: 90 })
-    await this.store.insert(Index.T_RULE, { templateId: idPoth, type: '施肥', intervalDays: 30, horizonDays: 120 })
-
-    // 常春藤：浇水 7，施肥 30
-    await this.store.insert(Index.T_RULE, { templateId: idIvy, type: '浇水', intervalDays: 7, horizonDays: 90 })
-    await this.store.insert(Index.T_RULE, { templateId: idIvy, type: '施肥', intervalDays: 30, horizonDays: 120 })
   }
 
   private async reloadAll(): Promise<void> {
@@ -318,7 +276,7 @@ struct Index {
       return
     }
     const rs =
-      await this.store.querySql(`SELECT id,name,species,location,createdAt FROM ${Index.T_PLANT} ORDER BY createdAt DESC`,
+      await this.store.querySql(`SELECT id,name,species,location,createdAt FROM ${RdbManager.T_PLANT} ORDER BY createdAt DESC`,
         [])
     const items: Array<Plant> = []
     while (rs.goToNextRow()) {
@@ -333,7 +291,7 @@ struct Index {
       return
     }
     const rs =
-      await this.store.querySql(`SELECT id,plantId,type,planDate,done,doneAt FROM ${Index.T_TASK} ORDER BY planDate DESC,id DESC`,
+      await this.store.querySql(`SELECT id,plantId,type,planDate,done,doneAt FROM ${RdbManager.T_TASK} ORDER BY planDate DESC,id DESC`,
         [])
     const items: Array<PlantTask> = []
     while (rs.goToNextRow()) {
@@ -393,7 +351,7 @@ struct Index {
     if (!this.store) { return }
     const rs = await this.store.querySql(
       `SELECT id, logId, path, thumbPath, createdAt
-     FROM ${Index.T_LOG_PHOTO}
+     FROM ${RdbManager.T_LOG_PHOTO}
      WHERE logId = ?
      ORDER BY id DESC`, [logId]
     )
@@ -415,7 +373,7 @@ struct Index {
       thumbPath: uri,     // 先用原图占位，后续如需生成缩略图再更新
       createdAt: now
     }
-    await this.store.insert(Index.T_LOG_PHOTO, v)
+    await this.store.insert(RdbManager.T_LOG_PHOTO, v)
   }
 
   private async pickPhotosForLog(logId: number): Promise<void> {
@@ -465,7 +423,7 @@ struct Index {
   private async deletePhotoByFilePath(fp: string): Promise<void> {
     if (!this.store) { return }
     // 取照片 id/logId
-    const rs = await this.store.querySql(`SELECT id, logId FROM ${Index.T_LOG_PHOTO} WHERE filePath = ? LIMIT 1`, [fp])
+    const rs = await this.store.querySql(`SELECT id, logId FROM ${RdbManager.T_LOG_PHOTO} WHERE filePath = ? LIMIT 1`, [fp])
     let pid: number = 0; let lid: number = 0
     if (rs.goToNextRow()) { pid = rs.getLong(0); lid = rs.getLong(1) }
     rs.close()
@@ -579,7 +537,7 @@ struct Index {
         let ti: number = 0
         while (ti < types.length) {
           try {
-            await tx.insert(Index.T_TASK, {
+            await tx.insert(RdbManager.T_TASK, {
               plantId: plantId, type: types[ti], planDate: datesISO[di], done: 0, doneAt: 0
             })
           } catch (_) { /* ignore duplicate */ }
@@ -617,7 +575,7 @@ struct Index {
       return
     }
     const rs =
-      await this.store.querySql(`SELECT id,name,type,everyDays,times,createdAt FROM ${Index.T_TPL} ORDER BY createdAt DESC,id DESC`,
+      await this.store.querySql(`SELECT id,name,type,everyDays,times,createdAt FROM ${RdbManager.T_TPL} ORDER BY createdAt DESC,id DESC`,
         [])
     const items: Array<PlanTpl> = []
     while (rs.goToNextRow()) {
@@ -634,7 +592,7 @@ struct Index {
     if (!this.store) { return }
     const rs = await this.store.querySql(
       `SELECT id, plantId, height, width, score, createdAt
-     FROM ${Index.T_METRIC}
+     FROM ${RdbManager.T_METRIC}
      WHERE plantId = ?
      ORDER BY createdAt ASC`, [plantId]
     )
@@ -653,7 +611,7 @@ struct Index {
     if (!this.store) { return }
     const ts: number = this.isoToTs(dateISO)
     const v: relationalStore.ValuesBucket = { plantId: plantId, height: height, width: width, score: score, createdAt: ts }
-    await this.store.insert(Index.T_METRIC, v)
+    await this.store.insert(RdbManager.T_METRIC, v)
     await this.loadMetricsByPlant(plantId)
   }
 
@@ -669,7 +627,7 @@ struct Index {
 
   private async deleteMetric(id: number): Promise<void> {
     if (!this.store) { return }
-    const p = new relationalStore.RdbPredicates(Index.T_METRIC); p.equalTo('id', id)
+    const p = new relationalStore.RdbPredicates(RdbManager.T_METRIC); p.equalTo('id', id)
     await this.store.delete(p)
     if (this.metricPlantId !== 0) { await this.loadMetricsByPlant(this.metricPlantId) }
   }
@@ -685,7 +643,7 @@ struct Index {
       location: draft.location.trim(),
       createdAt: Date.now()
     }
-    await this.store.insert(Index.T_PLANT, values)
+    await this.store.insert(RdbManager.T_PLANT, values)
     await this.loadPlants()
     this.showBanner('已添加植物', 'ok')
   }
@@ -697,7 +655,7 @@ struct Index {
     const values: relationalStore.ValuesBucket = {
       name: draft.name.trim(), species: draft.species.trim(), location: draft.location.trim()
     }
-    const p = new relationalStore.RdbPredicates(Index.T_PLANT);
+    const p = new relationalStore.RdbPredicates(RdbManager.T_PLANT);
     p.equalTo('id', id)
     await this.store.update(values, p)
     await this.loadPlants()
@@ -711,7 +669,7 @@ struct Index {
     const logIds: Array<number> = []
     {
       const rs = await this.store.querySql(
-        `SELECT id FROM ${Index.T_LOG} WHERE plantId = ? ORDER BY id ASC`, [id]
+        `SELECT id FROM ${RdbManager.T_LOG} WHERE plantId = ? ORDER BY id ASC`, [id]
       )
       while (rs.goToNextRow()) { logIds.push(rs.getLong(0)) }
       rs.close()
@@ -722,7 +680,7 @@ struct Index {
     if (logIds.length > 0) {
       const placeholders: string = Array(logIds.length).fill('?').join(',')
       const rs2 = await this.store.querySql(
-        `SELECT filePath, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId IN (${placeholders}) ORDER BY id ASC`,
+        `SELECT filePath, thumbPath FROM ${RdbManager.T_LOG_PHOTO} WHERE logId IN (${placeholders}) ORDER BY id ASC`,
         logIds as Array<number>
       )
       while (rs2.goToNextRow()) {
@@ -740,23 +698,23 @@ struct Index {
       if (logIds.length > 0) {
         const placeholders: string = Array(logIds.length).fill('?').join(',')
         await this.store!.executeSql(
-          `DELETE FROM ${Index.T_LOG_PHOTO} WHERE logId IN (${placeholders})`,
+          `DELETE FROM ${RdbManager.T_LOG_PHOTO} WHERE logId IN (${placeholders})`,
           logIds as Array<number>
         )
       }
 
       // 3.2 删日志表
-      const pLog = new relationalStore.RdbPredicates(Index.T_LOG)
+      const pLog = new relationalStore.RdbPredicates(RdbManager.T_LOG)
       pLog.equalTo('plantId', id)
       await this.store!.delete(pLog)
 
       // 3.3 删任务表
-      const pTask = new relationalStore.RdbPredicates(Index.T_TASK)
+      const pTask = new relationalStore.RdbPredicates(RdbManager.T_TASK)
       pTask.equalTo('plantId', id)
       await this.store!.delete(pTask)
 
       // 3.4 删植物表
-      const pPlant = new relationalStore.RdbPredicates(Index.T_PLANT)
+      const pPlant = new relationalStore.RdbPredicates(RdbManager.T_PLANT)
       pPlant.equalTo('id', id)
       await this.store!.delete(pPlant)
     })
@@ -787,7 +745,7 @@ struct Index {
       doneAt: 0
     }
     try {
-      await this.store.insert(Index.T_TASK, values)
+      await this.store.insert(RdbManager.T_TASK, values)
       await this.loadTasks()
       this.showBanner('已添加养护任务', 'ok')
 
@@ -804,7 +762,7 @@ struct Index {
       const now: number = done === 1 ? Date.now() : 0
       let i: number = 0
       while (i < ids.length) {
-        const p = new relationalStore.RdbPredicates(Index.T_TASK)
+        const p = new relationalStore.RdbPredicates(RdbManager.T_TASK)
         p.equalTo('id', ids[i])
         await this.store.update({ done: done, doneAt: now }, p)
         i = i + 1
@@ -825,7 +783,7 @@ struct Index {
     try {
       let i: number = 0
       while (i < ids.length) {
-        const p = new relationalStore.RdbPredicates(Index.T_TASK)
+        const p = new relationalStore.RdbPredicates(RdbManager.T_TASK)
         p.equalTo('id', ids[i])
         await this.store.delete(p)
         i = i + 1
@@ -848,7 +806,7 @@ struct Index {
     let k: number = 0
     while (k < logIds.length) {
       const rs = await this.store.querySql(
-        `SELECT path, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId = ?`, [logIds[k]]
+        `SELECT path, thumbPath FROM ${RdbManager.T_LOG_PHOTO} WHERE logId = ?`, [logIds[k]]
       )
       while (rs.goToNextRow()) {
         const p1: string = rs.getString(0)
@@ -865,9 +823,9 @@ struct Index {
     try {
       let i: number = 0
       while (i < logIds.length) {
-        const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('logId', logIds[i])
+        const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); pp.equalTo('logId', logIds[i])
         await this.store.delete(pp)
-        const pl = new relationalStore.RdbPredicates(Index.T_LOG); pl.equalTo('id', logIds[i])
+        const pl = new relationalStore.RdbPredicates(RdbManager.T_LOG); pl.equalTo('id', logIds[i])
         await this.store.delete(pl)
         i = i + 1
       }
@@ -895,10 +853,19 @@ struct Index {
     }
     const nd = task.done === 1 ? 0 : 1
     const values: relationalStore.ValuesBucket = { done: nd, doneAt: nd === 1 ? Date.now() : 0 }
-    const p = new relationalStore.RdbPredicates(Index.T_TASK);
+    const p = new relationalStore.RdbPredicates(RdbManager.T_TASK);
     p.equalTo('id', task.id)
     await this.store.update(values, p)
-    await this.loadTasks()
+    // const curTask =  this.tasks.find(i=> {
+    //   if (task.id === i.id){
+    //     i.done = nd;
+    //     i.doneAt = nd === 1 ? Date.now() : 0
+    //     return true;
+    //   }
+    //   return false;
+    // })
+    // hilog.info(0x0000, 'index', '%{public}s', `liheng toggleTaskDone${JSON.stringify(curTask)}`);
+    await this.reloadAll()
   }
 
   // —— 守护：清理孤儿记录/文件 —— //
@@ -911,8 +878,8 @@ struct Index {
     // 1) 照片记录的 logId 不存在 → 删记录 & 尝试删文件
     const rs1 = await this.store.querySql(
       `SELECT p.id, p.path, p.thumbPath
-     FROM ${Index.T_LOG_PHOTO} p
-     LEFT JOIN ${Index.T_LOG} l ON p.logId = l.id
+     FROM ${RdbManager.T_LOG_PHOTO} p
+     LEFT JOIN ${RdbManager.T_LOG} l ON p.logId = l.id
      WHERE l.id IS NULL`, []
     )
     const orphanPhotoIds: Array<number> = []
@@ -930,7 +897,7 @@ struct Index {
       try {
         let i: number = 0
         while (i < orphanPhotoIds.length) {
-          const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+          const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO)
           pp.equalTo('id', orphanPhotoIds[i])
           await this.store.delete(pp)
           delDbCount = delDbCount + 1
@@ -952,7 +919,7 @@ struct Index {
 
     // 2) 记录存在但文件已丢失 → 删记录
     const rs2 = await this.store.querySql(
-      `SELECT id, path, thumbPath FROM ${Index.T_LOG_PHOTO}`, []
+      `SELECT id, path, thumbPath FROM ${RdbManager.T_LOG_PHOTO}`, []
     )
     const missIds: Array<number> = []
     while (rs2.goToNextRow()) {
@@ -973,7 +940,7 @@ struct Index {
       try {
         let m: number = 0
         while (m < missIds.length) {
-          const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.equalTo('id', missIds[m])
+          const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); pp.equalTo('id', missIds[m])
           await this.store.delete(pp)
           delDbCount = delDbCount + 1
           m = m + 1
@@ -991,7 +958,7 @@ struct Index {
     if (!this.store) {
       return
     }
-    const p = new relationalStore.RdbPredicates(Index.T_TASK);
+    const p = new relationalStore.RdbPredicates(RdbManager.T_TASK);
     p.equalTo('id', id)
     await this.store.delete(p)
     await this.loadTasks()
@@ -1033,7 +1000,7 @@ struct Index {
       times: times,
       createdAt: Date.now()
     }
-    await this.store.insert(Index.T_TPL, values)
+    await this.store.insert(RdbManager.T_TPL, values)
     await this.loadTemplates()
     this.showBanner('已创建模板', 'ok')
   }
@@ -1052,7 +1019,7 @@ struct Index {
       everyDays: everyDays,
       times: times
     }
-    const p = new relationalStore.RdbPredicates(Index.T_TPL);
+    const p = new relationalStore.RdbPredicates(RdbManager.T_TPL);
     p.equalTo('id', id)
     await this.store.update(values, p)
     await this.loadTemplates()
@@ -1063,7 +1030,7 @@ struct Index {
     if (!this.store) {
       return
     }
-    const p = new relationalStore.RdbPredicates(Index.T_TPL);
+    const p = new relationalStore.RdbPredicates(RdbManager.T_TPL);
     p.equalTo('id', id)
     await this.store.delete(p)
     await this.loadTemplates()
@@ -1093,7 +1060,7 @@ struct Index {
       return
     }
     const rs =
-      await this.store.querySql(`SELECT id,plantId,note,createdAt FROM ${Index.T_LOG} WHERE plantId=? ORDER BY createdAt DESC, id DESC`,
+      await this.store.querySql(`SELECT id,plantId,note,createdAt FROM ${RdbManager.T_LOG} WHERE plantId=? ORDER BY createdAt DESC, id DESC`,
         [plantId])
     const arr: Array<LogEntry> = []
     while (rs.goToNextRow()) {
@@ -1113,7 +1080,7 @@ struct Index {
       return
     }
     const values: relationalStore.ValuesBucket = { plantId: plantId, note: txt, createdAt: Date.now() }
-    await this.store.insert(Index.T_LOG, values)
+    await this.store.insert(RdbManager.T_LOG, values)
     await this.loadLogsByPlant(plantId)
     this.showBanner('已添加日志', 'ok')
   }
@@ -1122,7 +1089,7 @@ struct Index {
     if (!this.store) {
       return
     }
-    const p = new relationalStore.RdbPredicates(Index.T_LOG);
+    const p = new relationalStore.RdbPredicates(RdbManager.T_LOG);
     p.equalTo('id', id)
     await this.store.delete(p)
     await this.loadLogsByPlant(this.logPlantId)
@@ -1139,7 +1106,7 @@ struct Index {
     let i: number = 0
     while (i < logIds.length) {
       const rs = await this.store.querySql(
-        `SELECT filePath, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId = ?`,
+        `SELECT filePath, thumbPath FROM ${RdbManager.T_LOG_PHOTO} WHERE logId = ?`,
         [logIds[i]]
       )
       while (rs.goToNextRow()) {
@@ -1162,7 +1129,7 @@ struct Index {
     try {
       // 取出文件路径
       const rs = await this.store.querySql(
-        `SELECT filePath, thumbPath FROM ${Index.T_LOG_PHOTO} WHERE logId = ? ORDER BY id ASC`, [logId]
+        `SELECT filePath, thumbPath FROM ${RdbManager.T_LOG_PHOTO} WHERE logId = ? ORDER BY id ASC`, [logId]
       )
       const files: Array<string> = []
       while (rs.goToNextRow()) {
@@ -1175,11 +1142,11 @@ struct Index {
 
       // —— 事务：先删子表，再删日志表 —— //
       await runInTransaction(this.store, async () => {
-        const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+        const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO)
         pp.equalTo('logId', logId)
         await this.store!.delete(pp)
 
-        const pl = new relationalStore.RdbPredicates(Index.T_LOG)
+        const pl = new relationalStore.RdbPredicates(RdbManager.T_LOG)
         pl.equalTo('id', logId)
         await this.store!.delete(pl)
       })
@@ -1225,11 +1192,11 @@ struct Index {
       // 逐条删，保证兼容性（也可自行换成 IN 语句）
       let i: number = 0
       while (i < logIds.length) {
-        const pPhoto = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO)
+        const pPhoto = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO)
         pPhoto.equalTo('logId', logIds[i])
         await this.store.delete(pPhoto)
 
-        const pLog = new relationalStore.RdbPredicates(Index.T_LOG)
+        const pLog = new relationalStore.RdbPredicates(RdbManager.T_LOG)
         pLog.equalTo('id', logIds[i])
         await this.store.delete(pLog)
 
@@ -1273,7 +1240,7 @@ struct Index {
     // 1) 加载日志（新→旧）
     const rs1 = await this.store.querySql(
       `SELECT id, plantId, note, createdAt
-     FROM ${Index.T_LOG}
+     FROM ${RdbManager.T_LOG}
      WHERE plantId = ?
      ORDER BY createdAt DESC, id DESC`, [plantId]
     )
@@ -1287,8 +1254,8 @@ struct Index {
     // 2) 加载该植物所有日志的照片（按照片 id 新→旧）
     const rs2 = await this.store.querySql(
       `SELECT p.id, p.logId, p.path, p.thumbPath, p.createdAt
-     FROM ${Index.T_LOG_PHOTO} p
-     JOIN ${Index.T_LOG} l ON p.logId = l.id
+     FROM ${RdbManager.T_LOG_PHOTO} p
+     JOIN ${RdbManager.T_LOG} l ON p.logId = l.id
      WHERE l.plantId = ?
      ORDER BY p.id DESC`, [plantId]
     )
@@ -1318,7 +1285,7 @@ struct Index {
   private async createTaskDirect(plantId: number, type: string, dateISO: string): Promise<void> {
     if (!this.store) { return }
     const v: relationalStore.ValuesBucket = { plantId: plantId, type: type, planDate: dateISO.trim(), done: 0, doneAt: 0 }
-    await this.store.insert(Index.T_TASK, v)
+    await this.store.insert(RdbManager.T_TASK, v)
   }
 
   private async generateTemplateTasks(plantId: number, waterInt: number, fertInt: number, pruneInt: number, startISO: string, days: number): Promise<void> {
@@ -1433,13 +1400,13 @@ struct Index {
   private async loadCareTemplateData(): Promise<void> {
     if (!this.store) { return }
     // templates
-    const r1 = await this.store.querySql(`SELECT id,name,desc FROM ${Index.T_TEMPLATE} ORDER BY id ASC`, [])
+    const r1 = await this.store.querySql(`SELECT id,name,desc FROM ${RdbManager.T_TEMPLATE} ORDER BY id ASC`, [])
     const ts: Array<CareTemplate> = []
     while (r1.goToNextRow()) { ts.push({ id: r1.getLong(0), name: r1.getString(1), desc: r1.getString(2) ?? '' }) }
     r1.close()
     this.tplList = ts
     // rules
-    const r2 = await this.store.querySql(`SELECT id,templateId,type,intervalDays,horizonDays FROM ${Index.T_RULE} ORDER BY templateId ASC,id ASC`, [])
+    const r2 = await this.store.querySql(`SELECT id,templateId,type,intervalDays,horizonDays FROM ${RdbManager.T_RULE} ORDER BY templateId ASC,id ASC`, [])
     const rs: Array<CareRule> = []
     while (r2.goToNextRow()) {
       rs.push({ id: r2.getLong(0), templateId: r2.getLong(1), type: r2.getString(2), intervalDays: r2.getLong(3), horizonDays: r2.getLong(4) })
@@ -1470,7 +1437,7 @@ struct Index {
         while (day <= r.horizonDays) {
           const plan: string = this.addDays(startISO, day)
           try {
-            await this.store.insert(Index.T_TASK, {
+            await this.store.insert(RdbManager.T_TASK, {
               plantId: this.tplTargetPlantId,
               type: r.type,
               planDate: plan,
@@ -1537,7 +1504,8 @@ struct Index {
       // this.Header()
       Tabs({
         barPosition: BarPosition.End,
-        index: this.tabBarIndex
+        index: this.tabBarIndex,
+        controller:this.tabsController
       }){
         TabContent(){
           PlantListPage({
@@ -1589,11 +1557,12 @@ struct Index {
           //   onToggle: (t: PlantTask) => { this.toggleTaskDone(t) },
           //   onDelete: (id: number) => { this.deleteTask(id) }
           // })
+          // this.filteredTasks() ||
           TaskListPage({
-            tasks: this.filteredTasks() || this.tasks,
+            tasks: this.tasks,
             plants: this.plants,
-            onToggle: (t: PlantTask) => {
-              this.toggleTaskDone(t)
+            onToggle: (pt: PlantTask) => {
+              this.toggleTaskDone(pt)
             },
             onDeleteAsk: (tid: number) => {
               this.pendingDeleteTaskId = tid;
@@ -1604,19 +1573,46 @@ struct Index {
           })
         }.tabBar(this.TabChip('任务', 1))
         TabContent(){
-
         }.tabBar(this.Fab(() => {
           this.openPanel(0)
         }))
         TabContent(){
-          CalendarSheet({
-            year: this.calYear,
-            month: this.calMonth,
-            tasks: this.tasks, // Array<PlantTask>
-            onToggle: (it: PlantTask) => { this.toggleTaskDone(it) },
-            onDelete: (id: number) => { this.deleteTask(id) },
-            onClose: () => { this.calendarVisible = false }
+          CalendarSheet1({
+            year: this.calendarYear,
+            month: this.calendarMonth,
+            tasks: this.tasks,          // 这里的 tasks 请确保是 PlantTask[]
+            plants: this.plants,
+            onChangeMonth: (y: number, m: number) => { this.calendarYear = y; this.calendarMonth = m },
+            onQuickAdd: async (pid: number, type: string, iso: string) => {
+              this.taskDraft = new TaskDraft();
+              this.taskDraft.plantId = pid;
+              this.taskDraft.type = type;
+              this.taskDraft.planDate = iso
+              await this.createTask(this.taskDraft);  // 你现有的方法
+            },
+            onToggle: async (t: PlantTask) => { await this.toggleTaskDone(t) },
+            onClose: () => { this.calendarVisible = false },
+            onDeleteAsk: (tid: number) => {
+              this.pendingDeleteTaskId = tid;
+              this.pendingDeletePlantId = 0;
+              this.confirmText = '删除这个任务？';
+              this.confirmVisible = true
+            }
           })
+          // Scroll(){
+          //   Column(){
+          //
+          //     CalendarSheet({
+          //       year: this.calYear,
+          //       month: this.calMonth,
+          //       tasks: this.tasks, // Array<PlantTask>
+          //       onToggle: (it: PlantTask) => { this.toggleTaskDone(it) },
+          //       onDelete: (id: number) => { this.deleteTask(id) },
+          //       onClose: () => { this.calendarVisible = false }
+          //     })
+          //   }
+          //
+          // }
         }.tabBar(this.TabChip('日历', 3))
         TabContent(){
           StatsPage({
@@ -1629,7 +1625,17 @@ struct Index {
 
       }.barWidth('100%').barHeight(54).height('100%').scrollable(false)
       .onChange((index: number) => {
-        this.tabBarIndex = index;
+        if (index === 2) {
+          this.tabsController.changeIndex(this.tabBarIndex)
+        } else {
+          this.tabBarIndex = index;
+          this.tabsController.changeIndex(this.tabBarIndex)
+        }
+      }).onContentWillChange((currentIndex: number, comingIndex: number)=>{
+        if (comingIndex === 2) {
+          return false;
+        }
+        return true;
       })
 
 
@@ -1660,7 +1666,7 @@ struct Index {
           keyword: this.keyword,         // ← 来自搜索框
           onAddLog: async (note: string, iso: string) => {
             if (!this.store) { return }
-            await this.store.insert(Index.T_LOG, { plantId: this.logPlantId, note: note, createdAt: Date.now() })
+            await this.store.insert(RdbManager.T_LOG, { plantId: this.logPlantId, note: note, createdAt: Date.now() })
             await this.loadLogsWithPhotos(this.logPlantId) // 重新加载
             // await this.loadLogsByPlant(this.currentPlantId)
           },
@@ -1668,21 +1674,22 @@ struct Index {
             if (!this.store) { return }
             await this.deleteLogAndPhotos(logId)
             await this.loadLogsWithPhotos(this.logPlantId) // 按你工程里的当前 plant 状态刷新
+            await this.reloadAll()
             this.showBanner('已删除日志与照片', 'ok')
           },
           onBatchDeleteLogs: async (ids: Array<number>) => {
             if (!this.store) { return }
             // 删除日志本体
-            const p = new relationalStore.RdbPredicates(Index.T_LOG); p.in('id', ids)
+            const p = new relationalStore.RdbPredicates(RdbManager.T_LOG); p.in('id', ids)
             await this.store.delete(p)
             // 删除关联图片
-            const pp = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); pp.in('logId', ids)
+            const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); pp.in('logId', ids)
             await this.store.delete(pp)
             await this.loadLogsWithPhotos(this.logPlantId)
           },
           onPickPhotos: async (logId: number) => {
             // 在这里用你现有的封装（file.picker / photoAccessHelper），复制到 filesDir，
-            // 生成缩略图（可选），然后批量 insert 到 ${Index.T_LOG_PHOTO}，最后刷新。
+            // 生成缩略图（可选），然后批量 insert 到 ${RdbManager.T_LOG_PHOTO}，最后刷新。
             await this.pickAndSavePhotos(logId) // 你已有/将实现的方法
             await this.loadLogsWithPhotos(this.logPlantId)
           },
@@ -1692,7 +1699,7 @@ struct Index {
           },
           onDeletePhoto: async (pid: number) => {
             if (!this.store) { return }
-            const p = new relationalStore.RdbPredicates(Index.T_LOG_PHOTO); p.equalTo('id', pid)
+            const p = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); p.equalTo('id', pid)
             await this.store.delete(p)
             await this.deleteLogAndPhotos(pid)
             await this.loadLogsWithPhotos(this.logPlantId)
@@ -1710,6 +1717,7 @@ struct Index {
         })
       }
 
+      // 任务过滤
       if (this.taskFilterVisible) {
         PlantTaskFilterSheet({
           filter: this.taskFilter,
@@ -1733,6 +1741,7 @@ struct Index {
         })
       }
 
+      // 首页的日历
       if (this.calendarVisible) {
         CalendarSheet1({
           year: this.calendarYear,
@@ -1752,6 +1761,7 @@ struct Index {
         })
       }
 
+      // 表的抽屉
       if (this.metricChartVisible) {
         MetricChartSheet({
           plantName: this.metricChartPlantName,
@@ -2041,10 +2051,10 @@ struct Index {
             .padding({ left: 12, right: 12 })
         }
         .height(44).width('100%').padding({ left: 20, right: 20, bottom: 2 })
-        Text('📅 日历').fontSize(12).fontColor(0xFF1565C0)
-          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-          .borderRadius(12).backgroundColor(0x102196F3)
-          .onClick(() => { this.calendarVisible = true })
+        // Text('📅 日历').fontSize(12).fontColor(0xFF1565C0)
+        //   .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+        //   .borderRadius(12).backgroundColor(0x102196F3)
+        //   .onClick(() => { this.calendarVisible = true })
       }
       .padding({ bottom: 4 })
       .onTouch((e: TouchEvent) => {
@@ -2084,7 +2094,10 @@ struct Index {
       .backgroundColor(this.tabBarIndex === idx ? 0xFFE8F5E9 : 0xFFFFFFFF)
       .onClick(() => {
         animateTo({ duration: 160, curve: Curve.EaseInOut }, () => {
-          this.tabBarIndex = idx
+          if (idx!==2) {
+            this.tabBarIndex = idx
+            this.tabsController.changeIndex(this.tabBarIndex)
+          }
         })
       })
   }

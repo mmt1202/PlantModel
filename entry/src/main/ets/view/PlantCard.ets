@@ -27,12 +27,13 @@ export  struct PlantCard {
   }
 
   build() {
-    Column() {
+    Column({space:10}) {
       Row() {
         // 头像圆片
         Column() {
-          if (this.p.name.length > 0) { Text(this.p.name.substring(0, 1)).fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF) }
-          else { Text('植').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF) }
+          if (this.p.name.length > 0) {
+            Text(this.p.name.substring(0, 1)).fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF)
+          } else { Text('植').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF) }
         }
         .width(40).height(40).borderRadius(20).backgroundColor(0xFF66BB6A)
         .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
@@ -44,41 +45,44 @@ export  struct PlantCard {
 
         Blank()
 
-        Row() {
-          Text('日志').fontSize(12).fontColor(0xFF1565C0)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x102196F3)
-            .onClick(() => { this.onOpenLogs() })
-            .margin({ right: 8 })
-
-          Text('指标').fontSize(12).fontColor(0xFF2E7D32)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0xE8F5E9)
-            .onClick(() => { this.onOpenMetrics() })
-            .margin({ right: 8 })
-
-          // ← 新增：模板
-          Text('模板').fontSize(12).fontColor(0xFF8E24AA)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
-            .onClick(() => { this.onOpenTemplate() })
-            .margin({ right: 8 })
-
-          Text('新模板').fontSize(12).fontColor(0xFF8E24AA)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
-            .onClick(() => { this.onOpenTemplatenew(this.p.id) })
-            .margin({ right: 8 })
-
+        Row(){
           Text('✏️').fontSize(16).onClick(() => { this.onEdit() }).margin({ right: 8 })
           Text('🗑️').fontSize(16).onClick(() => { this.onDeleteAsk() })
         }
-      }
+      }.width('100%').justifyContent(FlexAlign.SpaceBetween)
+      Row() {
+        Text('日志').fontSize(12).fontColor(0xFF1565C0)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x102196F3)
+          .onClick(() => { this.onOpenLogs() })
+          .margin({ right: 8 })
 
-      Text('📈').fontSize(16).onClick(() => { this.onOpenMetric(this.p.id) }).margin({ right: 8 })
+        Text('指标').fontSize(12).fontColor(0xFF2E7D32)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0xE8F5E9)
+          .onClick(() => { this.onOpenMetrics() })
+          .margin({ right: 8 })
+
+        // ← 新增：模板
+        Text('模板').fontSize(12).fontColor(0xFF8E24AA)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
+          .onClick(() => { this.onOpenTemplate() })
+          .margin({ right: 8 })
+
+        Text('新模板').fontSize(12).fontColor(0xFF8E24AA)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
+          .onClick(() => { this.onOpenTemplatenew(this.p.id) })
+          .margin({ right: 8 })
+        Text('📈').fontSize(16).onClick(() => { this.onOpenMetric(this.p.id) }).margin({ right: 8 })
+
+
+      }
 
       // 进度条
       Row() {
         Column() {
-          Blank().width('100%').height(6).borderRadius(3).backgroundColor(0xFFE0E0E0)
-          Blank().position({ x: 0, y: -6 }).width(this.total > 0 ? this.ratioText : '0%').height(6).borderRadius(3).backgroundColor(0xFF66BB6A)
-            .animation({ duration: 220, curve: Curve.EaseInOut })
+          Progress({ value: this.done, total: this.total , type: ProgressType.Linear }).width('100%').height(6).color(0xFF66BB6A).animation({ duration: 220, curve: Curve.EaseInOut })
+          // Blank().width('100%').height(6).borderRadius(3).backgroundColor(0xFFE0E0E0)
+          // Blank().position({ x: 0, y: -6 }).width(this.total > 0 ? this.ratioText : '0%').height(6).borderRadius(3).backgroundColor(0xFF66BB6A)
+
         }.width('70%')
         Text(`${this.done}/${this.total}`).fontSize(12).fontColor(0xFF455A64).margin({ left: 12 })
       }.margin({ top: 10 })

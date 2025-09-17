@@ -160,22 +160,6 @@ export struct CalendarGrid {
     return 0xFFFB8C00 // 部分完成
   }
 
-  // 补充一个两位数工具
-  // private twoDigits(n: number): string {
-  //   const s: string = n.toString()
-  //   if (s.length === 1) { return '0' + s }
-  //   return s
-  // }
-
-  // 生成当前视图月份中某天的 ISO 日期：YYYY-MM-DD
-  // 约定：CalendarGrid 里已有 this.year（四位年，例如 2025）、this.month（1~12）
-  // private isoOf(day: number): string {
-  //   const arr: Array<string> = this.monthISO.split('-')
-  //   // const mm: string = this.twoDigits()  // 假设 month 是 1~12
-  //   const dd: string = this.twoDigits(day)
-  //   return `${arr[0]}-${arr[1]}-${dd}`
-  // }
-
 
   // ---------- 视图 ----------
   build() {
