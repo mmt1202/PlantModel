@@ -6,6 +6,7 @@ export struct LogRowItem {
   @Param @Require lg:PlantLog
   @Param @Require selectMode: boolean
   @Param @Require photos: Array<LogPhoto>
+  @Param @Require logItemPhotos: Array<LogPhoto>
   @Param keyword: string = '' // 关键字高亮（可为空）
   @Event isSelected: (lgId:number)=> boolean
   @Event toggleSelect: (lgId:number)=> void
@@ -99,19 +100,15 @@ export struct LogRowItem {
       }.width('100%').justifyContent(FlexAlign.SpaceBetween)
 
       // 照片网格
-      this.PhotoGrid(this.lg.id)
+      // this.PhotoGrid(this.lg.id)
+      this.AddPic(this.lg.id)
     }
     .width('100%')
     .padding(12)
     .borderRadius(12)
     .scale(this.pressedLog ? { x: 0.98, y: 0.98 } : { x: 1, y: 1 })
     .backgroundColor(0xFFFFFFFF)
-    .shadow({
-      radius: 12,
-      color: 0x14000000,
-      offsetX: 0,
-      offsetY: 3
-    })
+    .shadow({ radius: 12, color: 0x13000000, offsetX: 0, offsetY: 3 })
     .onTouch((e: TouchEvent) => {
       if (e.type === TouchType.Down) {
         this.pressedLog = true
@@ -156,6 +153,117 @@ export struct LogRowItem {
       Text(this.midKeyword(text)).fontSize(15).fontColor(0xFFD84315).fontWeight(FontWeight.Medium)
       Text(this.afterKeyword(text)).fontSize(15).fontColor(0xFF263238)
     }
+  }
+
+  @Builder
+  AddPic(logId: number) {
+    Column() {
+      Text(this.logItemPhotos.length.toString())
+      Grid() {
+        ForEach(this.logItemPhotos, (item: LogPhoto, index: number) => {
+          GridItem() {
+            RelativeContainer() {
+              Image(item.path)
+                .borderRadius(4)
+                .visibility(item ? Visibility.Visible : Visibility.None)
+                .width($r('app.integer.add_image_area_size'))
+                .height($r('app.integer.add_image_area_size'))
+
+              Image($r('app.media.ic_image_delete'))
+                .width(12)
+                .height(12)
+                .alignRules({
+                  top: { anchor: "__container__", align: VerticalAlign.Top },
+                  right: { anchor: "__container__", align: HorizontalAlign.End }
+                })
+                .margin(8)
+                .onClick(() => {
+                  // this.deleteMicroOnClick(index)
+                  this.onDeletePhoto(item.id)
+                })
+
+
+              // Text('编辑')
+              //   .fontSize(12)
+              //   .fontColor('#FFFFFF')
+              //   .fontWeight(400)
+              //   .alignRules({
+              //     bottom: { anchor: "__container__", align: VerticalAlign.Bottom },
+              //     left: { anchor: "__container__", align: HorizontalAlign.Start }
+              //   })
+              //   .margin(8)
+            }.width($r('app.integer.add_image_area_size'))
+            .height($r('app.integer.add_image_area_size'))
+
+          }.width($r('app.integer.add_image_area_size'))
+          .height($r('app.integer.add_image_area_size'))
+        }, (item: LogPhoto, index: number) => JSON.stringify(item) + index)
+        // if (this.photosByLog(logId).length < 12) {
+        //   GridItem() {
+        //     this.AddDefaultPic(logId)
+        //   }
+        //   .width(104)
+        //   .height(104)
+        // }
+      }
+      .width('100%')
+      .columnsTemplate('1fr 1fr 1fr')
+      // .enableScrollInteraction(false)
+      .nestedScroll({
+        scrollForward: NestedScrollMode.PARENT_FIRST, // Set the effect of scrolling the component to the end: The parent component rolls first, and then rolls itself to the edge
+        scrollBackward: NestedScrollMode.SELF_FIRST // Set the effect of rolling the component to the start end: Rolls itself first, and then the parent component scrolls to the edge
+      })
+      .height(this.getImageGridHeight(this.logItemPhotos.length))
+      .layoutDirection(GridDirection.Row)
+      .columnsGap(8)
+      .rowsGap(8)
+      .maxCount(3)
+      .minCount(1)
+      .cellLength(104)
+
+    }
+    .padding({
+      right: 24,
+      left: 24
+    })
+  }
+
+  getImageGridHeight(ctn:number){
+    let h = 0;
+    if (ctn>9) {
+      h = 328 + 104
+    }
+    if (ctn>6) {
+      h = 328
+    }
+    if (ctn>3) {
+      h = 216
+    }
+    if (ctn>1) {
+      h = 104
+    }
+    return h
+
+  }
+
+  @Builder
+  AddDefaultPic(logId:number) {
+    Stack() {
+      Image($r('app.media.ic_add_pic2'))
+        .objectFit(ImageFit.Cover)
+        .width(104)
+        .height(104)
+    }
+    .alignContent(Alignment.Center)
+    .backgroundColor('#F4F5F7')
+    .margin({ bottom: 36 })
+    .onClick(() => {
+      if (this.photosByLog(logId).length < 9) {
+        this.onCapturePhoto(this.lg.id)
+      } else {
+        // this.getUIContext().getPromptAction().showToast({ message: $r('app.string.add_picture_prompt') });
+      }
+    })
   }
 
   @Builder

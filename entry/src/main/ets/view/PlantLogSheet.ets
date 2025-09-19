@@ -1,8 +1,7 @@
 import { LogRowItem } from './LogRowItem';
 
 @ObservedV2
-export
-class PlantLog {
+export class PlantLog {
   @Trace id: number
   @Trace plantId: number
   @Trace note: string
@@ -17,8 +16,7 @@ class PlantLog {
 }
 
 @ObservedV2
-export
-class LogPhoto {
+export class LogPhoto {
   @Trace id: number
   @Trace logId: number
   @Trace path: string // 原图（filesDir 下）
@@ -219,6 +217,7 @@ export struct PlantLogSheet {
                   lg: lg,
                   selectMode: this.selectMode,
                   photos: this.photos,
+                  logItemPhotos: this.photos.filter(i=>i.logId === lg.id) || [],
                   keyword: this.keyword,
                   isSelected: (lgId: number) => this.isSelected(lgId),
                   toggleSelect: (lgId: number) => {
