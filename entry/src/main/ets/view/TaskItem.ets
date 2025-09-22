@@ -1,14 +1,13 @@
-import { PlantTask } from "../model/PlantModel"
-import { hilog } from "@kit.PerformanceAnalysisKit"
+import { PlantTask } from '../model/PlantModel'
+import { hilog } from '@kit.PerformanceAnalysisKit'
 
 /** -------- 子组件：单条任务（V2） -------- */
 @ComponentV2
-export  struct TaskItem {
+export struct TaskItem {
   @Param @Require t: PlantTask
   @Param @Require plantName: string
-  @Event onToggle: (pt:PlantTask) => void
+  @Event onToggle: (pt: PlantTask) => void
   @Event onDeleteAsk: () => void
-
   @Local pressed: boolean = false
 
   aboutToAppear(): void {
@@ -33,15 +32,28 @@ export  struct TaskItem {
       }.margin({ left: 10 })
 
       Blank()
-      Text('🗑️').fontSize(16).onClick(() => { this.onDeleteAsk() })
+      Text('🗑️').fontSize(16).onClick(() => {
+        this.onDeleteAsk()
+      })
     }
     .width('100%')
-    .padding(12).borderRadius(12).backgroundColor(0xFFFFFFFF)
-    .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
+    .padding(12)
+    .borderRadius(12)
+    .backgroundColor(0xFFFFFFFF)
+    .shadow({
+      radius: 12,
+      color: 0x14000000,
+      offsetX: 0,
+      offsetY: 3
+    })
     .scale(this.pressed ? { x: 0.98, y: 0.98 } : { x: 1, y: 1 })
     .onTouch((e: TouchEvent) => {
-      if (e.type === TouchType.Down) { this.pressed = true }
-      if (e.type === TouchType.Up || e.type === TouchType.Cancel) { this.pressed = false }
+      if (e.type === TouchType.Down) {
+        this.pressed = true
+      }
+      if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+        this.pressed = false
+      }
     })
     .animation({ duration: 120, curve: Curve.EaseInOut })
   }

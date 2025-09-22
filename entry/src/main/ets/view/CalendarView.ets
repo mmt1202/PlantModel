@@ -291,7 +291,9 @@ export struct CalendarView {
       })
     }
     .width('100%')
-    .padding(12).borderRadius(12).backgroundColor(0xFFFFFFFF)
+    .padding(12)
+    .borderRadius(12)
+    .backgroundColor(0xFFFFFFFF)
     .shadow({
       radius: 10,
       color: 0x14000000,

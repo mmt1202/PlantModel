@@ -5,12 +5,21 @@ import { Plant, PlantTask } from '../model/PlantModel'
 export struct StatsPage {
   @Param @Require plants: Array<Plant>
   @Param @Require tasks: Array<PlantTask>
-
-  @Event onReloadAll:()=>void
+  @Event onReloadAll: () => void
   // 小图配置
   @Local weekOption: Options = new Options({
-    title: { show: true, text: '近7天完成数', right: 16, top: 16 },
-    grid: { left: 28, top: 48, right: 16, bottom: 28 },
+    title: {
+      show: true,
+      text: '近7天完成数',
+      right: 16,
+      top: 16
+    },
+    grid: {
+      left: 28,
+      top: 48,
+      right: 16,
+      bottom: 28
+    },
     xAxis: { data: [] as Array<string> },
     yAxis: { name: '次数' },
     legend: { show: true },
@@ -31,7 +40,9 @@ export struct StatsPage {
   // ======= 工具：日期字符串 =======
   private two(n: number): string {
     const s: string = n.toString()
-    if (s.length === 1) { return '0' + s }
+    if (s.length === 1) {
+      return '0' + s
+    }
     return s
   }
 
@@ -61,8 +72,15 @@ export struct StatsPage {
   }
 
   private doneCount(): number {
-    let i: number = 0; let c: number = 0
-    while (i < this.tasks.length) { if (this.tasks[i].done === 1) { c = c + 1 }; i = i + 1 }
+    let i: number = 0;
+    let c: number = 0
+    while (i < this.tasks.length) {
+      if (this.tasks[i].done === 1) {
+        c = c + 1
+      }
+      ;
+      i = i + 1
+    }
     return c
   }
 
@@ -73,10 +91,13 @@ export struct StatsPage {
   // 逾期（计划日 < 今天 且 未完成）
   private overdueCount(): number {
     const td: string = this.todayISO()
-    let i: number = 0; let c: number = 0
+    let i: number = 0;
+    let c: number = 0
     while (i < this.tasks.length) {
       const t = this.tasks[i]
-      if (t.done === 0 && t.planDate < td) { c = c + 1 }
+      if (t.done === 0 && t.planDate < td) {
+        c = c + 1
+      }
       i = i + 1
     }
     return c
@@ -86,10 +107,13 @@ export struct StatsPage {
   private next7Count(): number {
     const td: string = this.todayISO()
     const up: string = this.isoNDaysAgo(-7) // 往后7天
-    let i: number = 0; let c: number = 0
+    let i: number = 0;
+    let c: number = 0
     while (i < this.tasks.length) {
       const t = this.tasks[i]
-      if (t.done === 0 && t.planDate >= td && t.planDate <= up) { c = c + 1 }
+      if (t.done === 0 && t.planDate >= td && t.planDate <= up) {
+        c = c + 1
+      }
       i = i + 1
     }
     return c
@@ -99,12 +123,15 @@ export struct StatsPage {
   private doneLast7(): number {
     const from: string = this.isoNDaysAgo(6) // 含今天，共7天
     const to: string = this.todayISO()
-    let i: number = 0; let c: number = 0
+    let i: number = 0;
+    let c: number = 0
     while (i < this.tasks.length) {
       const t = this.tasks[i]
       if (t.done === 1) {
         const iso: string = this.isoFromMs(t.doneAt)
-        if (iso >= from && iso <= to) { c = c + 1 }
+        if (iso >= from && iso <= to) {
+          c = c + 1
+        }
       }
       i = i + 1
     }
@@ -118,7 +145,9 @@ export struct StatsPage {
       let i: number = 0
       while (i < this.tasks.length) {
         const t = this.tasks[i]
-        if (t.done === 1 && this.isoFromMs(t.doneAt) === iso) { return true }
+        if (t.done === 1 && this.isoFromMs(t.doneAt) === iso) {
+          return true
+        }
         i = i + 1
       }
       return false
@@ -128,7 +157,11 @@ export struct StatsPage {
     // 最多从今天往回数 365 天以防长循环
     while (n < 365) {
       const iso: string = this.isoNDaysAgo(n)
-      if (hasDone(iso)) { days = days + 1 } else { break }
+      if (hasDone(iso)) {
+        days = days + 1
+      } else {
+        break
+      }
       n = n + 1
     }
     return days
@@ -136,8 +169,14 @@ export struct StatsPage {
 
   // 类型分布（按任务总数统计）
   private typeCount(tn: string): number {
-    let i: number = 0; let c: number = 0
-    while (i < this.tasks.length) { if (this.tasks[i].type === tn) { c = c + 1 } i = i + 1 }
+    let i: number = 0;
+    let c: number = 0
+    while (i < this.tasks.length) {
+      if (this.tasks[i].type === tn) {
+        c = c + 1
+      }
+      i = i + 1
+    }
     return c
   }
 
@@ -145,42 +184,66 @@ export struct StatsPage {
   private topPlantName(): string {
     const from: string = this.isoNDaysAgo(29)
     // 先统计每个 plantId 的近30天完成数
-    let maxCnt: number = 0; let maxPid: number = 0
+    let maxCnt: number = 0;
+    let maxPid: number = 0
     // 遍历每个植物
     let p: number = 0
     while (p < this.plants.length) {
       const pid: number = this.plants[p].id
-      let i: number = 0; let c: number = 0
+      let i: number = 0;
+      let c: number = 0
       while (i < this.tasks.length) {
         const t = this.tasks[i]
         if (t.plantId === pid && t.done === 1) {
           const iso: string = this.isoFromMs(t.doneAt)
-          if (iso >= from) { c = c + 1 }
+          if (iso >= from) {
+            c = c + 1
+          }
         }
         i = i + 1
       }
-      if (c > maxCnt) { maxCnt = c; maxPid = pid }
+      if (c > maxCnt) {
+        maxCnt = c;
+        maxPid = pid
+      }
       p = p + 1
     }
     // 映射名字
     let j: number = 0
-    while (j < this.plants.length) { if (this.plants[j].id === maxPid) { return this.plants[j].name } j = j + 1 }
+    while (j < this.plants.length) {
+      if (this.plants[j].id === maxPid) {
+        return this.plants[j].name
+      }
+      j = j + 1
+    }
     return maxCnt > 0 ? '活跃植物' : '—'
   }
 
   private topPlantCount(): string {
     const name: string = this.topPlantName()
-    if (name === '—') { return '0' }
+    if (name === '—') {
+      return '0'
+    }
     // 重新算一次 count（为了避免在 Builder 里做变量复用）
     const from: string = this.isoNDaysAgo(29)
-    let j: number = 0; let pid: number = 0
-    while (j < this.plants.length) { if (this.plants[j].name === name) { pid = this.plants[j].id }; j = j + 1 }
-    let i: number = 0; let c: number = 0
+    let j: number = 0;
+    let pid: number = 0
+    while (j < this.plants.length) {
+      if (this.plants[j].name === name) {
+        pid = this.plants[j].id
+      }
+      ;
+      j = j + 1
+    }
+    let i: number = 0;
+    let c: number = 0
     while (i < this.tasks.length) {
       const t = this.tasks[i]
       if (t.plantId === pid && t.done === 1) {
         const iso: string = this.isoFromMs(t.doneAt)
-        if (iso >= from) { c = c + 1 }
+        if (iso >= from) {
+          c = c + 1
+        }
       }
       i = i + 1
     }
@@ -216,7 +279,9 @@ export struct StatsPage {
       let k: number = 0
       while (k < this.tasks.length) {
         const t = this.tasks[k]
-        if (t.done === 1 && this.isoFromMs(t.doneAt) === iso) { c = c + 1 }
+        if (t.done === 1 && this.isoFromMs(t.doneAt) === iso) {
+          c = c + 1
+        }
         k = k + 1
       }
       out.push(c)
@@ -227,10 +292,15 @@ export struct StatsPage {
 
   private refreshWeekOption(): void {
     this.weekOption.setVal({
-      title : { show: true, text: '近7天完成数', right: 16, top: 16 },
-      xAxis : { data: this.weekLabels() },
-      yAxis : { name: '次数' },
-      series : [{ name: '完成', data: this.weekDoneCounts() }]
+      title: {
+        show: true,
+        text: '近7天完成数',
+        right: 16,
+        top: 16
+      },
+      xAxis: { data: this.weekLabels() },
+      yAxis: { name: '次数' },
+      series: [{ name: '完成', data: this.weekDoneCounts() }]
     })
     // this.weekOption.title = { show: true, text: '近7天完成数', right: 16, top: 16 }
     // this.weekOption.xAxis = { data: this.weekLabels() }
@@ -240,39 +310,52 @@ export struct StatsPage {
 
   // ======= UI =======
   build() {
-    Column({space:8}) {
+    Column({ space: 8 }) {
       this.Header()
       // 第一行：总览
-      Grid(){
-        GridItem(){
+      Grid() {
+        GridItem() {
           this.Card('植物数', this.plantCount().toString(), 0xFF1B5E20)
         }
-        GridItem(){
+
+        GridItem() {
           this.Card('任务数', this.taskCount().toString(), 0xFF1565C0)
         }
-        GridItem(){
-          this.Card('完成率', this.taskCount() > 0 ? `${Math.round(this.doneCount() * 100 / this.taskCount())}%` : '0%', 0xFFE65100)
+
+        GridItem() {
+          this.Card('完成率', this.taskCount() > 0 ? `${Math.round(this.doneCount() * 100 / this.taskCount())}%` : '0%',
+            0xFFE65100)
         }
-        GridItem(){
+
+        GridItem() {
           this.Card('进行中', this.inProgressCount().toString(), 0xFF6A1B9A)
         }
-        GridItem(){
+
+        GridItem() {
           this.Card('逾期未完成', this.overdueCount().toString(), 0xFFD32F2F)
 
         }
-        GridItem(){
+
+        GridItem() {
           this.Card('未来7天待办', this.next7Count().toString(), 0xFF1976D2)
         }
-        GridItem(){
+
+        GridItem() {
           this.Card('近7天完成', this.doneLast7().toString(), 0xFF2E7D32)
         }
-        GridItem(){
+
+        GridItem() {
           this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
         }
-      }.width('100%').height(340).columnsTemplate('1fr 1fr').columnsGap(10).rowsGap(10)
+      }
+      .width('100%')
+      .height(340)
+      .columnsTemplate('1fr 1fr')
+      .columnsGap(10)
+      .rowsGap(10)
 
-      Scroll(){
-        Column(){
+      Scroll() {
+        Column() {
           // this.SectionTitle('类型分布')
           // Row() {
           //   this.Chip(`浇水 ${this.typeCount('浇水')}`)
@@ -297,9 +380,11 @@ export struct StatsPage {
 
         }
       }.scrollBar(BarState.Off).height('calc(100% - 400vp)')
+
       // 类型分布
 
     }
+
     // .padding({ left: 12, right: 12, top: 12, bottom: 16 })
   }
 
@@ -311,9 +396,16 @@ export struct StatsPage {
           Text('PlantDiary 植物养护·统计').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
           Text('刷新数据')
-            .fontSize(12).fontColor(0xFF1565C0)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .borderRadius(12).backgroundColor(0x102196F3)
+            .fontSize(12)
+            .fontColor(0xFF1565C0)
+            .padding({
+              left: 10,
+              right: 10,
+              top: 6,
+              bottom: 6
+            })
+            .borderRadius(12)
+            .backgroundColor(0x102196F3)
             .onClick(async () => {
               await this.onReloadAll()
               this.refreshWeekOption()
@@ -334,8 +426,15 @@ export struct StatsPage {
 
   @Builder
   SectionTitle(text: string) {
-    Row() { Text(text).fontSize(12).fontColor(0xFF607D8B) }
-    .padding({ left: 12, right: 12, top: 10, bottom: 6 })
+    Row() {
+      Text(text).fontSize(12).fontColor(0xFF607D8B)
+    }
+    .padding({
+      left: 12,
+      right: 12,
+      top: 10,
+      bottom: 6
+    })
   }
 
   @Builder
@@ -348,15 +447,26 @@ export struct StatsPage {
     .padding(16)
     .borderRadius(16)
     .backgroundColor(0xFFFFFFFF)
-    .shadow({ radius: 14, color: 0x12000000, offsetX: 0, offsetY: 4 })
+    .shadow({
+      radius: 14,
+      color: 0x12000000,
+      offsetX: 0,
+      offsetY: 4
+    })
     .animation({ duration: 240, curve: Curve.EaseInOut })
   }
 
   @Builder
   Chip(text: string) {
     Text(text)
-      .fontSize(12).fontColor(0xFF263238)
-      .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+      .fontSize(12)
+      .fontColor(0xFF263238)
+      .padding({
+        left: 10,
+        right: 10,
+        top: 6,
+        bottom: 6
+      })
       .borderRadius(12)
       .backgroundColor(0xFFECEFF1)
       .margin({ right: 8 })
@@ -370,11 +480,17 @@ export struct StatsPage {
         Text(name).fontSize(14).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
         Text(`${count} 次完成`).fontSize(12).fontColor(0xFF607D8B).margin({ top: 2 })
       }
+
       Blank()
     }
     .padding(14)
     .borderRadius(16)
     .backgroundColor(0xFFFFFFFF)
-    .shadow({ radius: 14, color: 0x12000000, offsetX: 0, offsetY: 4 })
+    .shadow({
+      radius: 14,
+      color: 0x12000000,
+      offsetX: 0,
+      offsetY: 4
+    })
   }
 }

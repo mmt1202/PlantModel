@@ -1,6 +1,5 @@
 import { McLineChart, Options } from '@mcui/mccharts'
 import { Metric } from '../model/PlantModel'
-import { hilog } from '@kit.PerformanceAnalysisKit'
 
 /** Metric 大图趋势（全屏抽屉） */
 @ComponentV2

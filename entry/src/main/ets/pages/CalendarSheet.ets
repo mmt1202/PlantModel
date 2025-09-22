@@ -1,5 +1,5 @@
 import { Plant, PlantTask } from "../model/PlantModel";
-import { TaskItem } from "./TaskItem";
+import { TaskItem } from "../view/TaskItem";
 
 @ObservedV2
 export

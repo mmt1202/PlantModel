@@ -217,7 +217,7 @@ export struct PlantLogSheet {
                   lg: lg,
                   selectMode: this.selectMode,
                   photos: this.photos,
-                  logItemPhotos: this.photos.filter(i=>i.logId === lg.id) || [],
+                  logItemPhotos: this.photos.filter(i => i.logId === lg.id) || [],
                   keyword: this.keyword,
                   isSelected: (lgId: number) => this.isSelected(lgId),
                   toggleSelect: (lgId: number) => {

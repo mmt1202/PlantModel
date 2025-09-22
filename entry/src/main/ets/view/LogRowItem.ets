@@ -1,22 +1,21 @@
-import { LogPhoto, PlantLog } from "./PlantLogSheet";
+import { LogPhoto, PlantLog } from './PlantLogSheet';
 
 @ComponentV2
 export struct LogRowItem {
   @Local pressedLog: boolean = false;
-  @Param @Require lg:PlantLog
+  @Param @Require lg: PlantLog
   @Param @Require selectMode: boolean
   @Param @Require photos: Array<LogPhoto>
   @Param @Require logItemPhotos: Array<LogPhoto>
   @Param keyword: string = '' // 关键字高亮（可为空）
-  @Event isSelected: (lgId:number)=> boolean
-  @Event toggleSelect: (lgId:number)=> void
+  @Event isSelected: (lgId: number) => boolean
+  @Event toggleSelect: (lgId: number) => void
   @Event onPickPhotos: (logId: number) => void
   @Event onCapturePhoto: (logId: number) => void
   @Event onDeleteLog: (logId: number) => void
   @Event onDeletePhoto: (photoId: number) => void
   @Event onselectMode: (selectMode: boolean) => void
-  @Event onPreviewVisible: (path:string, visible: boolean) => void
-
+  @Event onPreviewVisible: (path: string, visible: boolean) => void
 
   private dateFromTs(ts: number): string {
     const d = new Date(ts);
@@ -69,7 +68,7 @@ export struct LogRowItem {
   }
 
   build() {
-    Column({space:5}) {
+    Column({ space: 5 }) {
       Row() {
         if (this.selectMode) {
           Text(this.isSelected(this.lg.id) ? '✅' : '⬜').fontSize(18)
@@ -108,7 +107,12 @@ export struct LogRowItem {
     .borderRadius(12)
     .scale(this.pressedLog ? { x: 0.98, y: 0.98 } : { x: 1, y: 1 })
     .backgroundColor(0xFFFFFFFF)
-    .shadow({ radius: 12, color: 0x13000000, offsetX: 0, offsetY: 3 })
+    .shadow({
+      radius: 12,
+      color: 0x13000000,
+      offsetX: 0,
+      offsetY: 3
+    })
     .onTouch((e: TouchEvent) => {
       if (e.type === TouchType.Down) {
         this.pressedLog = true
@@ -134,6 +138,7 @@ export struct LogRowItem {
     )
     .animation({ duration: 120, curve: Curve.EaseInOut })
   }
+
   @Builder
   HighlightLine(text: string) {
     // 简单高亮：前后拆分为 3 段
@@ -144,6 +149,7 @@ export struct LogRowItem {
       this.HighlightPieces(text)
     }
   }
+
   @Builder
   HighlightPieces(text: string) {
     // 依靠三个 Text 拼装（前/中/后）
@@ -227,18 +233,18 @@ export struct LogRowItem {
     })
   }
 
-  getImageGridHeight(ctn:number){
+  getImageGridHeight(ctn: number) {
     let h = 0;
-    if (ctn>9) {
+    if (ctn > 9) {
       h = 328 + 104
     }
-    if (ctn>6) {
+    if (ctn > 6) {
       h = 328
     }
-    if (ctn>3) {
+    if (ctn > 3) {
       h = 216
     }
-    if (ctn>1) {
+    if (ctn > 1) {
       h = 104
     }
     return h
@@ -246,7 +252,7 @@ export struct LogRowItem {
   }
 
   @Builder
-  AddDefaultPic(logId:number) {
+  AddDefaultPic(logId: number) {
     Stack() {
       Image($r('app.media.ic_add_pic2'))
         .objectFit(ImageFit.Cover)
@@ -278,7 +284,7 @@ export struct LogRowItem {
             .borderRadius(10)
             .objectFit(ImageFit.Cover)
             .onClick(() => {
-              this.onPreviewVisible(ph.path,true)
+              this.onPreviewVisible(ph.path, true)
             })
           Text('移除')
             .fontSize(10)

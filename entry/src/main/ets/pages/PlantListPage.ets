@@ -1,5 +1,5 @@
 import { Plant, PlantTask } from '../model/PlantModel'
-import { PlantCard } from './PlantCard'
+import { PlantCard } from '../view/PlantCard'
 
 @ComponentV2
 export struct PlantListPage {

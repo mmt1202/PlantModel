@@ -1,4 +1,4 @@
-import { relationalStore } from '@kit.ArkData'
+import { relationalStore } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 
 export class RdbManager {
@@ -138,41 +138,107 @@ export class RdbManager {
 
   // 启动一次性初始化 5 个模板（存在即跳过）
   async ensureCareTemplates(): Promise<void> {
-    if (!this.rdbStore) { return }
+    if (!this.rdbStore) {
+      return
+    }
     const rs = await this.rdbStore.querySql(`SELECT COUNT(1) FROM ${RdbManager.T_TEMPLATE}`, [])
     let count: number = 0
-    if (rs.goToNextRow()) { count = rs.getLong(0) }
+    if (rs.goToNextRow()) {
+      count = rs.getLong(0)
+    }
     rs.close()
-    if (count > 0) { return }
+    if (count > 0) {
+      return
+    }
 
     // 插入模板
     const idSucc: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '多肉', desc: '耐旱，少浇' })
-    const idMon: number  = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '龟背竹', desc: '喜湿散光' })
+    const idMon: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '龟背竹', desc: '喜湿散光' })
     const idRose: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '月季', desc: '勤花，需修剪' })
     const idPoth: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '绿萝', desc: '易养，见光' })
-    const idIvy: number  = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '常春藤', desc: '通风散光' })
+    const idIvy: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '常春藤', desc: '通风散光' })
 
     // 规则：type, intervalDays, horizonDays(生成周期)
     // 多肉：浇水 14 天，施肥 45 天
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idSucc, type: '浇水', intervalDays: 14, horizonDays: 90 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idSucc, type: '施肥', intervalDays: 45, horizonDays: 90 })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idSucc,
+      type: '浇水',
+      intervalDays: 14,
+      horizonDays: 90
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idSucc,
+      type: '施肥',
+      intervalDays: 45,
+      horizonDays: 90
+    })
 
     // 龟背竹：浇水 7，施肥 30，修剪 60
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idMon, type: '浇水', intervalDays: 7, horizonDays: 90 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idMon, type: '施肥', intervalDays: 30, horizonDays: 120 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idMon, type: '修剪', intervalDays: 60, horizonDays: 180 })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idMon,
+      type: '浇水',
+      intervalDays: 7,
+      horizonDays: 90
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idMon,
+      type: '施肥',
+      intervalDays: 30,
+      horizonDays: 120
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idMon,
+      type: '修剪',
+      intervalDays: 60,
+      horizonDays: 180
+    })
 
     // 月季：浇水 3，施肥 14，修剪 30
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idRose, type: '浇水', intervalDays: 3, horizonDays: 60 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idRose, type: '施肥', intervalDays: 14, horizonDays: 90 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idRose, type: '修剪', intervalDays: 30, horizonDays: 120 })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idRose,
+      type: '浇水',
+      intervalDays: 3,
+      horizonDays: 60
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idRose,
+      type: '施肥',
+      intervalDays: 14,
+      horizonDays: 90
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idRose,
+      type: '修剪',
+      intervalDays: 30,
+      horizonDays: 120
+    })
 
     // 绿萝：浇水 5，施肥 30
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idPoth, type: '浇水', intervalDays: 5, horizonDays: 90 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idPoth, type: '施肥', intervalDays: 30, horizonDays: 120 })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idPoth,
+      type: '浇水',
+      intervalDays: 5,
+      horizonDays: 90
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idPoth,
+      type: '施肥',
+      intervalDays: 30,
+      horizonDays: 120
+    })
 
     // 常春藤：浇水 7，施肥 30
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idIvy, type: '浇水', intervalDays: 7, horizonDays: 90 })
-    await this.rdbStore.insert(RdbManager.T_RULE, { templateId: idIvy, type: '施肥', intervalDays: 30, horizonDays: 120 })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idIvy,
+      type: '浇水',
+      intervalDays: 7,
+      horizonDays: 90
+    })
+    await this.rdbStore.insert(RdbManager.T_RULE, {
+      templateId: idIvy,
+      type: '施肥',
+      intervalDays: 30,
+      horizonDays: 120
+    })
   }
 }

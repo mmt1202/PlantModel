@@ -2,16 +2,23 @@ import common from '@ohos.app.ability.common'
 import relationalStore from '@ohos.data.relationalStore'
 import {
   CareRule,
-  CareTemplate, Metric, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
+  CareTemplate,
+  Metric,
+  Plant,
+  PlantDraft,
+  PlanTpl,
+  PlantTask,
+  TaskDraft
+} from '../model/PlantModel'
 import { CareTemplateSheet } from '../view/CareTemplateSheet'
 import { ConfirmDialogSheet } from '../view/ConfirmDialogSheet'
 import { EditPlantSheet } from '../view/EditPlantSheet'
-import { PlantListPage } from '../view/PlantListPage'
-import { StatsPage } from '../view/StatsPage'
-import { TaskListPage } from '../view/TaskListPage'
+import { PlantListPage } from './PlantListPage'
+import { StatsPage } from './StatsPage'
+import { TaskListPage } from './TaskListPage'
 import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
 import { MetricSheet } from '../view/MetricSheet'
-import { CalendarSheet1 } from '../view/CalendarSheet'
+import { CalendarSheet1 } from './CalendarSheet'
 import { PlantTaskFilter } from '../view/PlantTaskFilterSheet'
 import fs from '@ohos.file.fs'
 import { MetricChartSheet } from '../view/MetricChartSheet'
@@ -28,10 +35,9 @@ struct Index {
   // DB
   @Provider('RdbManager') RdbManager: RdbManager = RdbManager.getInstance()
   @Provider('store') store: relationalStore.RdbStore | null = this.RdbManager.rdbStore
-
   @Provider('pageStack') pageStack: NavPathStack = new NavPathStack();
-  @Local tabsController:TabsController = new TabsController()
-  @Local isShow:boolean = false
+  @Local tabsController: TabsController = new TabsController()
+  @Local isShow: boolean = false
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -72,34 +78,30 @@ struct Index {
   // 日历
   @Local calendarYear: number = new Date().getFullYear()
   @Local calendarMonth: number = new Date().getMonth() + 1
-
   // —— 养护模板入口 ——
   @Local careVisible: boolean = false
   @Local carePlantId: number = 0
   @Local carePlantName: string = ''
-
   // —— 任务筛选 / 排序状态 —— //
   @Local filterVisible: boolean = false
-  @Local filterStatus: number = 0   // 0=全部 1=未完成 2=已完成
-  @Local filterType: string = ''    // '' | '浇水' | '施肥' | '修剪' ...
-  @Local filterFrom: string = ''    // 'YYYY-MM-DD' 或空
-  @Local filterTo: string = ''      // 同上
+  @Local filterStatus: number = 0 // 0=全部 1=未完成 2=已完成
+  @Local filterType: string = '' // '' | '浇水' | '施肥' | '修剪' ...
+  @Local filterFrom: string = '' // 'YYYY-MM-DD' 或空
+  @Local filterTo: string = '' // 同上
   @Local filterKeyword: string = ''
-  @Local sortKey: string = 'date'   // 'date' | 'type' | 'status' | 'plant'
+  @Local sortKey: string = 'date' // 'date' | 'type' | 'status' | 'plant'
   @Local sortAsc: boolean = false
-
   // —— 趋势图状态 —— //
   @Local metricChartVisible: boolean = false
   @Local metricChartPlantName: string = ''
   @Local metricChartData: Array<Metric> = []
-
   @Local taskStatsVisible: boolean = false
-
   @Local tplVisible: boolean = false
   @Local tplTargetPlantId: number = 0
   @Local tplTargetPlantName: string = ''
   @Local tplList: Array<CareTemplate> = []
   @Local ruleList: Array<CareRule> = []
+
   // @Local logPhotos: Array<LogPhoto> = []
 
   /** ---- 生命周期 ---- */
@@ -152,7 +154,8 @@ struct Index {
         [])
     const items: Array<PlantTask> = []
     while (rs.goToNextRow()) {
-      items.push(new PlantTask(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4), rs.getLong(5)))
+      items.push(new PlantTask(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4),
+        rs.getLong(5)))
     }
     rs.close()
     this.tasks = items
@@ -160,7 +163,12 @@ struct Index {
 
   private plantNameById(id: number): string {
     let i: number = 0
-    while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name } i = i + 1 }
+    while (i < this.plants.length) {
+      if (this.plants[i].id === id) {
+        return this.plants[i].name
+      }
+      i = i + 1
+    }
     return ''
   }
 
@@ -168,7 +176,7 @@ struct Index {
   private async openMetricChart(plantId: number): Promise<void> {
     // 假设你已有 loadMetricsByPlant(plantId) 并把结果放到 this.metrics
     await this.loadMetricsByPlant(plantId)
-    this.metricChartData = this.metrics  // 若你的字段名不是 this.metrics，请替换为你的实际数组
+    this.metricChartData = this.metrics // 若你的字段名不是 this.metrics，请替换为你的实际数组
     this.metricChartPlantName = this.plantNameById(plantId)
     this.metricChartVisible = true
   }
@@ -192,7 +200,9 @@ struct Index {
 
   /** ---- 指标 DB ---- */
   private async loadMetricsByPlant(plantId: number): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
     const rs = await this.store.querySql(
       `SELECT id, plantId, height, width, score, createdAt
      FROM ${RdbManager.T_METRIC}
@@ -210,17 +220,28 @@ struct Index {
     this.metrics = arr
   }
 
-  private async createMetric(plantId: number, height: number, width: number, score: number, dateISO: string): Promise<void> {
-    if (!this.store) { return }
+  private async createMetric(plantId: number, height: number, width: number, score: number,
+    dateISO: string): Promise<void> {
+    if (!this.store) {
+      return
+    }
     const ts: number = this.isoToTs(dateISO)
-    const v: relationalStore.ValuesBucket = { plantId: plantId, height: height, width: width, score: score, createdAt: ts }
+    const v: relationalStore.ValuesBucket = {
+      plantId: plantId,
+      height: height,
+      width: width,
+      score: score,
+      createdAt: ts
+    }
     await this.store.insert(RdbManager.T_METRIC, v)
     await this.loadMetricsByPlant(plantId)
   }
 
   private isoToTs(iso: string): number {
     // 简单解析 YYYY-MM-DD -> 本地 00:00:00
-    if (iso.length !== 10) { return Date.now() }
+    if (iso.length !== 10) {
+      return Date.now()
+    }
     const y: number = Number(iso.substring(0, 4))
     const m: number = Number(iso.substring(5, 7)) - 1
     const d: number = Number(iso.substring(8, 10))
@@ -229,10 +250,15 @@ struct Index {
   }
 
   private async deleteMetric(id: number): Promise<void> {
-    if (!this.store) { return }
-    const p = new relationalStore.RdbPredicates(RdbManager.T_METRIC); p.equalTo('id', id)
+    if (!this.store) {
+      return
+    }
+    const p = new relationalStore.RdbPredicates(RdbManager.T_METRIC);
+    p.equalTo('id', id)
     await this.store.delete(p)
-    if (this.metricPlantId !== 0) { await this.loadMetricsByPlant(this.metricPlantId) }
+    if (this.metricPlantId !== 0) {
+      await this.loadMetricsByPlant(this.metricPlantId)
+    }
   }
 
   /** ---- 植物 CRUD ---- */
@@ -268,7 +294,9 @@ struct Index {
   }
 
   private async deletePlant(id: number): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
 
     // 1) 找出该植物的所有日志ID
     const logIds: Array<number> = []
@@ -276,7 +304,9 @@ struct Index {
       const rs = await this.store.querySql(
         `SELECT id FROM ${RdbManager.T_LOG} WHERE plantId = ? ORDER BY id ASC`, [id]
       )
-      while (rs.goToNextRow()) { logIds.push(rs.getLong(0)) }
+      while (rs.goToNextRow()) {
+        logIds.push(rs.getLong(0))
+      }
       rs.close()
     }
 
@@ -291,8 +321,12 @@ struct Index {
       while (rs2.goToNextRow()) {
         const p1: string = rs2.getString(0)
         const p2: string = rs2.getString(1)
-        if (p1 && p1.length > 0) { allFiles.push(p1) }
-        if (p2 && p2.length > 0) { allFiles.push(p2) }
+        if (p1 && p1.length > 0) {
+          allFiles.push(p1)
+        }
+        if (p2 && p2.length > 0) {
+          allFiles.push(p2)
+        }
       }
       rs2.close()
     }
@@ -327,7 +361,10 @@ struct Index {
     // 4) 事务提交成功后，统一删除所有本地图片文件
     let i: number = 0
     while (i < allFiles.length) {
-      try { await fs.unlink(allFiles[i]) } catch (_e) { /* 忽略单文件错误 */ }
+      try {
+        await fs.unlink(allFiles[i])
+      } catch (_e) { /* 忽略单文件错误 */
+      }
       i = i + 1
     }
 
@@ -352,7 +389,7 @@ struct Index {
       await this.loadTasks()
       this.showBanner('已添加养护任务', 'ok')
 
-    }catch (e) {
+    } catch (e) {
       this.showBanner('同日同类型任务已存在', 'info')
     }
 
@@ -381,7 +418,9 @@ struct Index {
 
   // —— 守护：清理孤儿记录/文件 —— //
   private async cleanupOrphanPhotos(): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
 
     let delDbCount: number = 0
     let delFsCount: number = 0
@@ -397,9 +436,14 @@ struct Index {
     const orphanFiles: Array<string> = []
     while (rs1.goToNextRow()) {
       orphanPhotoIds.push(rs1.getLong(0))
-      const p1: string = rs1.getString(1); const p2: string = rs1.getString(2)
-      if (p1 && p1.length > 0) { orphanFiles.push(p1) }
-      if (p2 && p2.length > 0) { orphanFiles.push(p2) }
+      const p1: string = rs1.getString(1);
+      const p2: string = rs1.getString(2)
+      if (p1 && p1.length > 0) {
+        orphanFiles.push(p1)
+      }
+      if (p2 && p2.length > 0) {
+        orphanFiles.push(p2)
+      }
     }
     rs1.close()
 
@@ -424,7 +468,11 @@ struct Index {
     // 尝试删除对应文件
     let f: number = 0
     while (f < orphanFiles.length) {
-      try { await fs.unlink(orphanFiles[f]); delFsCount = delFsCount + 1 } catch (_e) {}
+      try {
+        await fs.unlink(orphanFiles[f]);
+        delFsCount = delFsCount + 1
+      } catch (_e) {
+      }
       f = f + 1
     }
 
@@ -438,11 +486,21 @@ struct Index {
       const p1: string = rs2.getString(1)
       const p2: string = rs2.getString(2)
       let missing: boolean = false
-      try { fs.accessSync(p1) } catch (_e1) { missing = true }
-      if (!missing) {
-        try { fs.accessSync(p2) } catch (_e2) { /* thumb 丢失也视为缺失 */ missing = true }
+      try {
+        fs.accessSync(p1)
+      } catch (_e1) {
+        missing = true
       }
-      if (missing) { missIds.push(pid) }
+      if (!missing) {
+        try {
+          fs.accessSync(p2)
+        } catch (_e2) { /* thumb 丢失也视为缺失 */
+          missing = true
+        }
+      }
+      if (missing) {
+        missIds.push(pid)
+      }
     }
     rs2.close()
 
@@ -451,7 +509,8 @@ struct Index {
       try {
         let m: number = 0
         while (m < missIds.length) {
-          const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); pp.equalTo('id', missIds[m])
+          const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO);
+          pp.equalTo('id', missIds[m])
           await this.store.delete(pp)
           delDbCount = delDbCount + 1
           m = m + 1
@@ -567,16 +626,29 @@ struct Index {
 
   //
   private async createTaskDirect(plantId: number, type: string, dateISO: string): Promise<void> {
-    if (!this.store) { return }
-    const v: relationalStore.ValuesBucket = { plantId: plantId, type: type, planDate: dateISO.trim(), done: 0, doneAt: 0 }
+    if (!this.store) {
+      return
+    }
+    const v: relationalStore.ValuesBucket = {
+      plantId: plantId,
+      type: type,
+      planDate: dateISO.trim(),
+      done: 0,
+      doneAt: 0
+    }
     await this.store.insert(RdbManager.T_TASK, v)
   }
 
-  private async generateTemplateTasks(plantId: number, waterInt: number, fertInt: number, pruneInt: number, startISO: string, days: number): Promise<void> {
-    if (plantId === 0) { return }
+  private async generateTemplateTasks(plantId: number, waterInt: number, fertInt: number, pruneInt: number,
+    startISO: string, days: number): Promise<void> {
+    if (plantId === 0) {
+      return
+    }
     // 逐日生成：对每个非 0 的间隔，在范围内按步长生成日期
     const base = this.isoToTs(startISO)
-    if (days <= 0) { return }
+    if (days <= 0) {
+      return
+    }
     let offset: number = 0
     while (offset < days) {
       const d = new Date(base + offset * 24 * 3600 * 1000)
@@ -584,9 +656,15 @@ struct Index {
       const m = (d.getMonth() + 1).toString().padStart(2, '0')
       const day = d.getDate().toString().padStart(2, '0')
       const iso = `${y}-${m}-${day}`
-      if (waterInt > 0 && (offset % waterInt === 0)) { await this.createTaskDirect(plantId, '浇水', iso) }
-      if (fertInt  > 0 && (offset % fertInt  === 0)) { await this.createTaskDirect(plantId, '施肥', iso) }
-      if (pruneInt > 0 && (offset % pruneInt === 0)) { await this.createTaskDirect(plantId, '修剪', iso) }
+      if (waterInt > 0 && (offset % waterInt === 0)) {
+        await this.createTaskDirect(plantId, '浇水', iso)
+      }
+      if (fertInt > 0 && (offset % fertInt === 0)) {
+        await this.createTaskDirect(plantId, '施肥', iso)
+      }
+      if (pruneInt > 0 && (offset % pruneInt === 0)) {
+        await this.createTaskDirect(plantId, '修剪', iso)
+      }
       offset = offset + 1
     }
   }
@@ -658,26 +736,47 @@ struct Index {
     return out
   }
 
-  private two(n: number): string { const s: string = n.toString(); if (s.length === 1) { return '0' + s }; return s }
+  private two(n: number): string {
+    const s: string = n.toString();
+    if (s.length === 1) {
+      return '0' + s
+    }
+    ;
+    return s
+  }
+
   private addDays(iso: string, delta: number): string {
     const ps: Array<string> = iso.split('-')
-    const d = new Date(parseInt(ps[0]), parseInt(ps[1]) - 1, parseInt(ps[2])); d.setDate(d.getDate() + delta)
+    const d = new Date(parseInt(ps[0]), parseInt(ps[1]) - 1, parseInt(ps[2]));
+    d.setDate(d.getDate() + delta)
     return `${d.getFullYear()}-${this.two(d.getMonth() + 1)}-${this.two(d.getDate())}`
   }
 
   private async loadCareTemplateData(): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
     // templates
     const r1 = await this.store.querySql(`SELECT id,name,desc FROM ${RdbManager.T_TEMPLATE} ORDER BY id ASC`, [])
     const ts: Array<CareTemplate> = []
-    while (r1.goToNextRow()) { ts.push({ id: r1.getLong(0), name: r1.getString(1), desc: r1.getString(2) ?? '' }) }
+    while (r1.goToNextRow()) {
+      ts.push({ id: r1.getLong(0), name: r1.getString(1), desc: r1.getString(2) ?? '' })
+    }
     r1.close()
     this.tplList = ts
     // rules
-    const r2 = await this.store.querySql(`SELECT id,templateId,type,intervalDays,horizonDays FROM ${RdbManager.T_RULE} ORDER BY templateId ASC,id ASC`, [])
+    const r2 =
+      await this.store.querySql(`SELECT id,templateId,type,intervalDays,horizonDays FROM ${RdbManager.T_RULE} ORDER BY templateId ASC,id ASC`,
+        [])
     const rs: Array<CareRule> = []
     while (r2.goToNextRow()) {
-      rs.push({ id: r2.getLong(0), templateId: r2.getLong(1), type: r2.getString(2), intervalDays: r2.getLong(3), horizonDays: r2.getLong(4) })
+      rs.push({
+        id: r2.getLong(0),
+        templateId: r2.getLong(1),
+        type: r2.getString(2),
+        intervalDays: r2.getLong(3),
+        horizonDays: r2.getLong(4)
+      })
     }
     r2.close()
     this.ruleList = rs
@@ -691,7 +790,9 @@ struct Index {
 
   // 事务落库：根据 templateId + startISO 生成任务，命中唯一索引自动跳过
   private async applyTemplateToPlant(templateId: number, startISO: string): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
     await this.store.beginTransaction()
     let inserted: number = 0
     let skipped: number = 0
@@ -730,14 +831,14 @@ struct Index {
 
   /** ---- 视图 ---- */
   build() {
-    Navigation(this.pageStack){
-      Stack({alignContent:Alignment.Center}) {
+    Navigation(this.pageStack) {
+      Stack({ alignContent: Alignment.Center }) {
         Tabs({
           barPosition: BarPosition.End,
           index: this.tabBarIndex,
-          controller:this.tabsController
-        }){
-          TabContent(){
+          controller: this.tabsController
+        }) {
+          TabContent() {
             PlantListPage({
               plants: this.filteredPlants(),
               allTasks: this.tasks,
@@ -752,7 +853,7 @@ struct Index {
                 this.openPanel(p.id, p)
               },
               onOpenLogs: async (p: Plant) => {
-                this.pageStack.pushPathByName('PlantLogPage',p.id)
+                this.pageStack.pushPathByName('PlantLogPage', p.id)
               },
               onDeleteAsk: (pid: number) => {
                 this.pendingDeletePlantId = pid;
@@ -761,7 +862,8 @@ struct Index {
                 this.confirmVisible = true
               },
               onOpenMetrics: async (p: Plant) => {
-                this.metricPlantId = p.id; this.metricPlantName = p.name
+                this.metricPlantId = p.id;
+                this.metricPlantName = p.name
                 await this.loadMetricsByPlant(p.id)
                 this.isShow = true
                 this.metricVisible = true
@@ -776,10 +878,16 @@ struct Index {
                 await this.loadCareTemplateData()
                 this.openTemplateSheet(pid)
               },
-              onOpenMetric: async (pid: number) => { await this.openMetricChart(pid) },
-              Header: ()=>{this.Header()},
-            })}.tabBar(this.TabChip('植物', 0))
-          TabContent(){
+              onOpenMetric: async (pid: number) => {
+                await this.openMetricChart(pid)
+              },
+              Header: () => {
+                this.Header()
+              },
+            })
+          }.tabBar(this.TabChip('植物', 0))
+
+          TabContent() {
             TaskListPage({
               tasks: this.tasks,
               plants: this.plants,
@@ -794,25 +902,32 @@ struct Index {
               }
             })
           }.tabBar(this.TabChip('任务', 1))
-          TabContent(){
+
+          TabContent() {
           }.tabBar(this.Fab(() => {
             this.openPanel(0)
           }))
-          TabContent(){
+
+          TabContent() {
             CalendarSheet1({
               year: this.calendarYear,
               month: this.calendarMonth,
-              tasks: this.tasks,          // 这里的 tasks 请确保是 PlantTask[]
+              tasks: this.tasks, // 这里的 tasks 请确保是 PlantTask[]
               plants: this.plants,
-              onChangeMonth: (y: number, m: number) => { this.calendarYear = y; this.calendarMonth = m },
+              onChangeMonth: (y: number, m: number) => {
+                this.calendarYear = y;
+                this.calendarMonth = m
+              },
               onQuickAdd: async (pid: number, type: string, iso: string) => {
                 this.taskDraft = new TaskDraft();
                 this.taskDraft.plantId = pid;
                 this.taskDraft.type = type;
                 this.taskDraft.planDate = iso
-                await this.createTask(this.taskDraft);  // 你现有的方法
+                await this.createTask(this.taskDraft); // 你现有的方法
               },
-              onToggle: async (t: PlantTask) => { await this.toggleTaskDone(t) },
+              onToggle: async (t: PlantTask) => {
+                await this.toggleTaskDone(t)
+              },
               onDeleteAsk: (tid: number) => {
                 this.pendingDeleteTaskId = tid;
                 this.pendingDeletePlantId = 0;
@@ -821,23 +936,28 @@ struct Index {
               }
             })
           }.tabBar(this.TabChip('日历', 3))
-          TabContent(){
+
+          TabContent() {
             StatsPage({
               plants: this.plants,
               tasks: this.tasks,
-              onReloadAll: async ()=>{
+              onReloadAll: async () => {
                 try {
                   await this.reloadAll()
                   await this.loadTemplates()
-                  this.showBanner('刷新数据成功','ok')
-                }catch (e) {
+                  this.showBanner('刷新数据成功', 'ok')
+                } catch (e) {
                 }
 
               }
             })
           }.tabBar(this.TabChip('统计', 4))
 
-        }.barWidth('100%').barHeight(54).height('100%').scrollable(false)
+        }
+        .barWidth('100%')
+        .barHeight(54)
+        .height('100%')
+        .scrollable(false)
         .onChange((index: number) => {
           if (index === 2) {
             this.tabsController.changeIndex(this.tabBarIndex)
@@ -845,7 +965,8 @@ struct Index {
             this.tabBarIndex = index;
             this.tabsController.changeIndex(this.tabBarIndex)
           }
-        }).onContentWillChange((currentIndex: number, comingIndex: number)=>{
+        })
+        .onContentWillChange((currentIndex: number, comingIndex: number) => {
           if (comingIndex === 2) {
             return false;
           }
@@ -861,7 +982,9 @@ struct Index {
         if (this.careVisible) {
           CareTemplateSheet({
             plantName: this.carePlantName,
-            onClose: () => { this.careVisible = false },
+            onClose: () => {
+              this.careVisible = false
+            },
             onApply: async (waterInt: number, fertInt: number, pruneInt: number, startISO: string, days: number) => {
               await this.generateTemplateTasks(this.carePlantId, waterInt, fertInt, pruneInt, startISO, days)
               this.careVisible = false
@@ -875,11 +998,15 @@ struct Index {
           MetricSheet({
             plantName: this.metricPlantName,
             metrics: this.metrics,
-            onClose: () => { this.metricVisible = false },
+            onClose: () => {
+              this.metricVisible = false
+            },
             onAdd: async (h: number, w: number, s: number, iso: string) => {
               await this.createMetric(this.metricPlantId, h, w, s, iso)
             },
-            onDelete: async (id: number) => { await this.deleteMetric(id) }
+            onDelete: async (id: number) => {
+              await this.deleteMetric(id)
+            }
           })
         }
 
@@ -888,7 +1015,9 @@ struct Index {
           MetricChartSheet({
             plantName: this.metricChartPlantName,
             metrics: this.metricChartData,
-            onClose: () => { this.metricChartVisible = false }
+            onClose: () => {
+              this.metricChartVisible = false
+            }
           })
         }
 
@@ -922,7 +1051,8 @@ struct Index {
                 this.showBanner('名称不能为空', 'warn');
                 return
               }
-              hilog.info(0x0000, 'web', '%{public}s', `liheng 2 EditPlantSheet${this.editingPlantId} ${JSON.stringify(this.plantDraft)}`);
+              hilog.info(0x0000, 'web', '%{public}s',
+                `liheng 2 EditPlantSheet${this.editingPlantId} ${JSON.stringify(this.plantDraft)}`);
 
               if (this.editingPlantId === 0) {
                 await this.createPlant(this.plantDraft)
@@ -1005,7 +1135,9 @@ struct Index {
               await this.applyTemplateToPlant(tid, startISO)
               this.tplVisible = false
             },
-            onClose: () => { this.tplVisible = false }
+            onClose: () => {
+              this.tplVisible = false
+            }
           })
         }
       }
@@ -1014,8 +1146,8 @@ struct Index {
         direction: GradientDirection.Top,
         colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
       }).padding({
-        top:AppStorage.get<number>('topRectHeight'),
-        bottom:AppStorage.get<number>('bottomRectHeight')
+        top: AppStorage.get<number>('topRectHeight'),
+        bottom: AppStorage.get<number>('bottomRectHeight')
       })
     }.hideTitleBar(true)
     .navDestination(this.pageMap)
@@ -1031,8 +1163,12 @@ struct Index {
 
   // 字符串比较（避免 locale 差异）
   cmpStr(x: string, y: string): number {
-    if (x < y) { return -1 }
-    if (x > y) { return 1 }
+    if (x < y) {
+      return -1
+    }
+    if (x > y) {
+      return 1
+    }
     return 0
   }
 
@@ -1044,10 +1180,19 @@ struct Index {
           Text('PlantDiary 植物养护').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
           Text('清理日志/照片孤儿')
-            .fontSize(12).fontColor(0xFF1565C0)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .borderRadius(12).backgroundColor(0x102196F3)
-            .onClick(async () => { await this.cleanupOrphanPhotos() })
+            .fontSize(12)
+            .fontColor(0xFF1565C0)
+            .padding({
+              left: 10,
+              right: 10,
+              top: 6,
+              bottom: 6
+            })
+            .borderRadius(12)
+            .backgroundColor(0x102196F3)
+            .onClick(async () => {
+              await this.cleanupOrphanPhotos()
+            })
           // Text(this.initialized ? '离线 · 本地数据库' : '初始化中…').fontSize(12).fontColor(0x80263238)
         }.width('100%')
         .justifyContent(FlexAlign.Start)
@@ -1057,6 +1202,7 @@ struct Index {
           top: 16,
           bottom: 8
         })
+
         Row() {
           Text('🔎').fontSize(18).margin({ right: 8 })
           TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword })
@@ -1092,7 +1238,7 @@ struct Index {
       .backgroundColor(this.tabBarIndex === idx ? 0xFFE8F5E9 : 0xFFFFFFFF)
       .onClick(() => {
         animateTo({ duration: 160, curve: Curve.EaseInOut }, () => {
-          if (idx!==2) {
+          if (idx !== 2) {
             this.tabBarIndex = idx
             this.tabsController.changeIndex(this.tabBarIndex)
           }

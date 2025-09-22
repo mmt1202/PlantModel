@@ -21,7 +21,6 @@ export struct PlantLogPage {
   @Local photos: Array<LogPhoto> = []
   @Local keyword: string = '' // 关键字高亮（可为空）
   @Local logPlantId: number = 0
-  // @Local logInputText: string = ''
   @Local picking: boolean = false // 防连点
   // @Event onAddLog: (note: string, dateISO: string) => void
   // @Event onDeleteLog: (logId: number) => void
@@ -44,14 +43,11 @@ export struct PlantLogPage {
   @Local pressedLog: boolean = false
   @Local bannerMsg: string = ''
   @Local bannerType: string = ''
-
   @Local photoPreviewVisible: boolean = false
   @Local previewFiles: Array<string> = []
   @Local previewIndex: number = 0
   @Local previewLogId: number = 0
-
   listScroller = new Scroller()
-
   private addImageFileViewModel = AddImageFileViewModel.getInstance(this.ctx);
 
   async aboutToAppear() {
@@ -352,7 +348,7 @@ export struct PlantLogPage {
   }
 
   @Builder
-  LogTitle(){
+  LogTitle() {
     Row() {
       Text(this.sortAsc ? '时间 ↑' : '时间 ↓')
         .fontSize(12)
@@ -369,10 +365,10 @@ export struct PlantLogPage {
           this.sortAsc = !this.sortAsc
         })
       // Text(`${this.plantName} · 日志`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
-      Stack(){
+      Stack() {
 
         if (this.selectMode) {
-          Row(){
+          Row() {
             Text(`删除(${this.selected.length})`)
               .fontSize(12)
               .fontColor(0xFFFFFFFF)
@@ -421,12 +417,15 @@ export struct PlantLogPage {
         }
       }
 
-
-    }.width('85%').height('100%')
+    }
+    .width('85%')
+    .height('100%')
     .padding({
       left: 16,
       right: 16,
-    }).justifyContent(FlexAlign.End).alignItems(VerticalAlign.Center)
+    })
+    .justifyContent(FlexAlign.End)
+    .alignItems(VerticalAlign.Center)
   }
 
   build() {
@@ -446,7 +445,7 @@ export struct PlantLogPage {
             this.FormItem('内容', '写点什么…', this.noteText, (v: string) => {
               this.noteText = v
             })
-            Row({space:5}) {
+            Row({ space: 5 }) {
               Text('今天')
                 .fontSize(12)
                 .fontColor(0xFF1565C0)
@@ -462,10 +461,14 @@ export struct PlantLogPage {
                   this.dateISO = this.todayISO()
                 })
 
-                Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 })
+              Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 })
 
 
-            }.padding({ top: 6, bottom: 6 }).height(40).justifyContent(FlexAlign.Center).alignItems(VerticalAlign.Center)
+            }
+            .padding({ top: 6, bottom: 6 })
+            .height(40)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(VerticalAlign.Center)
 
             Row() {
               Text('添加日志')
@@ -496,7 +499,7 @@ export struct PlantLogPage {
             }
             .padding({ left: 16, right: 16, bottom: 18 })
           } else {
-            List({ space: 8,scroller:this.listScroller }) {
+            List({ space: 8, scroller: this.listScroller }) {
               ForEach(this.sorted(), (lg: PlantLog, index: number) => {
                 ListItem() {
                   // this.LogRow(lg, index)
@@ -569,11 +572,17 @@ export struct PlantLogPage {
                 if (this.previewFiles.length === 0) {
                   this.photoPreviewVisible = false
                 } else {
-                  if (idx >= this.previewFiles.length) { this.previewIndex = this.previewFiles.length - 1 } else { this.previewIndex = idx }
+                  if (idx >= this.previewFiles.length) {
+                    this.previewIndex = this.previewFiles.length - 1
+                  } else {
+                    this.previewIndex = idx
+                  }
                 }
               }
             },
-            onClose: () => { this.photoPreviewVisible = false }
+            onClose: () => {
+              this.photoPreviewVisible = false
+            }
           })
         }
       }.width('100%').height('100%')
@@ -585,15 +594,17 @@ export struct PlantLogPage {
       }
     })
     .padding({
-      top:AppStorage.get<number>('topRectHeight'),
-      bottom:AppStorage.get<number>('bottomRectHeight')
-    }).width('100%')
+      top: AppStorage.get<number>('topRectHeight'),
+      bottom: AppStorage.get<number>('bottomRectHeight')
+    })
+    .width('100%')
     .title(this.LogTitle())
     .height('100%')
     .linearGradient({
       direction: GradientDirection.Top,
       colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
     })
+
     // .bindToScrollable([this.listScroller])
   }
 
@@ -652,13 +663,21 @@ export struct PlantLogPage {
     })
     .animation({ duration: 220, curve: Curve.EaseInOut })
   }
+
   // 通过 filePath 定位并删除该照片（含本地文件），随后刷新当前日志照片与预览列表
   private async deletePhotoByFilePath(fp: string): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
     // 取照片 id/logId
-    const rs = await this.store.querySql(`SELECT id, logId FROM ${RdbManager.T_LOG_PHOTO} WHERE filePath = ? LIMIT 1`, [fp])
-    let pid: number = 0; let lid: number = 0
-    if (rs.goToNextRow()) { pid = rs.getLong(0); lid = rs.getLong(1) }
+    const rs =
+      await this.store.querySql(`SELECT id, logId FROM ${RdbManager.T_LOG_PHOTO} WHERE filePath = ? LIMIT 1`, [fp])
+    let pid: number = 0;
+    let lid: number = 0
+    if (rs.goToNextRow()) {
+      pid = rs.getLong(0);
+      lid = rs.getLong(1)
+    }
     rs.close()
     if (pid !== 0) {
       // await this.deleteLogPhoto(pid, lid)
@@ -666,23 +685,33 @@ export struct PlantLogPage {
       // 重建预览数组
       const arr: Array<string> = []
       let i: number = 0
-      while (i < this.photos.length) { arr.push(this.photos[i].path); i = i + 1 }
+      while (i < this.photos.length) {
+        arr.push(this.photos[i].path);
+        i = i + 1
+      }
       this.previewFiles = arr
       this.previewLogId = lid
     }
   }
+
   private openPhotoPreview(logId: number, files: Array<LogPhoto>, startPath: string): void {
     this.previewLogId = logId
     const arr: Array<string> = []
     let i: number = 0
-    while (i < files.length) { arr.push(files[i].path); i = i + 1 }
+    while (i < files.length) {
+      arr.push(files[i].path);
+      i = i + 1
+    }
     this.previewFiles = arr
     this.previewIndex = this.indexOfPath(arr, startPath)
     this.photoPreviewVisible = true
   }
+
   // —— 日志：批量删除（事务 + 两阶段删文件）—— //
   private async bulkDeleteLogsTx(logIds: Array<number>): Promise<void> {
-    if (!this.store) { return }
+    if (!this.store) {
+      return
+    }
 
     // 预收集所有将要删除的文件路径
     const files: Array<string> = []
@@ -694,8 +723,12 @@ export struct PlantLogPage {
       while (rs.goToNextRow()) {
         const p1: string = rs.getString(0)
         const p2: string = rs.getString(1)
-        if (p1 && p1.length > 0) { files.push(p1) }
-        if (p2 && p2.length > 0) { files.push(p2) }
+        if (p1 && p1.length > 0) {
+          files.push(p1)
+        }
+        if (p2 && p2.length > 0) {
+          files.push(p2)
+        }
       }
       rs.close()
       k = k + 1
@@ -706,9 +739,11 @@ export struct PlantLogPage {
     try {
       let i: number = 0
       while (i < logIds.length) {
-        const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); pp.equalTo('logId', logIds[i])
+        const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO);
+        pp.equalTo('logId', logIds[i])
         await this.store.delete(pp)
-        const pl = new relationalStore.RdbPredicates(RdbManager.T_LOG); pl.equalTo('id', logIds[i])
+        const pl = new relationalStore.RdbPredicates(RdbManager.T_LOG);
+        pl.equalTo('id', logIds[i])
         await this.store.delete(pl)
         i = i + 1
       }
@@ -722,7 +757,10 @@ export struct PlantLogPage {
     // 事务提交后再删本地文件（无法回滚，放事务外）
     let j: number = 0
     while (j < files.length) {
-      try { await fs.unlink(files[j]) } catch (_e) { /* ignore */ }
+      try {
+        await fs.unlink(files[j])
+      } catch (_e) { /* ignore */
+      }
       j = j + 1
     }
 
@@ -730,16 +768,28 @@ export struct PlantLogPage {
     await this.loadLogsWithPhotos(this.logPlantId) // 如果你有 currentPlantId；否则按你的刷新逻辑处理
     this.showBanner('已批量删除日志与照片', 'ok')
   }
+
   private indexOfPath(arr: Array<string>, path: string): number {
     let i: number = 0
-    while (i < arr.length) { if (arr[i] === path) { return i }; i = i + 1 }
+    while (i < arr.length) {
+      if (arr[i] === path) {
+        return i
+      }
+      ;
+      i = i + 1
+    }
     return 0
   }
+
   // 收集一批日志的图片与缩略图路径（去重）
   private async collectPhotoFilesByLogIds(logIds: Array<number>): Promise<Array<string>> {
     const files: Array<string> = []
-    if (!this.store) { return files }
-    if (logIds.length === 0) { return files }
+    if (!this.store) {
+      return files
+    }
+    if (logIds.length === 0) {
+      return files
+    }
 
     // 逐条取（兼容性最好；避免 IN 语法差异）
     let i: number = 0
@@ -751,17 +801,26 @@ export struct PlantLogPage {
       while (rs.goToNextRow()) {
         const p1: string = rs.getString(0)
         const p2: string = rs.getString(1)
-        if (p1 && p1.length > 0 && files.indexOf(p1) < 0) { files.push(p1) }
-        if (p2 && p2.length > 0 && files.indexOf(p2) < 0) { files.push(p2) }
+        if (p1 && p1.length > 0 && files.indexOf(p1) < 0) {
+          files.push(p1)
+        }
+        if (p2 && p2.length > 0 && files.indexOf(p2) < 0) {
+          files.push(p2)
+        }
       }
       rs.close()
       i = i + 1
     }
     return files
   }
+
   private async deleteLogsBatchTx(logIds: Array<number>): Promise<void> {
-    if (!this.store) { return }
-    if (logIds.length === 0) { return }
+    if (!this.store) {
+      return
+    }
+    if (logIds.length === 0) {
+      return
+    }
 
     // 1) 预先收集所有文件路径（commit 后再删）
     const fileList: Array<string> = await this.collectPhotoFilesByLogIds(logIds)
@@ -794,7 +853,10 @@ export struct PlantLogPage {
     if (ok) {
       let j: number = 0
       while (j < fileList.length) {
-        try { await fs.unlink(fileList[j]) } catch (_e2) { /* 忽略删除失败 */ }
+        try {
+          await fs.unlink(fileList[j])
+        } catch (_e2) { /* 忽略删除失败 */
+        }
         j = j + 1
       }
       // 4) 刷新界面（按你工程习惯选择刷新范围）
@@ -804,6 +866,7 @@ export struct PlantLogPage {
       this.showBanner('批量删除失败，已回滚', 'warn')
     }
   }
+
   private async deleteFileIfExists(pathOrUri: string): Promise<void> {
     try {
       // 统一为 file:// 前缀
@@ -877,7 +940,6 @@ export struct PlantLogPage {
     const day = d.getDate().toString().padStart(2, '0');
     return `${y}-${m}-${day}`
   }
-
 
   private async loadLogsByPlant(plantId: number): Promise<void> {
     if (!this.store) {
