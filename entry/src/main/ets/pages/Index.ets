@@ -386,7 +386,7 @@ struct Index {
     }
     try {
       await this.store.insert(RdbManager.T_TASK, values)
-      await this.loadTasks()
+      await this.reloadAll()
       this.showBanner('已添加养护任务', 'ok')
 
     } catch (e) {
@@ -404,15 +404,6 @@ struct Index {
     const p = new relationalStore.RdbPredicates(RdbManager.T_TASK);
     p.equalTo('id', task.id)
     await this.store.update(values, p)
-    // const curTask =  this.tasks.find(i=> {
-    //   if (task.id === i.id){
-    //     i.done = nd;
-    //     i.doneAt = nd === 1 ? Date.now() : 0
-    //     return true;
-    //   }
-    //   return false;
-    // })
-    // hilog.info(0x0000, 'index', '%{public}s', `liheng toggleTaskDone${JSON.stringify(curTask)}`);
     await this.reloadAll()
   }
 
@@ -531,7 +522,7 @@ struct Index {
     const p = new relationalStore.RdbPredicates(RdbManager.T_TASK);
     p.equalTo('id', id)
     await this.store.delete(p)
-    await this.loadTasks()
+    await this.reloadAll()
     this.showBanner('已删除任务', 'ok')
   }
 
@@ -853,7 +844,9 @@ struct Index {
                 this.openPanel(p.id, p)
               },
               onOpenLogs: async (p: Plant) => {
-                this.pageStack.pushPathByName('PlantLogPage', p.id)
+                this.pageStack.pushPathByName('PlantLogPage', p.id,(PopInfo)=>{
+                  this.reloadAll()
+                })
               },
               onDeleteAsk: (pid: number) => {
                 this.pendingDeletePlantId = pid;

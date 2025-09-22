@@ -593,6 +593,10 @@ export struct PlantLogPage {
         this.loadLogsWithPhotos(this.logPlantId) // 重新加载
       }
     })
+    .onBackPressed(()=>{
+      this.pageStack.pop(this.logPlantId)
+      return true;
+    })
     .padding({
       top: AppStorage.get<number>('topRectHeight'),
       bottom: AppStorage.get<number>('bottomRectHeight')

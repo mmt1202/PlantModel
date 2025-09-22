@@ -244,7 +244,7 @@ export struct LogRowItem {
     if (ctn > 3) {
       h = 216
     }
-    if (ctn > 1) {
+    if (ctn > 0) {
       h = 104
     }
     return h

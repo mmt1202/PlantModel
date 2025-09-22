@@ -20,7 +20,7 @@ struct CalendarSheet1 {
   // 外部数据
   @Param @Require year: number
   @Param @Require month: number
-  @Param @Require tasks: Array<PlantTask>
+  @Param @Require  tasks: Array<PlantTask>
   @Param @Require plants: Array<Plant>
 
   // 事件
@@ -187,15 +187,6 @@ struct CalendarSheet1 {
       .margin({ right: 8 })
   }
 
-  // @Builder
-  // TypeChip(text: string, active: boolean, onTap: () => void) {
-  //   Text(text)
-  //     .fontSize(12).fontColor(active ? 0xFFFFFFFF : 0xFF263238)
-  //     .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-  //     .borderRadius(14).backgroundColor(active ? this.typeColor(text) : 0x11000000)
-  //     .onClick(() => { onTap() })
-  //     .margin({ left: 6 })
-  // }
   @Builder
   TypeChip(label: string) {
     Text(label)
@@ -248,7 +239,7 @@ struct CalendarSheet1 {
       if (d.total > 0) {
         Row() {
           Blank().width(6).height(6).borderRadius(3).backgroundColor(this.badgeColor(d.dateISO))
-          Text(`${d.done}/${d.total}`).fontSize(10).fontColor('#fff') .borderRadius(8).padding({
+          Text(`${this.countForDate(d.dateISO)[1]}/${this.countForDate(d.dateISO)[0]}`).fontSize(10).fontColor('#fff') .borderRadius(8).padding({
             left: 4,
             right: 4,
             top: 2,
