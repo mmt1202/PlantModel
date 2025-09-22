@@ -10,7 +10,6 @@ import { common } from '@kit.AbilityKit';
 import { AddImageFileViewModel } from '../viewmodel/AddImageFileViewModel';
 import { PhotoPreviewSheet } from '../view/PhotoPreviewSheet';
 
-
 @ComponentV2
 export struct PlantLogPage {
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
@@ -50,6 +49,8 @@ export struct PlantLogPage {
   @Local previewFiles: Array<string> = []
   @Local previewIndex: number = 0
   @Local previewLogId: number = 0
+
+  listScroller = new Scroller()
 
   private addImageFileViewModel = AddImageFileViewModel.getInstance(this.ctx);
 
@@ -151,7 +152,7 @@ export struct PlantLogPage {
     // 在这里用你现有的封装（file.picker / photoAccessHelper），复制到 filesDir，
     // 生成缩略图（可选），然后批量 insert 到 ${RdbManager.T_LOG_PHOTO}，最后刷新。
     await this.pickAndSavePhotos(logId) // 你已有/将实现的方法
-    await this.loadLogPhotos(this.logPlantId)
+    await this.loadLogsWithPhotos(this.logPlantId) // 重新加载
   }
 
   private async loadLogPhotos(logId: number): Promise<void> {
@@ -219,7 +220,7 @@ export struct PlantLogPage {
             await this.insertLogPhoto(logId, this.ensureFileUri(dstPath))
             i = i + 1
           }
-          await this.loadLogPhotos(logId)
+          this.loadLogsWithPhotos(this.logPlantId) // 重新加载
           this.showBanner('已添加照片', 'ok')
         }
       }, 12)
@@ -350,44 +351,49 @@ export struct PlantLogPage {
     this.photos = arrPhotos
   }
 
-  build() {
-    NavDestination() {
-      Stack() {
-        Column() {
-          Row() {
-            // Text(`${this.plantName} · 日志`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
-            if (this.selectMode) {
-              Text(`删除(${this.selected.length})`)
-                .fontSize(12)
-                .fontColor(0xFFFFFFFF)
-                .padding({
-                  left: 12,
-                  right: 12,
-                  top: 6,
-                  bottom: 6
-                })
-                .borderRadius(14)
-                .backgroundColor(0xFFE53935)
-                .onClick(() => {
-                  if (this.selected.length > 0) {
-                    this.onBatchDeleteLogs(this.copyIds(this.selected));
-                    this.selected = [];
-                    this.selectMode = false
-                  }
-                })
-            }
-          }
-          .padding({
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: 6
-          })
+  @Builder
+  LogTitle(){
+    Row() {
+      Text(this.sortAsc ? '时间 ↑' : '时间 ↓')
+        .fontSize(12)
+        .fontColor(0xFF1565C0)
+        .padding({
+          left: 10,
+          right: 10,
+          top: 6,
+          bottom: 6
+        })
+        .borderRadius(14)
+        .backgroundColor(0x102196F3)
+        .onClick(() => {
+          this.sortAsc = !this.sortAsc
+        })
+      // Text(`${this.plantName} · 日志`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+      Stack(){
 
-          Row() {
-            Text(this.sortAsc ? '时间 ↑' : '时间 ↓')
+        if (this.selectMode) {
+          Row(){
+            Text(`删除(${this.selected.length})`)
               .fontSize(12)
-              .fontColor(0xFF1565C0)
+              .fontColor(0xFFFFFFFF)
+              .padding({
+                left: 12,
+                right: 12,
+                top: 6,
+                bottom: 6
+              })
+              .borderRadius(14)
+              .backgroundColor(0xFFE53935)
+              .onClick(() => {
+                if (this.selected.length > 0) {
+                  this.onBatchDeleteLogs(this.copyIds(this.selected));
+                  this.selected = [];
+                  this.selectMode = false
+                }
+              })
+            Text('取消选择')
+              .fontSize(12)
+              .fontColor(0xFF263238)
               .padding({
                 left: 10,
                 right: 10,
@@ -395,38 +401,40 @@ export struct PlantLogPage {
                 bottom: 6
               })
               .borderRadius(14)
-              .backgroundColor(0x102196F3)
+              .backgroundColor(0xFFE0E0E0)
               .onClick(() => {
-                this.sortAsc = !this.sortAsc
+                this.selected = [];
+                this.selectMode = false
               })
-            if (this.selectMode) {
-              Text('取消选择')
-                .fontSize(12)
-                .fontColor(0xFF263238)
-                .padding({
-                  left: 10,
-                  right: 10,
-                  top: 6,
-                  bottom: 6
-                })
-                .borderRadius(14)
-                .backgroundColor(0xFFE0E0E0)
-                .onClick(() => {
-                  this.selected = [];
-                  this.selectMode = false
-                })
-                .margin({ left: 8 })
-            } else {
-              Text('长按进入多选')
-                .fontSize(12)
-                .fontColor(0x80607278)
-                .padding({
-                  left: 10,
-                  right: 10,
-                  top: 6,
-                  bottom: 6
-                })
-            }
+              .margin({ left: 8 })
+          }
+        } else {
+          Text('长按进入多选')
+            .fontSize(12)
+            .fontColor(0x80607278)
+            .padding({
+              left: 10,
+              right: 10,
+              top: 6,
+              bottom: 6
+            })
+        }
+      }
+
+
+    }.width('85%').height('100%')
+    .padding({
+      left: 16,
+      right: 16,
+    }).justifyContent(FlexAlign.End).alignItems(VerticalAlign.Center)
+  }
+
+  build() {
+    NavDestination() {
+      Stack() {
+
+        Column() {
+          Row() {
             Blank()
             if (this.keyword.length > 0) {
               Text(`关键词: ${this.keyword}`).fontSize(12).fontColor(0xFF607D8B)
@@ -434,54 +442,52 @@ export struct PlantLogPage {
           }.padding({ left: 16, right: 16, bottom: 8 })
 
           // 新增日志
-          // Column() {
-          //   this.FormItem('内容', '写点什么…', this.noteText, (v: string) => {
-          //     this.noteText = v
-          //   })
-          //   Row() {
-          //     Column() {
-          //       Text('日期').fontSize(12).fontColor(0xFF607D8B);
-          //       Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 })
-          //     }
-          //
-          //     Blank()
-          //     Text('今天')
-          //       .fontSize(12)
-          //       .fontColor(0xFF1565C0)
-          //       .padding({
-          //         left: 12,
-          //         right: 12,
-          //         top: 6,
-          //         bottom: 6
-          //       })
-          //       .borderRadius(14)
-          //       .backgroundColor(0x102196F3)
-          //       .onClick(() => {
-          //         this.dateISO = this.todayISO()
-          //       })
-          //   }.padding({ top: 6, bottom: 6 })
-          //
-          //   Row() {
-          //     Text('添加日志')
-          //       .fontSize(14)
-          //       .fontColor(0xFFFFFFFF)
-          //       .padding({
-          //         left: 18,
-          //         right: 18,
-          //         top: 8,
-          //         bottom: 8
-          //       })
-          //       .borderRadius(18)
-          //       .backgroundColor(0xFF2E7D32)
-          //       .onClick(() => {
-          //         if (this.noteText.trim().length === 0) {
-          //           return
-          //         }
-          //         this.onAddLog(this.noteText.trim(), this.dateISO);
-          //         this.noteText = ''
-          //       })
-          //   }
-          // }.padding({ left: 16, right: 16, bottom: 8 })
+          Column() {
+            this.FormItem('内容', '写点什么…', this.noteText, (v: string) => {
+              this.noteText = v
+            })
+            Row({space:5}) {
+              Text('今天')
+                .fontSize(12)
+                .fontColor(0xFF1565C0)
+                .padding({
+                  left: 12,
+                  right: 12,
+                  top: 6,
+                  bottom: 6
+                })
+                .borderRadius(14)
+                .backgroundColor(0x102196F3)
+                .onClick(() => {
+                  this.dateISO = this.todayISO()
+                })
+
+                Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 })
+
+
+            }.padding({ top: 6, bottom: 6 }).height(40).justifyContent(FlexAlign.Center).alignItems(VerticalAlign.Center)
+
+            Row() {
+              Text('添加日志')
+                .fontSize(14)
+                .fontColor(0xFFFFFFFF)
+                .padding({
+                  left: 18,
+                  right: 18,
+                  top: 8,
+                  bottom: 8
+                })
+                .borderRadius(18)
+                .backgroundColor(0xFF2E7D32)
+                .onClick(() => {
+                  if (this.noteText.trim().length === 0) {
+                    return
+                  }
+                  this.onAddLog(this.noteText.trim(), this.dateISO);
+                  this.noteText = ''
+                })
+            }
+          }.padding({ left: 16, right: 16, bottom: 8 })
 
           // 列表
           if (this.sorted().length === 0) {
@@ -490,7 +496,7 @@ export struct PlantLogPage {
             }
             .padding({ left: 16, right: 16, bottom: 18 })
           } else {
-            List({ space: 8 }) {
+            List({ space: 8,scroller:this.listScroller }) {
               ForEach(this.sorted(), (lg: PlantLog, index: number) => {
                 ListItem() {
                   // this.LogRow(lg, index)
@@ -509,6 +515,7 @@ export struct PlantLogPage {
                     },
                     onCapturePhoto: (logId: number) => {
                       // this.onCapturePhoto(logId)
+                      this.showBanner('可以点击添加图片拍照', 'warn')
                     },
                     onDeleteLog: (logId: number) => {
                       this.onDeleteLog(logId)
@@ -527,25 +534,13 @@ export struct PlantLogPage {
                 }
               }, (lg: PlantLog) => lg.id.toString())
             }
+            .scrollBar(BarState.Off).height('80%')
             .padding({ left: 16, right: 16, bottom: 16 })
             .edgeEffect(EdgeEffect.Spring)
           }
         }
         .width('100%')
-        .backgroundColor(0xFFFFFFFF)
-        .borderRadius({
-          topLeft: 20,
-          topRight: 20,
-          bottomLeft: 0,
-          bottomRight: 0
-        })
-        .position({ x: 0, y: 'calc(100% - 86%)' })
-        .shadow({
-          radius: 24,
-          color: 0x33000000,
-          offsetX: 0,
-          offsetY: -6
-        })
+        // .backgroundColor(0xFFFFFFFF)
         .animation({ duration: 200, curve: Curve.Sharp })
 
         if (this.bannerMsg.length > 0) {
@@ -582,10 +577,24 @@ export struct PlantLogPage {
           })
         }
       }.width('100%').height('100%')
-
-    }.onReady((parma: NavDestinationContext) => {
+    }
+    .onReady((parma: NavDestinationContext) => {
       this.logPlantId = (parma.pathInfo.param as number)
+      if (this.logPlantId !== 0) {
+        this.loadLogsWithPhotos(this.logPlantId) // 重新加载
+      }
     })
+    .padding({
+      top:AppStorage.get<number>('topRectHeight'),
+      bottom:AppStorage.get<number>('bottomRectHeight')
+    }).width('100%')
+    .title(this.LogTitle())
+    .height('100%')
+    .linearGradient({
+      direction: GradientDirection.Top,
+      colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
+    })
+    // .bindToScrollable([this.listScroller])
   }
 
   @Builder
@@ -869,32 +878,6 @@ export struct PlantLogPage {
     return `${y}-${m}-${day}`
   }
 
-  /** ---- 日志 CRUD ---- */
-  private async createLog(plantId: number, note: string): Promise<void> {
-    if (!this.store) {
-      return
-    }
-    const txt: string = note.trim()
-    if (txt.length === 0) {
-      this.showBanner('日志内容不能为空', 'warn');
-      return
-    }
-    const values: relationalStore.ValuesBucket = { plantId: plantId, note: txt, createdAt: Date.now() }
-    await this.store.insert(RdbManager.T_LOG, values)
-    await this.loadLogsByPlant(plantId)
-    this.showBanner('已添加日志', 'ok')
-  }
-
-  private async deleteLog(id: number): Promise<void> {
-    if (!this.store) {
-      return
-    }
-    const p = new relationalStore.RdbPredicates(RdbManager.T_LOG);
-    p.equalTo('id', id)
-    await this.store.delete(p)
-    await this.loadLogsByPlant(this.logPlantId)
-    this.showBanner('已删除日志', 'ok')
-  }
 
   private async loadLogsByPlant(plantId: number): Promise<void> {
     if (!this.store) {
@@ -923,78 +906,6 @@ export struct PlantLogPage {
 }
 
 
-// 高亮片段模型（内部使用）
-class _HL {
-  key: number
-  text: string
-  // 0: 普通，1: 命中
-  hit: number
-
-  constructor(key: number, text: string, hit: number) {
-    this.key = key;
-    this.text = text;
-    this.hit = hit
-  }
-}
 
 
-// —— 日志抽屉 ——（使用你已有的 PlantLogSheet）
-// if (this.logSheetVisible) {
-//   PlantLogSheet({
-//     plantName: this.currentPlantName,
-//     logs: this.logs,                  // ← 你已有的日志数组
-//     photos: this.logPhotos,           // ← 你维护的 LogPhoto 数组（可在加载日志时一并查询）
-//     keyword: this.keyword,         // ← 来自搜索框
-//     onAddLog: async (note: string, iso: string) => {
-//       if (!this.store) { return }
-//       await this.store.insert(RdbManager.T_LOG, { plantId: this.logPlantId, note: note, createdAt: Date.now() })
-//       await this.loadLogsWithPhotos(this.logPlantId) // 重新加载
-//       // await this.loadLogsByPlant(this.currentPlantId)
-//     },
-//     onDeleteLog: async (logId: number) => {
-//       if (!this.store) { return }
-//       await this.deleteLogAndPhotos(logId)
-//       await this.loadLogsWithPhotos(this.logPlantId) // 按你工程里的当前 plant 状态刷新
-//       //
-//       this.showBanner('已删除日志与照片', 'ok')
-//     },
-//     onBatchDeleteLogs: async (ids: Array<number>) => {
-//       if (!this.store) { return }
-//       // 删除日志本体
-//       const p = new relationalStore.RdbPredicates(RdbManager.T_LOG);
-//       p.in('id', ids)
-//       await this.store.delete(p)
-//       // 删除关联图片
-//       const pp = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); pp.in('logId', ids)
-//       await this.store.delete(pp)
-//       await this.loadLogsWithPhotos(this.logPlantId)
-//     },
-//     onPickPhotos: async (logId: number) => {
-//       // 在这里用你现有的封装（file.picker / photoAccessHelper），复制到 filesDir，
-//       // 生成缩略图（可选），然后批量 insert 到 ${RdbManager.T_LOG_PHOTO}，最后刷新。
-//       await this.pickAndSavePhotos(logId) // 你已有/将实现的方法
-//       await this.loadLogPhotos(this.logPlantId)
-//     },
-//     onCapturePhoto: async (logId: number) => {
-//       await this.captureAndSavePhoto(logId) // 你已有/将实现的方法
-//       await this.loadLogsWithPhotos(this.logPlantId)
-//     },
-//     onDeletePhoto: async (pid: number) => {
-//       if (!this.store) { return }
-//       const p = new relationalStore.RdbPredicates(RdbManager.T_LOG_PHOTO); p.equalTo('id', pid)
-//       await this.store.delete(p)
-//       await this.deleteLogAndPhotos(pid)
-//       await this.loadLogsWithPhotos(this.logPlantId)
-//     },
-//     onDelete: async (lid: number) => { await this.deleteLogAndPhotos(lid) },
-//     onBatchDelete: async (ids: Array<number>) => {
-//       // let i: number = 0
-//       // while (i < ids.length) { await this.deleteLogAndPhotos(ids[i]); i = i + 1 }
-//       await this.bulkDeleteLogsTx(ids)
-//     },
-//     onPreviewPhoto: (fp: string) => {
-//       // this.openPhotoPreview(this.editingLogIdForPhotos, this.logPhotos, fp)
-//     },
-//     onClose: async  () => { this.logSheetVisible = false;await this.reloadAll() }
-//   })
-// }
+

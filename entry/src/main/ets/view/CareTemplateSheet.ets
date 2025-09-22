@@ -14,9 +14,11 @@ struct CareTemplateSheet {
   aboutToAppear(): void { this.startISO = this.todayISO() }
 
   build() {
-    Column() {
+    Stack() {
       // 蒙层
-      Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
+      Column(){
+        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
+      }
 
       // 抽屉
       Column() {
@@ -76,11 +78,11 @@ struct CareTemplateSheet {
       }
       .width('100%').backgroundColor(0xFFFFFFFF)
       .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
-      .position({ x: 0, y: 'calc(100% - 72%)' })
+      // .position({ x: 0, y: 'calc(100% - 72%)' })
       .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
       .animation({ duration: 200, curve: Curve.Sharp })
     }
-    .width('100%').height('100%')
+    .width('100%').height('100%').alignContent(Alignment.Bottom)
   }
 
   @Builder

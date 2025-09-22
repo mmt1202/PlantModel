@@ -1,7 +1,6 @@
 import { Plant, PlantTask } from '../model/PlantModel'
 import { PlantCard } from './PlantCard'
 
-/** -------- 子页面：植物列表（V2 组件） -------- */
 @ComponentV2
 export struct PlantListPage {
   @Param @Require plants: Array<Plant>
@@ -108,14 +107,6 @@ export struct PlantListPage {
     return tmp
   }
 
-  // private ratioString(plantId: number): string {
-  //   const total: number = this.plantTaskTotal(plantId)
-  //   if (total === 0) { return '0%' }
-  //   const done: number = this.plantTaskDone(plantId)
-  //   const pct: number = Math.floor(done * 100 / total)
-  //   return `${pct}%`
-  // }
-
   build() {
     Column() {
       // —— 新增：筛选与排序条 —— //
@@ -183,8 +174,9 @@ export struct PlantListPage {
           right: 12,
           top: 8,
           bottom: 64
-        })
+        }).width('100%').height('calc(100% - 105vp)')
         .edgeEffect(EdgeEffect.Spring)
+        .scrollBar(BarState.Off)
       }
     }.height('100%').width('100%')
 

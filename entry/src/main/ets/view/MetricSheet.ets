@@ -13,7 +13,7 @@ export struct MetricSheet {
   // —— 本地表单状态 —— //
   @Local hStr: string = ''           // 身高
   @Local wStr: string = ''           // 冠幅
-  @Local sStr: string = '80'         // 健康分
+  @Local sStr: string = '8'         // 健康分
   @Local dateISO: string = ''        // YYYY-MM-DD
 
   // —— 视图控制 —— //
@@ -26,9 +26,11 @@ export struct MetricSheet {
 
   // ================== 视图 ================== //
   build() {
-    Column() {
+    Stack() {
       // 蒙层
-      Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
+      Column(){
+        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
+      }
 
       // 抽屉
       Column() {
@@ -67,18 +69,26 @@ export struct MetricSheet {
           this.NumField('冠幅（cm）', this.wStr, (v: string) => { this.wStr = v })
           this.NumField('健康分（0~100）', this.sStr, (v: string) => { this.sStr = v })
 
-          Row() {
-            Column() {
-              Text('日期').fontSize(12).fontColor(0xFF607D8B)
-              Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 })
-            }
-            Blank()
-            Text('今天').fontSize(12).fontColor(0xFF1565C0)
-              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-              .borderRadius(14).backgroundColor(0x102196F3)
-              .onClick(() => { this.dateISO = this.todayISO() })
-          }
-          .padding({ top: 6, bottom: 6 })
+          Row({space:5}) {
+            Text('今天')
+              .fontSize(12)
+              .fontColor(0xFF1565C0)
+              .padding({
+                left: 12,
+                right: 12,
+                top: 6,
+                bottom: 6
+              })
+              .borderRadius(14)
+              .backgroundColor(0x102196F3)
+              .onClick(() => {
+                this.dateISO = this.todayISO()
+              })
+
+            Text(this.dateISO).fontSize(13).fontColor(0xFF263238).margin({ top: 4 })
+
+
+          }.padding({ top: 6, bottom: 6 }).height(40).justifyContent(FlexAlign.Center).alignItems(VerticalAlign.Center)
 
           Row() {
             Text('添加记录').fontSize(14).fontColor(0xFFFFFFFF)
@@ -97,7 +107,7 @@ export struct MetricSheet {
               .padding({ left: 14, right: 14, top: 8, bottom: 8 })
               .borderRadius(18).backgroundColor(0x102196F3)
               .margin({ left: 8 })
-              .onClick(() => { this.hStr = ''; this.wStr = ''; this.sStr = '80' })
+              .onClick(() => { this.hStr = ''; this.wStr = ''; this.sStr = '8' })
           }
           .margin({ top: 6 })
         }
@@ -114,18 +124,19 @@ export struct MetricSheet {
             ForEach(this.sorted(), (m: PlantMetric) => {
               ListItem() { this.MetricRow(m) }
             }, (m: PlantMetric) => m.id.toString())
-          }
+          }.height('40%')
           .padding({ left: 16, right: 16, bottom: 16 })
+
           .edgeEffect(EdgeEffect.Spring)
         }
       }
-      .width('100%').backgroundColor(0xFFFFFFFF)
+      .width('100%').height('100%').backgroundColor(0xFFFFFFFF)
       .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
-      .position({ x: 0, y: 'calc(100% - 82%)' })
+      // .position({ x: 0, y: 'calc(100% - 82%)' })
       .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
       .animation({ duration: 200, curve: Curve.Sharp })
     }
-    .width('100%').height('100%')
+    .width('100%').height('100%').alignContent(Alignment.Bottom)
   }
 
   // =============== 子区块 =============== //
@@ -170,24 +181,29 @@ export struct MetricSheet {
       .padding({ left: 10, right: 10, top: 8, bottom: 4 })
 
       // 柱状迷你图（按排序结果顺序绘制）
-      Row() {
-        ForEach(this.sorted(), (m: PlantMetric) => {
-          // 单个柱
-          Column() {
-            Blank()
-              .width(14)
-              .height(this.barHeight(m))           // 由方法计算，避免在 Builder 内写 let/const
-              .borderRadius(6)
-              .backgroundColor(this.barColor())
-            // x 轴标注（每隔若干显示一次）
-            Text(this.tickLabel(m.createdAt))
-              .fontSize(9).fontColor(0x80607278).margin({ top: 4 })
-          }
-          .width(18) // 含间距
-          .alignItems(HorizontalAlign.Center)
-        }, (m: PlantMetric) => m.id.toString())
+      if (this.sorted().length>0){
+        List() {
+          ForEach(this.sorted(), (m: PlantMetric) => {
+            // 单个柱
+            ListItem() {
+              Column(){
+                Blank()
+                  .width(14)
+                  .height(this.barHeight(m))           // 由方法计算，避免在 Builder 内写 let/const
+                  .borderRadius(6)
+                  .backgroundColor(this.barColor())
+                // x 轴标注（每隔若干显示一次）
+                Text(this.tickLabel(m.createdAt))
+                  .fontSize(9).fontColor(0x80607278).margin({ top: 4 })
+              }
+              .alignItems(HorizontalAlign.Center)
+            }
+            .width(18) // 含间距
+          }, (m: PlantMetric) => m.id.toString())
+        }.height(100).scrollBar(BarState.Off)
+        .padding({ left: 10, right: 10, top: 4, bottom: 10 }).listDirection(Axis.Horizontal)
       }
-      .padding({ left: 10, right: 10, top: 4, bottom: 10 })
+
     }
     .padding(8).borderRadius(14).backgroundColor(0xFFFFFFFF)
     .shadow({ radius: 12, color: 0x13000000, offsetX: 0, offsetY: 3 })
@@ -205,7 +221,7 @@ export struct MetricSheet {
       }
       Blank()
       Text('🗑️').fontSize(16).onClick(() => { this.onDelete(m.id) })
-    }
+    }.width('100%')
     .padding(12).borderRadius(12).backgroundColor(0xFFFFFFFF)
     .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
   }

@@ -69,7 +69,7 @@ export struct LogRowItem {
   }
 
   build() {
-    Column() {
+    Column({space:5}) {
       Row() {
         if (this.selectMode) {
           Text(this.isSelected(this.lg.id) ? '✅' : '⬜').fontSize(18)
@@ -158,7 +158,6 @@ export struct LogRowItem {
   @Builder
   AddPic(logId: number) {
     Column() {
-      Text(this.logItemPhotos.length.toString())
       Grid() {
         ForEach(this.logItemPhotos, (item: LogPhoto, index: number) => {
           GridItem() {

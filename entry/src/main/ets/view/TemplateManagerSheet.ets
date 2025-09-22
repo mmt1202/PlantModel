@@ -42,12 +42,14 @@ export  struct TemplateManagerSheet {
   }
 
   build() {
-    Column(){
+    Stack(){
       // 蒙层
-      Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
+      Column(){
+        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
+      }
 
       // 底部面板
-      Column() {
+      Column({space:8}) {
         Row() {
           Text('周期模板').fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
@@ -81,20 +83,20 @@ export  struct TemplateManagerSheet {
             ForEach(this.templates, (t: PlanTpl) => {
               ListItem() {
                 this.TplItem(t)
-              }
+              }.width('100%')
             }, (t: PlanTpl) => t.id.toString())
-          }
+          }.height('40%').scrollBar(BarState.Off).width('100%')
           .padding({ left: 16, right: 16, bottom: 16 })
           .edgeEffect(EdgeEffect.Spring)
         }
       }
       .width('100%').backgroundColor(0xFFFFFFFF)
       .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
-      .position({ x: 0, y: 'calc(100% - 70%)' })
+      // .position({ x: 0, y: 'calc(100% - 70%)' })
       .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
       .animation({ duration: 200, curve: Curve.Sharp })
     }
-    .width('100%').height('100%')
+    .width('100%').height('100%').alignContent(Alignment.Bottom)
   }
 
   @Builder
@@ -123,8 +125,8 @@ export  struct TemplateManagerSheet {
           .padding({ left: 16, right: 16, top: 8, bottom: 8 }).borderRadius(20)
       }.margin({ top: 8 })
     }
-    .padding(10).borderRadius(12).backgroundColor(0xFFF7F9FC)
-    .shadow({ radius: 10, color: 0x11000000, offsetX: 0, offsetY: 2 })
+    .padding(10).borderRadius(12).backgroundColor('#ffffff')
+    .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
   }
 
   @Builder
@@ -143,7 +145,7 @@ export  struct TemplateManagerSheet {
             Text('编辑').fontSize(13).fontColor(0xFF1565C0).onClick(() => { this.startEdit(t) }).margin({ right: 10 })
             Text('删除').fontSize(13).fontColor(0xFFE53935).onClick(() => { this.onDelete(t.id) })
           }
-        }
+        }.width('96%').alignItems(VerticalAlign.Center).justifyContent(FlexAlign.SpaceBetween)
       } else {
         // 编辑态
         Column() {
@@ -165,11 +167,12 @@ export  struct TemplateManagerSheet {
               .backgroundColor(0xFFE0E0E0).fontColor(0xFF263238)
               .padding({ left: 16, right: 16, top: 8, bottom: 8 }).borderRadius(20).margin({ left: 10 })
           }.margin({ top: 6 })
-        }
+        }.width('100%')
       }
-    }
+    }.width('96%')
     .padding(12).borderRadius(14).backgroundColor(0xFFFFFFFF)
     .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
+    .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
   }
 
   @Builder

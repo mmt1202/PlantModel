@@ -1,4 +1,5 @@
 import { PlantDraft } from "../model/PlantModel"
+import { KeyboardAvoidMode } from '@kit.ArkUI';
 
 /** -------- 底部「编辑/新建」抽屉（V2 组件，新增周期任务区） -------- */
 @ComponentV2
@@ -14,9 +15,20 @@ export  struct EditPlantSheet {
   @Event onOpenTpl: () => void
   @Event onOpenLogs: () => void   // ← 新增
 
+  aboutToAppear(): void {
+    this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE);
+  }
+
+  aboutToDisappear(): void {
+    this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.NONE);
+
+  }
+
   build() {
-    Column(){
-      Blank().backgroundColor(0x66000000).width('100%').height('100%').onClick(() => { this.onClose() })
+    Stack(){
+      Column(){
+        Blank().backgroundColor(0x66000000).width('100%').height('100%').onClick(() => { this.onClose() })
+      }
 
       Column() {
         Row() {
@@ -31,7 +43,7 @@ export  struct EditPlantSheet {
           this.FormItem('位置', '如：客厅窗边/阳台', this.draft.location, (v: string) => { this.draft.location = v })
 
           // 周期任务快捷 + 模板入口
-          Column() {
+          Column({space:10}) {
             Text('周期任务').fontSize(12).fontColor(0xFF607D8B).margin({ bottom: 6 })
             Row() {
               this.BulkChip('每7天×4次(浇水)', () => { this.onBulkSchedule('浇水', 7, 4) })
@@ -41,13 +53,13 @@ export  struct EditPlantSheet {
             Row() {
               this.LinkChip('管理周期模板…', () => { this.onOpenTpl() })
               // ← 新增：日志入口
-              if (this.editingId !== 0) {
-                this.LinkChip('管理日志…', () => { this.onOpenLogs() })
-              }
+              // if (this.editingId !== 0) {
+              //   this.LinkChip('管理日志…', () => { this.onOpenLogs() })
+              // }
             }.margin({ top: 6 })
           }.margin({ top: 8 })
 
-          Row() {
+          Row({space:10}) {
             Button('保存').type(ButtonType.Capsule).onClick(() => { this.onSave() })
               .backgroundColor(0xFF2E7D32).fontColor(0xFFFFFFFF)
               .padding({ left: 18, right: 18, top: 8, bottom: 8 }).borderRadius(20)
@@ -58,7 +70,7 @@ export  struct EditPlantSheet {
                 .padding({ left: 18, right: 18, top: 8, bottom: 8 }).borderRadius(20).margin({ left: 12 })
             }
 
-            Blank()
+            // Blank()
 
             Button('添加今日浇水').type(ButtonType.Capsule).onClick(() => { this.onQuickWater() })
               .backgroundColor(0xFF1565C0).fontColor(0xFFFFFFFF)
@@ -69,10 +81,9 @@ export  struct EditPlantSheet {
       }
       .width('100%').backgroundColor(0xFFFFFFFF)
       .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
-      .position({ x: 0, y: 'calc(100% - 46%)' })
       .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
       .animation({ duration: 220, curve: Curve.Sharp })
-    }.width('100%').height('100%')
+    }.width('100%').height('100%').alignContent(Alignment.Bottom)
   }
 
   @Builder

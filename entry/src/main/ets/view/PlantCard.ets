@@ -1,4 +1,7 @@
-import { Plant } from "../model/PlantModel"
+import { LogEntry, Plant } from "../model/PlantModel"
+import { RdbManager } from "../viewmodel/RdbManager"
+import { relationalStore } from "@kit.ArkData"
+import { LogPhoto, PlantLog } from "./PlantLogSheet"
 
 /** -------- 子组件：单个植物卡片（V2） -------- */
 @ComponentV2
@@ -16,8 +19,15 @@ export  struct PlantCard {
   @Event onOpenTemplatenew: (pid: number) => void
   @Event onOpenMetric: (plantId: number) => void
 
-
+  @Consumer('RdbManager') RdbManager: RdbManager = RdbManager.getInstance()
+  @Consumer('store') store: relationalStore.RdbStore | null = this.RdbManager.rdbStore
   @Local pressed: boolean = false
+  @Local logs: Array<PlantLog> = []
+  @Local photos: Array<LogPhoto> = []
+
+  async aboutToAppear() {
+    await this.loadLogsWithPhotos(this.p.id)
+  }
 
   private typeColor(t: string): ResourceColor {
     if (t === '浇水') { return 0xFF3AAFA9 }
@@ -26,13 +36,52 @@ export  struct PlantCard {
     return 0xFF607D8B
   }
 
+  private async loadLogsWithPhotos(plantId: number): Promise<void> {
+    if (!this.store) {
+      return
+    }
+
+    // 1) 加载日志（新→旧）
+    const rs1 = await this.store.querySql(
+      `SELECT id, plantId, note, createdAt
+     FROM ${RdbManager.T_LOG}
+     WHERE plantId = ?
+     ORDER BY createdAt DESC, id DESC`, [plantId]
+    )
+    const arrLogs: Array<LogEntry> = []
+    while (rs1.goToNextRow()) {
+      arrLogs.push(new LogEntry(rs1.getLong(0), rs1.getLong(1), rs1.getString(2), rs1.getLong(3)))
+    }
+    rs1.close()
+    this.logs = arrLogs
+
+    // 2) 加载该植物所有日志的照片（按照片 id 新→旧）
+    const rs2 = await this.store.querySql(
+      `SELECT p.id, p.logId, p.path, p.thumbPath, p.createdAt
+     FROM ${RdbManager.T_LOG_PHOTO} p
+     JOIN ${RdbManager.T_LOG} l ON p.logId = l.id
+     WHERE l.plantId = ?
+     ORDER BY p.id DESC`, [plantId]
+    )
+    const arrPhotos: Array<LogPhoto> = []
+    while (rs2.goToNextRow()) {
+      arrPhotos.push(new LogPhoto(rs2.getLong(0), rs2.getLong(1), rs2.getString(2), rs2.getString(3), rs2.getLong(4)))
+    }
+    rs2.close()
+    this.photos = arrPhotos
+  }
+
   build() {
     Column({space:10}) {
       Row() {
         // 头像圆片
         Column() {
           if (this.p.name.length > 0) {
-            Text(this.p.name.substring(0, 1)).fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF)
+            if (this.photos.length>0) {
+              Image(this.photos[0].path).width(40).height(40).borderRadius(20)
+            } else {
+              Text(this.p.name.substring(0, 1)).fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF)
+            }
           } else { Text('植').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFFFFFFFF) }
         }
         .width(40).height(40).borderRadius(20).backgroundColor(0xFF66BB6A)
@@ -45,8 +94,9 @@ export  struct PlantCard {
 
         Blank()
 
-        Row(){
-          Text('✏️').fontSize(16).onClick(() => { this.onEdit() }).margin({ right: 8 })
+        Row({space: 8}){
+          Text('📈').fontSize(16).onClick(() => { this.onOpenMetric(this.p.id) })
+          Text('✏️').fontSize(16).onClick(() => { this.onEdit() })
           Text('🗑️').fontSize(16).onClick(() => { this.onDeleteAsk() })
         }
       }.width('100%').justifyContent(FlexAlign.SpaceBetween)
@@ -71,7 +121,6 @@ export  struct PlantCard {
           .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10BA68C8)
           .onClick(() => { this.onOpenTemplatenew(this.p.id) })
           .margin({ right: 8 })
-        Text('📈').fontSize(16).onClick(() => { this.onOpenMetric(this.p.id) }).margin({ right: 8 })
 
 
       }

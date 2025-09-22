@@ -6,13 +6,14 @@ export struct StatsPage {
   @Param @Require plants: Array<Plant>
   @Param @Require tasks: Array<PlantTask>
 
+  @Event onReloadAll:()=>void
   // 小图配置
   @Local weekOption: Options = new Options({
     title: { show: true, text: '近7天完成数', right: 16, top: 16 },
     grid: { left: 28, top: 48, right: 16, bottom: 28 },
     xAxis: { data: [] as Array<string> },
     yAxis: { name: '次数' },
-    legend: { show: false },
+    legend: { show: true },
     tooltip: { show: true },
     animation: true,
     series: [{ name: '完成', data: [] as Array<number> }]
@@ -225,70 +226,110 @@ export struct StatsPage {
   }
 
   private refreshWeekOption(): void {
-    this.weekOption.title = { show: true, text: '近7天完成数', right: 16, top: 16 }
-    this.weekOption.xAxis = { data: this.weekLabels() }
-    this.weekOption.yAxis = { name: '次数' }
-    this.weekOption.series = [{ name: '完成', data: this.weekDoneCounts() }]
+    this.weekOption.setVal({
+      title : { show: true, text: '近7天完成数', right: 16, top: 16 },
+      xAxis : { data: this.weekLabels() },
+      yAxis : { name: '次数' },
+      series : [{ name: '完成', data: this.weekDoneCounts() }]
+    })
+    // this.weekOption.title = { show: true, text: '近7天完成数', right: 16, top: 16 }
+    // this.weekOption.xAxis = { data: this.weekLabels() }
+    // this.weekOption.yAxis = { name: '次数' }
+    // this.weekOption.series = [{ name: '完成', data: this.weekDoneCounts() }]
   }
 
   // ======= UI =======
   build() {
-    Column() {
+    Column({space:8}) {
+      this.Header()
       // 第一行：总览
-      Row() {
-        this.Card('植物数', this.plantCount().toString(), 0xFF1B5E20)
-        this.Card('任务数', this.taskCount().toString(), 0xFF1565C0)
-      }
-      .justifyContent(FlexAlign.SpaceAround)
+      Grid(){
+        GridItem(){
+          this.Card('植物数', this.plantCount().toString(), 0xFF1B5E20)
+        }
+        GridItem(){
+          this.Card('任务数', this.taskCount().toString(), 0xFF1565C0)
+        }
+        GridItem(){
+          this.Card('完成率', this.taskCount() > 0 ? `${Math.round(this.doneCount() * 100 / this.taskCount())}%` : '0%', 0xFFE65100)
+        }
+        GridItem(){
+          this.Card('进行中', this.inProgressCount().toString(), 0xFF6A1B9A)
+        }
+        GridItem(){
+          this.Card('逾期未完成', this.overdueCount().toString(), 0xFFD32F2F)
 
-      Row() {
-        // const rate: string =
-        this.Card('完成率', this.taskCount() > 0 ? `${Math.round(this.doneCount() * 100 / this.taskCount())}%` : '0%', 0xFFE65100)
-        this.Card('进行中', this.inProgressCount().toString(), 0xFF6A1B9A)
-      }
-      .justifyContent(FlexAlign.SpaceAround)
+        }
+        GridItem(){
+          this.Card('未来7天待办', this.next7Count().toString(), 0xFF1976D2)
+        }
+        GridItem(){
+          this.Card('近7天完成', this.doneLast7().toString(), 0xFF2E7D32)
+        }
+        GridItem(){
+          this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
+        }
+      }.width('100%').height(340).columnsTemplate('1fr 1fr').columnsGap(10).rowsGap(10)
 
-      // 第二行：风险与计划
-      Row() {
-        this.Card('逾期未完成', this.overdueCount().toString(), 0xFFD32F2F)
-        this.Card('未来7天待办', this.next7Count().toString(), 0xFF1976D2)
-      }
-      .justifyContent(FlexAlign.SpaceAround)
-      .margin({ top: 8 })
+      Scroll(){
+        Column(){
+          // this.SectionTitle('类型分布')
+          // Row() {
+          //   this.Chip(`浇水 ${this.typeCount('浇水')}`)
+          //   this.Chip(`施肥 ${this.typeCount('施肥')}`)
+          //   this.Chip(`修剪 ${this.typeCount('修剪')}`)
+          // }
+          // .padding({ left: 12, right: 12, bottom: 4 })
 
-      // 第三行：近期活跃
-      Row() {
-        this.Card('近7天完成', this.doneLast7().toString(), 0xFF2E7D32)
-        this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
-      }
-      .justifyContent(FlexAlign.SpaceAround)
-      .margin({ top: 8 })
+          // 近30天 Top 植物
+          this.SectionTitle('近30天最活跃植物')
+          Row() {
+            this.BigBadge(this.topPlantName(), this.topPlantCount())
+          }
+          .padding({ left: 12, right: 12, bottom: 6 })
 
+          // 近7天完成柱状图
+          Row() {
+            McBarChart({ options: this.weekOption })
+          }
+          .height(220)
+          .padding({ left: 8, right: 8, top: 6 })
+
+        }
+      }.scrollBar(BarState.Off).height('calc(100% - 400vp)')
       // 类型分布
-      this.SectionTitle('类型分布')
-      Row() {
-        this.Chip(`浇水 ${this.typeCount('浇水')}`)
-        this.Chip(`施肥 ${this.typeCount('施肥')}`)
-        this.Chip(`修剪 ${this.typeCount('修剪')}`)
-      }
-      .padding({ left: 12, right: 12, bottom: 4 })
-
-      // 近30天 Top 植物
-      this.SectionTitle('近30天最活跃植物')
-      Row() {
-        this.BigBadge(this.topPlantName(), this.topPlantCount())
-      }
-      .padding({ left: 12, right: 12, bottom: 6 })
-
-      // 近7天完成柱状图
-      Row() {
-        McBarChart({ options: this.weekOption })
-      }
-      .height(220)
-      .padding({ left: 8, right: 8, top: 6 })
 
     }
-    .padding({ left: 12, right: 12, top: 12, bottom: 16 })
+    // .padding({ left: 12, right: 12, top: 12, bottom: 16 })
+  }
+
+  @Builder
+  Header() {
+    Column() {
+      Column() {
+        Row() {
+          Text('PlantDiary 植物养护·统计').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+          Blank()
+          Text('刷新数据')
+            .fontSize(12).fontColor(0xFF1565C0)
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+            .borderRadius(12).backgroundColor(0x102196F3)
+            .onClick(async () => {
+              await this.onReloadAll()
+              this.refreshWeekOption()
+            })
+        }.width('100%')
+        .justifyContent(FlexAlign.Start)
+        .padding({
+          left: 20,
+          right: 20,
+          top: 16,
+          bottom: 8
+        })
+
+      }
+      .padding({ bottom: 4 })
+    }.width('100%')
   }
 
   @Builder
@@ -303,7 +344,7 @@ export struct StatsPage {
       Text(title).fontSize(12).fontColor(0xFF607D8B)
       Text(value).fontSize(22).fontWeight(FontWeight.Medium).fontColor(color)
     }
-    .width('46%')
+    .width(160)
     .padding(16)
     .borderRadius(16)
     .backgroundColor(0xFFFFFFFF)

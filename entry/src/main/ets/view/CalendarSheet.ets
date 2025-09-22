@@ -66,7 +66,6 @@ struct CalendarSheet1 {
       Column(){
         Scroll() {
           // 背景
-          // Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onClose() })
           Column() {
 
             // 日历网格（用分片方法避免在 Builder 内声明变量）
@@ -161,16 +160,11 @@ struct CalendarSheet1 {
             }
           }
           .width('100%')
-          // .backgroundColor(0xFFFFFFFF)
-          // .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
-          // .position({ x: 0, y: 'calc(100% - 86%)' })
           .padding({
             left: 16,
             right: 16,
             top: 12,
           })
-          // .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
-          // .animation({ duration: 200, curve: Curve.Sharp })
         }
         .width('100%').scrollBar(BarState.Off)
       }.height('calc(100% - 70vp)')

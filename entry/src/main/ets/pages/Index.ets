@@ -1,36 +1,26 @@
-// entry/src/main/ets/pages/RdbManager.ets
 import common from '@ohos.app.ability.common'
 import relationalStore from '@ohos.data.relationalStore'
 import {
   CareRule,
-  CareTemplate, LogEntry, Metric, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
-import { CalendarSheet } from '../view/CalendarView'
+  CareTemplate, Metric, Plant, PlantDraft, PlanTpl, PlantTask, TaskDraft } from '../model/PlantModel'
 import { CareTemplateSheet } from '../view/CareTemplateSheet'
 import { ConfirmDialogSheet } from '../view/ConfirmDialogSheet'
 import { EditPlantSheet } from '../view/EditPlantSheet'
 import { PlantListPage } from '../view/PlantListPage'
-import { LogPhoto, PlantLogSheet } from '../view/PlantLogSheet'
 import { StatsPage } from '../view/StatsPage'
-import { TaskCalendarGate } from '../view/TaskCalendarGate'
 import { TaskListPage } from '../view/TaskListPage'
 import { TemplateManagerSheet } from '../view/TemplateManagerSheet'
 import { MetricSheet } from '../view/MetricSheet'
 import { CalendarSheet1 } from '../view/CalendarSheet'
-import { PlantTaskFilter, PlantTaskFilterSheet } from '../view/PlantTaskFilterSheet'
-import picker from '@ohos.file.picker'
+import { PlantTaskFilter } from '../view/PlantTaskFilterSheet'
 import fs from '@ohos.file.fs'
-import fileAccess from '@ohos.file.fileAccess'
-import { PhotoPreviewSheet } from '../view/PhotoPreviewSheet'
 import { MetricChartSheet } from '../view/MetricChartSheet'
 import { runInTransaction } from '../model/DbUtils'
-import { TaskStatsSheet } from '../view/TaskStatsSheet'
 import { TemplateApplySheet } from '../view/TemplateApplySheet'
 import { RdbManager } from '../viewmodel/RdbManager'
 import { hilog } from '@kit.PerformanceAnalysisKit'
-import { AddImageFileViewModel, CompressedImage } from '../viewmodel/AddImageFileViewModel'
 import { PlantLogPage } from './PlantLogPage'
 
-/** -------- 入口页面（V2） -------- */
 @Entry
 @ComponentV2
 struct Index {
@@ -39,10 +29,9 @@ struct Index {
   @Provider('RdbManager') RdbManager: RdbManager = RdbManager.getInstance()
   @Provider('store') store: relationalStore.RdbStore | null = this.RdbManager.rdbStore
 
-  private addImageFileViewModel = AddImageFileViewModel.getInstance(this.ctx);
   @Provider('pageStack') pageStack: NavPathStack = new NavPathStack();
-
   @Local tabsController:TabsController = new TabsController()
+  @Local isShow:boolean = false
   // 状态
   @Local initialized: boolean = false
   @Local plants: Array<Plant> = []
@@ -52,7 +41,6 @@ struct Index {
   // Tab 与搜索
   @Local tabBarIndex: number = 0 // 0 植物 1 任务 2 统计
   @Local keyword: string = ''
-
   // —— 任务筛选 ——
   @Local taskFilterVisible: boolean = false
   @Local taskFilter: PlantTaskFilter = new PlantTaskFilter()
@@ -76,33 +64,12 @@ struct Index {
   // 模板管理
   @Local tplMgrVisible: boolean = false
   @Local templates: Array<PlanTpl> = []
-  // ← 新增：日志抽屉
-  // @Local logSheetVisible: boolean = false
-  // @Local logPlantId: number = 0
-  // // @Local logList: Array<LogEntry> = []
-  // @Local logInput: string = ''
-
-  // —— 日志抽屉状态 —— //
-  // @Local logVisible: boolean = false
-  // @Local logPlantId: number = 0
-  // @Local logPlantName: string = ''
-  // @Local currentPlantName: string = ''
-  // @Local currentPlantId: string = ''
-  // @Local logs: Array<LogEntry> = []
-  // @Local logPhotos:Array<LogPhoto> =[]
-  // @Local logInputText: string = ''
-  @Local picking: boolean = false   // 防连点
-
-
   // —— 指标抽屉状态 —— //
   @Local metricVisible: boolean = false
   @Local metricPlantId: number = 0
   @Local metricPlantName: string = ''
   @Local metrics: Array<Metric> = []
-  // —— 日历入口状态 ——
-  @Local calendarVisible: boolean = false
-  @Local calYear: number = 1970
-  @Local calMonth: number = 1
+  // 日历
   @Local calendarYear: number = new Date().getFullYear()
   @Local calendarMonth: number = new Date().getMonth() + 1
 
@@ -139,19 +106,18 @@ struct Index {
   aboutToAppear(): void {
     this.initDb().then(() => {
       this.initialized = true
+
       this.showBanner('已初始化本地数据库', 'ok')
     }).catch((e: Error) => {
       this.showBanner('数据库初始化失败', 'warn')
       hilog.info(0x0000, 'Web', '%{public}s', `liheng 数据库初始化失败  ${JSON.stringify(e)}`);
     })
-    const __now = new Date()
-    this.calYear = __now.getFullYear()
-    this.calMonth = __now.getMonth() + 1
   }
 
   /** ---- DB 初始化/加载 ---- */
   private async initDb(): Promise<void> {
     await this.RdbManager.initDb(this.ctx)
+    this.store = this.RdbManager.rdbStore
     await this.RdbManager.ensureCareTemplates()
     await this.reloadAll()
     await this.loadTemplates()
@@ -198,80 +164,6 @@ struct Index {
     return ''
   }
 
-  private inDateRange(d: string): boolean {
-    if (this.filterFrom.length > 0 && d < this.filterFrom) { return false }
-    if (this.filterTo.length > 0 && d > this.filterTo) { return false }
-    return true
-  }
-
-  private filteredTasks(): Array<PlantTask> {
-    const out: Array<PlantTask> = []
-    const kw: string = this.filterKeyword.trim().toLowerCase()
-    let i: number = 0
-    while (i < this.tasks.length) {
-      const it = this.tasks[i]
-      // 状态
-      if (this.filterStatus === 1 && it.done === 1) { i = i + 1; continue }
-      if (this.filterStatus === 2 && it.done === 0) { i = i + 1; continue }
-      // 类型
-      if (this.filterType.length > 0 && it.type !== this.filterType) { i = i + 1; continue }
-      // 日期
-      if (!this.inDateRange(it.planDate)) { i = i + 1; continue }
-      // 关键字（类型 / 植物名）
-      if (kw.length > 0) {
-        const pn: string = this.plantNameById(it.plantId).toLowerCase()
-        if (it.type.toLowerCase().indexOf(kw) < 0 && pn.indexOf(kw) < 0) { i = i + 1; continue }
-      }
-      out.push(it)
-      i = i + 1
-    }
-    // 排序
-    out.sort((a: PlantTask, b: PlantTask) => {
-      let va: string = ''; let vb: string = ''
-      if (this.sortKey === 'date') { va = a.planDate; vb = b.planDate }
-      else if (this.sortKey === 'type') { va = a.type; vb = b.type }
-      else if (this.sortKey === 'status') { va = a.done.toString(); vb = b.done.toString() }
-      else if (this.sortKey === 'plant') { va = this.plantNameById(a.plantId); vb = this.plantNameById(b.plantId) }
-      if (this.sortAsc) { return va < vb ? -1 : (va > vb ? 1 : 0) }
-      return va > vb ? -1 : (va < vb ? 1 : 0)
-    })
-    return out
-  }
-
-  // 批量为某植物在一组日期创建若干类型的 PlantTask（幂等，受唯一索引保护）
-  private async createTemplateTasksWithTx(plantId: number, datesISO: Array<string>, types: Array<string>): Promise<boolean> {
-    if (!this.store) { return false }
-    try {
-      const tx = await this.store.createTransaction()
-      // 循环插入；违反唯一索引时忽略错误继续（你也可以先 SELECT 再 INSERT）
-      let di: number = 0
-      while (di < datesISO.length) {
-        let ti: number = 0
-        while (ti < types.length) {
-          try {
-            await tx.insert(RdbManager.T_TASK, {
-              plantId: plantId, type: types[ti], planDate: datesISO[di], done: 0, doneAt: 0
-            })
-          } catch (_) { /* ignore duplicate */ }
-          ti = ti + 1
-        }
-        di = di + 1
-      }
-      await tx.commit()
-      return true
-    } catch (e) {
-      console.error('createTemplateTasksWithTx error: ' + (e as Error).message)
-      return false
-    }
-  }
-
-
-  // private plantNameById(id: number): string {
-  //   let i: number = 0
-  //   while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name }; i = i + 1 }
-  //   return ''
-  // }
-
   // 打开趋势图（外部只需传 plantId）
   private async openMetricChart(plantId: number): Promise<void> {
     // 假设你已有 loadMetricsByPlant(plantId) 并把结果放到 this.metrics
@@ -297,7 +189,6 @@ struct Index {
     rs.close()
     this.templates = items
   }
-
 
   /** ---- 指标 DB ---- */
   private async loadMetricsByPlant(plantId: number): Promise<void> {
@@ -347,6 +238,7 @@ struct Index {
   /** ---- 植物 CRUD ---- */
   private async createPlant(draft: PlantDraft): Promise<void> {
     if (!this.store) {
+      hilog.info(0x0000, 'web', '%{public}s', `liheng 没有this.store${JSON.stringify(this.store)}`);
       return
     }
     const values: relationalStore.ValuesBucket = {
@@ -355,6 +247,7 @@ struct Index {
       location: draft.location.trim(),
       createdAt: Date.now()
     }
+    hilog.info(0x0000, 'web', '%{public}s', `liheng 2 item.id${JSON.stringify(values)}`);
     await this.store.insert(RdbManager.T_PLANT, values)
     await this.loadPlants()
     this.showBanner('已添加植物', 'ok')
@@ -442,8 +335,6 @@ struct Index {
     this.showBanner('已删除植物及其任务、日志与照片', 'ok')
   }
 
-
-
   /** ---- 任务 CRUD ---- */
   private async createTask(draft: TaskDraft): Promise<void> {
     if (!this.store) {
@@ -465,48 +356,6 @@ struct Index {
       this.showBanner('同日同类型任务已存在', 'info')
     }
 
-  }
-  // —— 任务：批量切换完成状态（事务）—— //
-  private async bulkToggleTasks(ids: Array<number>, done: number): Promise<void> {
-    if (!this.store) { return }
-    await this.store.beginTransaction()
-    try {
-      const now: number = done === 1 ? Date.now() : 0
-      let i: number = 0
-      while (i < ids.length) {
-        const p = new relationalStore.RdbPredicates(RdbManager.T_TASK)
-        p.equalTo('id', ids[i])
-        await this.store.update({ done: done, doneAt: now }, p)
-        i = i + 1
-      }
-      await this.store.commit()
-      await this.loadTasks()
-      this.showBanner('已批量更新任务状态', 'ok')
-    } catch (_e) {
-      await this.store.rollBack()
-      this.showBanner('批量更新失败，已回滚', 'warn')
-    }
-  }
-
-  // —— 任务：批量删除（事务）—— //
-  private async bulkDeleteTasks(ids: Array<number>): Promise<void> {
-    if (!this.store) { return }
-    await this.store.beginTransaction()
-    try {
-      let i: number = 0
-      while (i < ids.length) {
-        const p = new relationalStore.RdbPredicates(RdbManager.T_TASK)
-        p.equalTo('id', ids[i])
-        await this.store.delete(p)
-        i = i + 1
-      }
-      await this.store.commit()
-      await this.loadTasks()
-      this.showBanner('已批量删除任务', 'ok')
-    } catch (_e) {
-      await this.store.rollBack()
-      this.showBanner('批量删除失败，已回滚', 'warn')
-    }
   }
 
   private async toggleTaskDone(task: PlantTask): Promise<void> {
@@ -809,22 +658,6 @@ struct Index {
     return out
   }
 
-  private statDoneCount(): number {
-    let cnt: number = 0
-    let i: number = 0
-    while (i < this.tasks.length) {
-      if (this.tasks[i].done === 1) {
-        cnt = cnt + 1
-      }
-      i = i + 1
-    }
-    return cnt
-  }
-
-  private openTaskStats(): void {
-    this.taskStatsVisible = true
-  }
-
   private two(n: number): string { const s: string = n.toString(); if (s.length === 1) { return '0' + s }; return s }
   private addDays(iso: string, delta: number): string {
     const ps: Array<string> = iso.split('-')
@@ -895,49 +728,10 @@ struct Index {
     this.showBanner(`模板复制完成：新增 ${inserted} 条，跳过 ${skipped} 条`, 'ok')
   }
 
-  /** ---- 下拉刷新头手势 ---- */
-  private onHeaderTouch(e: TouchEvent): void {
-    if (e.type === TouchType.Down) {
-      this.touchStartY = e.touches[0].y;
-      this.pulling = true;
-      this.canRefresh = false
-    } else if (e.type === TouchType.Move && this.pulling) {
-      const dy: number = e.touches[0].y - this.touchStartY
-      if (dy > 0) {
-        let v: number = dy;
-        if (v > 80) {
-          v = 80
-        }
-        this.pullOffset = v;
-        this.canRefresh = v > 60
-      }
-    } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
-      if (this.canRefresh) {
-        this.refreshAll()
-      }
-      animateTo({ duration: 180, curve: Curve.EaseInOut }, () => {
-        this.pullOffset = 0;
-        this.pulling = false;
-        this.canRefresh = false
-      })
-    }
-  }
-
-  private async refreshAll(): Promise<void> {
-    await this.reloadAll();
-    await this.loadTemplates()
-    // if (this.logSheetVisible && this.logPlantId !== 0) {
-    //   await this.loadLogsByPlant(this.logPlantId)
-    // }
-    this.showBanner('已刷新数据', 'ok')
-  }
-
   /** ---- 视图 ---- */
   build() {
     Navigation(this.pageStack){
-      Stack({alignContent:Alignment.Bottom}) {
-        // 头部
-        // this.Header()
+      Stack({alignContent:Alignment.Center}) {
         Tabs({
           barPosition: BarPosition.End,
           index: this.tabBarIndex,
@@ -958,10 +752,6 @@ struct Index {
                 this.openPanel(p.id, p)
               },
               onOpenLogs: async (p: Plant) => {
-                // this.logPlantId = p.id; this.logPlantName = p.name; this.logInput = ''
-                // await this.loadLogsByPlant(p.id)
-                // await this.loadLogsWithPhotos(this.logPlantId)
-                // this.logSheetVisible = true
                 this.pageStack.pushPathByName('PlantLogPage',p.id)
               },
               onDeleteAsk: (pid: number) => {
@@ -973,6 +763,7 @@ struct Index {
               onOpenMetrics: async (p: Plant) => {
                 this.metricPlantId = p.id; this.metricPlantName = p.name
                 await this.loadMetricsByPlant(p.id)
+                this.isShow = true
                 this.metricVisible = true
               },
               onOpenTemplate: (p: Plant) => {
@@ -987,15 +778,8 @@ struct Index {
               },
               onOpenMetric: async (pid: number) => { await this.openMetricChart(pid) },
               Header: ()=>{this.Header()},
-            })
-          }.tabBar(this.TabChip('植物', 0))
+            })}.tabBar(this.TabChip('植物', 0))
           TabContent(){
-            // TaskCalendarGate({
-            //   tasks: this.tasks,
-            //   onToggle: (t: PlantTask) => { this.toggleTaskDone(t) },
-            //   onDelete: (id: number) => { this.deleteTask(id) }
-            // })
-            // this.filteredTasks() ||
             TaskListPage({
               tasks: this.tasks,
               plants: this.plants,
@@ -1029,7 +813,6 @@ struct Index {
                 await this.createTask(this.taskDraft);  // 你现有的方法
               },
               onToggle: async (t: PlantTask) => { await this.toggleTaskDone(t) },
-              onClose: () => { this.calendarVisible = false },
               onDeleteAsk: (tid: number) => {
                 this.pendingDeleteTaskId = tid;
                 this.pendingDeletePlantId = 0;
@@ -1037,27 +820,20 @@ struct Index {
                 this.confirmVisible = true
               }
             })
-            // Scroll(){
-            //   Column(){
-            //
-            //     CalendarSheet({
-            //       year: this.calYear,
-            //       month: this.calMonth,
-            //       tasks: this.tasks, // Array<PlantTask>
-            //       onToggle: (it: PlantTask) => { this.toggleTaskDone(it) },
-            //       onDelete: (id: number) => { this.deleteTask(id) },
-            //       onClose: () => { this.calendarVisible = false }
-            //     })
-            //   }
-            //
-            // }
           }.tabBar(this.TabChip('日历', 3))
           TabContent(){
             StatsPage({
               plants: this.plants,
               tasks: this.tasks,
-            }).onClick(()=>{
-              // this.openTaskStats()
+              onReloadAll: async ()=>{
+                try {
+                  await this.reloadAll()
+                  await this.loadTemplates()
+                  this.showBanner('刷新数据成功','ok')
+                }catch (e) {
+                }
+
+              }
             })
           }.tabBar(this.TabChip('统计', 4))
 
@@ -1095,20 +871,6 @@ struct Index {
           })
         }
 
-
-
-        // 任务过滤
-        if (this.taskFilterVisible) {
-          PlantTaskFilterSheet({
-            filter: this.taskFilter,
-            plants: this.plants,
-            onApply: (f: PlantTaskFilter) => { this.taskFilter = f; this.taskFilterVisible = false },
-            onReset: () => { this.taskFilter = new PlantTaskFilter() },
-            onClose: () => { this.taskFilterVisible = false }
-          })
-        }
-
-        // —— 指标抽屉 ——（新增组件 MetricSheet）
         if (this.metricVisible) {
           MetricSheet({
             plantName: this.metricPlantName,
@@ -1118,26 +880,6 @@ struct Index {
               await this.createMetric(this.metricPlantId, h, w, s, iso)
             },
             onDelete: async (id: number) => { await this.deleteMetric(id) }
-          })
-        }
-
-        // 首页的日历
-        if (this.calendarVisible) {
-          CalendarSheet1({
-            year: this.calendarYear,
-            month: this.calendarMonth,
-            tasks: this.tasks,          // 这里的 tasks 请确保是 PlantTask[]
-            plants: this.plants,
-            onChangeMonth: (y: number, m: number) => { this.calendarYear = y; this.calendarMonth = m },
-            onQuickAdd: async (pid: number, type: string, iso: string) => {
-              this.taskDraft = new TaskDraft();
-              this.taskDraft.plantId = pid;
-              this.taskDraft.type = type;
-              this.taskDraft.planDate = iso
-              await this.createTask(this.taskDraft);  // 你现有的方法
-            },
-            onToggle: async (t: PlantTask) => { await this.toggleTaskDone(t) },
-            onClose: () => { this.calendarVisible = false }
           })
         }
 
@@ -1180,6 +922,8 @@ struct Index {
                 this.showBanner('名称不能为空', 'warn');
                 return
               }
+              hilog.info(0x0000, 'web', '%{public}s', `liheng 2 EditPlantSheet${this.editingPlantId} ${JSON.stringify(this.plantDraft)}`);
+
               if (this.editingPlantId === 0) {
                 await this.createPlant(this.plantDraft)
               } else {
@@ -1251,16 +995,6 @@ struct Index {
             }
           })
         }
-
-
-
-        if (this.taskStatsVisible) {
-          TaskStatsSheet({
-            items: this.tasks,           // 你也可以传 this.filteredTasks()
-            onClose: () => { this.taskStatsVisible = false }
-          })
-        }
-
         if (this.tplVisible) {
           TemplateApplySheet({
             plantId: this.tplTargetPlantId,
@@ -1286,72 +1020,14 @@ struct Index {
     }.hideTitleBar(true)
     .navDestination(this.pageMap)
     .mode(NavigationMode.Stack)
-
   }
+
   @Builder
   pageMap(name: string) {
     if (name === "PlantLogPage") {
       PlantLogPage()
     }
   }
-
-
-
-  private findPlantName(id: number): string {
-    let i: number = 0
-    while (i < this.plants.length) {
-      if (this.plants[i].id === id) {
-        return this.plants[i].name
-      }
-      i = i + 1
-    }
-    return '植物'
-  }
-
-
-  // private filteredTasks(): Array<PlantTask> {
-  //   const out: Array<PlantTask> = []
-  //   const f = this.taskFilter
-  //   const kw = f.keyword.trim().toLowerCase()
-  //
-  //   let i: number = 0
-  //   while (i < this.tasks.length) {
-  //     const t = this.tasks[i]
-  //     // 状态
-  //     if (f.status === 'done' && t.done !== 1) { i = i + 1; continue }
-  //     if (f.status === 'undone' && t.done !== 0) { i = i + 1; continue }
-  //     // 类型
-  //     if (t.type === '浇水' && !f.typeWater) { i = i + 1; continue }
-  //     if (t.type === '施肥' && !f.typeFertilize) { i = i + 1; continue }
-  //     if (t.type === '修剪' && !f.typePrune) { i = i + 1; continue }
-  //     // 日期范围
-  //     if (f.dateFromISO.length === 10 && t.planDate < f.dateFromISO) { i = i + 1; continue }
-  //     if (f.dateToISO.length === 10 && t.planDate > f.dateToISO) { i = i + 1; continue }
-  //     // 关键词（植物名 / 类型）
-  //     if (kw.length > 0) {
-  //       const pn = this.plantNameById(t.plantId).toLowerCase()
-  //       const hit = pn.indexOf(kw) >= 0 || t.type.toLowerCase().indexOf(kw) >= 0
-  //       if (!hit) { i = i + 1; continue }
-  //     }
-  //     out.push(t)
-  //     i = i + 1
-  //   }
-  //
-  //   // 排序
-  //   out.sort((a: PlantTask, b: PlantTask) => {
-  //     if (f.sortKey === 'date') {
-  //       return f.sortAsc ? this.cmpStr(a.planDate, b.planDate) : this.cmpStr(b.planDate, a.planDate)
-  //     }
-  //     if (f.sortKey === 'type') {
-  //       return f.sortAsc ? this.cmpStr(a.type, b.type) : this.cmpStr(b.type, a.type)
-  //     }
-  //     // plant
-  //     const pa = this.plantNameById(a.plantId)
-  //     const pb = this.plantNameById(b.plantId)
-  //     return f.sortAsc ? this.cmpStr(pa, pb) : this.cmpStr(pb, pa)
-  //   })
-  //   return out
-  // }
 
   // 字符串比较（避免 locale 差异）
   cmpStr(x: string, y: string): number {
@@ -1360,12 +1036,6 @@ struct Index {
     return 0
   }
 
-  // private plantNameById(id: number): string {
-  //   let i: number = 0
-  //   while (i < this.plants.length) { if (this.plants[i].id === id) { return this.plants[i].name } i = i + 1 }
-  //   return ''
-  // }
-  /** ---- Header / TabChip / Fab / Banner（保持与你现有实现一致） ---- */
   @Builder
   Header() {
     Column() {
@@ -1387,7 +1057,6 @@ struct Index {
           top: 16,
           bottom: 8
         })
-
         Row() {
           Text('🔎').fontSize(18).margin({ right: 8 })
           TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword })
@@ -1402,30 +1071,8 @@ struct Index {
             .padding({ left: 12, right: 12 })
         }
         .height(44).width('100%').padding({ left: 20, right: 20, bottom: 2 })
-        // Text('📅 日历').fontSize(12).fontColor(0xFF1565C0)
-        //   .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-        //   .borderRadius(12).backgroundColor(0x102196F3)
-        //   .onClick(() => { this.calendarVisible = true })
       }
       .padding({ bottom: 4 })
-      .onTouch((e: TouchEvent) => {
-        this.onHeaderTouch(e)
-      })
-
-      // if (this.pullOffset > 0) {
-      //   Row() {
-      //     if (this.canRefresh) {
-      //       Text('释放刷新').fontSize(12).fontColor(0xFF2E7D32)
-      //     } else {
-      //       Text('下拉刷新').fontSize(12).fontColor(0xFF607D8B)
-      //     }
-      //   }
-      //   .width('100%')
-      //   .height(24)
-      //   .justifyContent(FlexAlign.Center)
-      //   .opacity(0.9)
-      //   .padding({ bottom: 4 })
-      // }
     }.width('100%')
   }
 

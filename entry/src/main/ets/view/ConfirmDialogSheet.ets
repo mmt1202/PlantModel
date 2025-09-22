@@ -6,8 +6,10 @@ export struct ConfirmDialogSheet {
   @Event onConfirm: () => void
 
   build() {
-    Column(){
-      Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onCancel() })
+    Stack(){
+      Column(){
+        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => { this.onCancel() })
+      }
       Column() {
         Text('请确认').fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238).margin({ bottom: 6 })
         Text(this.text).fontSize(14).fontColor(0xFF607D8B)
@@ -20,7 +22,8 @@ export struct ConfirmDialogSheet {
       }
       .padding(16).borderRadius(20).backgroundColor(0xFFFFFFFF)
       .shadow({ radius: 24, color: 0x44000000, offsetX: 0, offsetY: 8 })
-      .position({ x: 'calc(50% - 45%)', y: '30%' }).width('90%')
+      // .position({ x: '', y: '30%' })
+      .width('90%')
       .animation({ duration: 180, curve: Curve.EaseInOut })
     }.width('100%').height('100%')
   }
