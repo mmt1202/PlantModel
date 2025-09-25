@@ -92,7 +92,7 @@ export struct PlantLogSheet {
                 }
               })
           }
-          Text('✕').fontSize(18).onClick(() => {
+          Text('✕').fontColor('#000000').fontSize(18).onClick(() => {
             this.onClose()
           }).margin({ left: 8 })
         }

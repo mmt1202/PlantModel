@@ -193,10 +193,11 @@ export struct PlantCard {
           Progress({ value: this.done, total: this.total, type: ProgressType.Linear })
             .width('100%')
             .height(6)
+            .backgroundColor(0xFFE0E0E0)
             .color(0xFF66BB6A)
             .animation({ duration: 220, curve: Curve.EaseInOut })
           // Blank().width('100%').height(6).borderRadius(3).backgroundColor(0xFFE0E0E0)
-          // Blank().position({ x: 0, y: -6 }).width(this.total > 0 ? this.ratioText : '0%').height(6).borderRadius(3).backgroundColor(0xFF66BB6A)
+          // Blank().position({ x: 0, y: -6 }).width(this.total > 0 ? this.ratioText : '0%').height(6).borderRadius(3)
 
         }.width('70%')
 

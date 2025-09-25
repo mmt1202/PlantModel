@@ -98,7 +98,7 @@ export struct PhotoPreviewSheet {
             this.onDelete(this.index)
           })
 
-        Text('✕')
+        Text('✕').fontColor('#000000')
           .fontSize(18).fontColor(0xFFFFFFFF)
           .padding({
             left: 12,

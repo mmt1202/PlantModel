@@ -76,7 +76,7 @@ export struct TemplateApplySheet {
         Row() {
           Text(`复制模板到：${this.plantName}`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
-          Text('✕').fontSize(18).onClick(() => {
+          Text('✕').fontColor('#000000').fontSize(18).onClick(() => {
             this.onClose()
           })
         }

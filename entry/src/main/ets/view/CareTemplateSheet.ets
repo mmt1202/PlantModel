@@ -27,7 +27,7 @@ export struct CareTemplateSheet {
         Row() {
           Text(`${this.plantName} · 养护模板`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
-          Text('✕').fontSize(18).onClick(() => {
+          Text('✕').fontColor('#000000').fontSize(18).onClick(() => {
             this.onClose()
           })
         }

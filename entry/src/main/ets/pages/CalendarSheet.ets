@@ -82,7 +82,7 @@ struct CalendarSheet1 {
                     .onClick(() => { const n = this.nextMonth(this.year, this.month); this.onChangeMonth(n[0], n[1]) })
                 }
                 Blank()
-                // Text('✕').fontSize(18).onClick(() => { this.onClose() })
+                // Text('✕').fontColor('#000000').fontSize(18).onClick(() => { this.onClose() })
               }
               .padding({ left: 16, right: 16, top: 12, bottom: 6 })
               // 星期抬头
