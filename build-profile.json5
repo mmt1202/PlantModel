@@ -5,21 +5,21 @@
         "name": "default",
         "material": {
           "storeFile": "D:/app/plant.p12",
-          "storePassword": "00000018DE8724A610FC9E2F6925A728C64F8A642960A7E216446CD8EA219E41D1600321ADFE93C3",
+          "storePassword": "0000001819B9FCD4172E3DCE93E53C32BEEC500FECAF9975439923E694B9CF8A47D6DAAD10610484",
           "keyAlias": "plant",
-          "keyPassword": "000000189D477825BBABC78A2F7AFE55328300E143D19D1B2FDBAB38E6622FF112AB1E2E79BC298C",
+          "keyPassword": "00000018426AC5E2FA55A98E24CD1A0208B9E5CFB550ADEC4F8825922495F1E988045E3604E9FF36",
           "signAlg": "SHA256withECDSA",
-          "profile": "D:/app/plantdebugDebug.p7b",
-          "certpath": "D:/app/plantdebug.cer"
+          "profile": "D:/app/plantRelease.p7b",
+          "certpath": "D:/app/plant.cer"
         }
       },
       {
         "name": "pulisher",
         "material": {
           "storeFile": "D:/app/plant.p12",
-          "storePassword": "000000180C9F179DA2700A541BC402CFAA24D07959C8A277C2CC2BED5EEE130E13951107BCAC28E8",
+          "storePassword": "000000182BEABA99DAEDA8CFED736590F46743D4C1801BF31F8B41160CD1AF453C6BE49D70290C75",
           "keyAlias": "plant",
-          "keyPassword": "00000018E3747382ACF4411A51959EE8D5F92796F0C9F638D64BEA53C89E914254458C0D70DF8809",
+          "keyPassword": "000000180F227A55C10FCF628CBB335569B97FFCC4BD4F70A0FBC5FFB49C881E34B0D5F19F46CC1D",
           "signAlg": "SHA256withECDSA",
           "profile": "D:/app/plantRelease.p7b",
           "certpath": "D:/app/plant.cer"
