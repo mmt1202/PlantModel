@@ -289,6 +289,7 @@ export struct TemplateManagerSheet {
     Column() {
       Text(label).fontSize(12).fontColor(0xFF607D8B)
       TextInput({ placeholder: '', text: val })
+        .placeholderColor('#747474').fontColor('#000000')
         .onChange((v: string) => {
           onChange(v)
         })

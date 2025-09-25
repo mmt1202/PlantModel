@@ -86,6 +86,7 @@ export struct PlantTaskFilterSheet {
             Column() {
               Text('起始').fontSize(12).fontColor(0xFF607D8B)
               TextInput({ placeholder: 'YYYY-MM-DD', text: this.filter.dateFromISO })
+                .placeholderColor('#747474').fontColor('#000000')
                 .onChange((v: string) => {
                   this.filter.dateFromISO = v
                 })
@@ -101,6 +102,7 @@ export struct PlantTaskFilterSheet {
             Column() {
               Text('结束').fontSize(12).fontColor(0xFF607D8B)
               TextInput({ placeholder: 'YYYY-MM-DD', text: this.filter.dateToISO })
+                .placeholderColor('#747474').fontColor('#000000')
                 .onChange((v: string) => {
                   this.filter.dateToISO = v
                 })
@@ -154,6 +156,7 @@ export struct PlantTaskFilterSheet {
         Column() {
           Text('关键词（植物名 / 类型）').fontSize(12).fontColor(0xFF607D8B)
           TextInput({ placeholder: '例如：龟背竹 / 浇水', text: this.filter.keyword })
+            .placeholderColor('#747474').fontColor('#000000')
             .onChange((v: string) => {
               this.filter.keyword = v
             })

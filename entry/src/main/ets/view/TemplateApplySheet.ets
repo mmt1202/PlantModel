@@ -112,6 +112,7 @@ export struct TemplateApplySheet {
         Row() {
           Text('开始日期').fontSize(12).fontColor(0xFF607D8B).margin({ right: 10 })
           TextInput({ placeholder: 'YYYY-MM-DD', text: this.startISO })
+            .placeholderColor('#747474').fontColor('#000000')
             .onChange((v: string) => {
               this.startISO = v
             })

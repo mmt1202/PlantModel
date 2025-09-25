@@ -3,15 +3,26 @@
     "signingConfigs": [
       {
         "name": "default",
-        "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001BCD1AE93B991C41398FB0FC884C6F026BBA333B36FBED626C54B0B46449395E946CB0E9A782A3D8",
-          "profile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p7b",
+          "storeFile": "D:/app/plant.p12",
+          "storePassword": "00000018DE8724A610FC9E2F6925A728C64F8A642960A7E216446CD8EA219E41D1600321ADFE93C3",
+          "keyAlias": "plant",
+          "keyPassword": "000000189D477825BBABC78A2F7AFE55328300E143D19D1B2FDBAB38E6622FF112AB1E2E79BC298C",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p12",
-          "storePassword": "0000001B67712AE125C8C548F90A4DEF8B17C02E4E27BA03E44854E7E8248566F25A7A3D583CAF58C44203"
+          "profile": "D:/app/plantdebugDebug.p7b",
+          "certpath": "D:/app/plantdebug.cer"
+        }
+      },
+      {
+        "name": "pulisher",
+        "material": {
+          "storeFile": "D:/app/plant.p12",
+          "storePassword": "000000180C9F179DA2700A541BC402CFAA24D07959C8A277C2CC2BED5EEE130E13951107BCAC28E8",
+          "keyAlias": "plant",
+          "keyPassword": "00000018E3747382ACF4411A51959EE8D5F92796F0C9F638D64BEA53C89E914254458C0D70DF8809",
+          "signAlg": "SHA256withECDSA",
+          "profile": "D:/app/plantRelease.p7b",
+          "certpath": "D:/app/plant.cer"
         }
       }
     ],

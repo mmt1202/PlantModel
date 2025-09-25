@@ -1198,7 +1198,7 @@ struct Index {
 
         Row() {
           Text('🔎').fontSize(18).margin({ right: 8 })
-          TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword })
+          TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword }).placeholderColor('#747474').fontColor('#000000')
             .onChange((v: string) => {
               this.keyword = v
             })

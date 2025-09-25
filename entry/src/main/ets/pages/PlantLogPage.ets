@@ -616,7 +616,7 @@ export struct PlantLogPage {
   FormItem(label: string, placeholder: string, val: string, onChange: (v: string) => void) {
     Column() {
       Text(label).fontSize(12).fontColor(0xFF607D8B)
-      TextInput({ placeholder: placeholder, text: val })
+      TextInput({ placeholder: placeholder, text: val }).placeholderColor('#747474').fontColor('#000000')
         .onChange((v: string) => {
           onChange(v)
         })

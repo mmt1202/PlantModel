@@ -90,7 +90,7 @@ export struct CareFilterSheet {
         // 日期范围
         this.SectionTitle('日期范围')
         Row() {
-          TextInput({ placeholder: '起始 YYYY-MM-DD', text: this.fromDate })
+          TextInput({ placeholder: '起始 YYYY-MM-DD', text: this.fromDate }).placeholderColor('#747474').fontColor('#000000')
             .onChange((v: string) => {
               this.onChangeFrom(v)
             })
@@ -101,6 +101,7 @@ export struct CareFilterSheet {
             .padding({ left: 10, right: 10 })
           Blank()
           TextInput({ placeholder: '结束 YYYY-MM-DD', text: this.toDate })
+            .placeholderColor('#747474').fontColor('#000000')
             .onChange((v: string) => {
               this.onChangeTo(v)
             })
@@ -115,6 +116,7 @@ export struct CareFilterSheet {
         this.SectionTitle('关键词')
         Row() {
           TextInput({ placeholder: '类型/植物名', text: this.keyword })
+            .placeholderColor('#747474').fontColor('#000000')
             .onChange((v: string) => {
               this.onChangeKeyword(v)
             })
