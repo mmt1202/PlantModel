@@ -11,8 +11,8 @@ struct SaveRecipeDialog {
   controller: CustomDialogController;
   @Require onConfirm: (name: string, note: string) => void;
 
-  @Local name: string = '';
-  @Local note: string = '';
+  @State name: string = '';
+  @State note: string = '';
 
   build() {
     Column({ space: 10 }) {
@@ -43,7 +43,7 @@ export struct MixPlannerPage {
     builder: SaveRecipeDialog({ onConfirm: (name: string, note: string) => {
       const rec = this.vm.saveMyRecipe(name, note);
       if (rec) {
-        animateTo({ duration: 200, curve: Curve.EaseOut }) { }
+        // animateTo({ duration: 200, curve: Curve.EaseOut }) { }
       }
     }})
   });
@@ -82,8 +82,8 @@ export struct MixPlannerPage {
       }
       Blank()
       Button('恢复默认').type(ButtonType.Normal).onClick(() => {
-        this.vm['loadDefaultCustom'](); // 本地演示调用；你也可改成公开方法
-        animateTo({ duration: 180, curve: Curve.EaseOut }) { }
+        // this.vm['loadDefaultCustom'](); // 本地演示调用；你也可改成公开方法
+        // animateTo({ duration: 180, curve: Curve.EaseOut }) { }
       })
     }
     .padding({ left: 16, right: 16, top: 12 })
@@ -97,11 +97,11 @@ export struct MixPlannerPage {
       Column({ space: 6 }) {
         Text('内置配方').fontSize(14).fontWeight(FontWeight.Medium)
         Row({ space: 8 }) {
-          ForEach<MixRecipe>(this.vm.builtinRecipes, (r: MixRecipe, i?: number) => {
+          ForEach(this.vm.builtinRecipes, (r: MixRecipe, i?: number) => {
             this.Chip(r.name, false, () => this.vm.chooseBuiltin(i as number))
           }, (r: MixRecipe) => r.id)
           this.Chip('自定义', false, () => {
-            this.vm['loadDefaultCustom']();
+            // this.vm['loadDefaultCustom']();
           })
         }
       }
@@ -110,7 +110,7 @@ export struct MixPlannerPage {
         Column({ space: 6 }) {
           Text('我的配方').fontSize(14).fontWeight(FontWeight.Medium)
           Row({ space: 8 }) {
-            ForEach<MixRecipe>(this.vm.myRecipes, (r: MixRecipe, i?: number) => {
+            ForEach(this.vm.myRecipes, (r: MixRecipe, i?: number) => {
               this.Chip(r.name, false, () => this.vm.chooseMyRecipe(i as number))
             }, (r: MixRecipe) => r.id)
           }
@@ -143,7 +143,7 @@ export struct MixPlannerPage {
         Button('添加材料').type(ButtonType.Normal).onClick(() => this.vm.addItem())
       }
       // 提示：不在UI里声明变量，所需数值直接从VM读取
-      ForEach<MixItem>(this.vm.items, (it: MixItem) => {
+      ForEach(this.vm.items, (it: MixItem) => {
         this.ItemRow(it)
       }, (it: MixItem) => it.id)
 
@@ -236,7 +236,7 @@ export struct MixPlannerPage {
     Column({ space: 10 }) {
       Text('计算结果').fontSize(16).fontWeight(FontWeight.Medium)
       // 直接将 VM 的计算结果用于渲染，不在UI里声明变量
-      ForEach<MixResultItem>(this.vm.compute(), (r: MixResultItem) => {
+      ForEach(this.vm.compute(), (r: MixResultItem) => {
         Row() {
           Text(r.name).fontSize(14).width('40%')
           Text(`${r.liters} L`).fontSize(14).width('30%')
@@ -262,7 +262,7 @@ export struct MixPlannerPage {
         Button('保存这次调配').type(ButtonType.Normal)
           .onClick(() => {
             const run: MixRun = this.vm.saveRun('');
-            animateTo({ duration: 200, curve: Curve.EaseOut }) { }
+            // animateTo({ duration: 200, curve: Curve.EaseOut }) { }
           })
       }
       Text('你也可以在我的配方里再次选择并微调。').fontSize(11).opacity(0.6)
@@ -283,7 +283,7 @@ export struct MixPlannerPage {
       Column({ space: 10 }) {
         Text('我的配方').fontSize(16).fontWeight(FontWeight.Medium).margin({ left: 16, right: 16 })
         List() {
-          ForEach<MixRecipe>(this.vm.myRecipes, (r: MixRecipe, i?: number) => {
+          ForEach(this.vm.myRecipes, (r: MixRecipe, i?: number) => {
             ListItem() {
               Row() {
                 Column() {
@@ -315,7 +315,7 @@ export struct MixPlannerPage {
         .margin({ left: 16, right: 16, bottom: 16 })
       } else {
         List() {
-          ForEach<MixRun>(this.vm.runs, (r: MixRun) => {
+          ForEach(this.vm.runs, (r: MixRun) => {
             ListItem() {
               Column({ space: 4 }) {
                 Row() {

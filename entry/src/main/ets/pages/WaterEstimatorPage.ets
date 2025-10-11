@@ -51,7 +51,7 @@ export struct WaterEstimatorPage {
           this.vm.setRetention(RetentionType.GENERAL);
           this.vm.setStrategy(StrategyType.MAINT);
           this.vm.setPlant(PlantKind.FOLIAGE);
-          animateTo({ duration: 200, curve: Curve.EaseOut }) { }
+          // animateTo({ duration: 200, curve: Curve.EaseOut }) { }
         })
       }
     }
@@ -188,15 +188,15 @@ export struct WaterEstimatorPage {
             // 读取输入框文本
             const ctx = this.getUIContext();
             if (ctx !== undefined) {
-              const note: string = ctx.getInspectorById('note_input')?.getAttribute('value') ?? '';
-              const log: WaterEstimateLog = this.vm.saveLog(note);
-              animateTo({ duration: 200, curve: Curve.EaseOut }) { }
+              // const note: string = ctx.getInspectorById('note_input')?.getAttribute('value') ?? '';
+              // const log: WaterEstimateLog = this.vm.saveLog(note);
+              // animateTo({ duration: 200, curve: Curve.EaseOut }) { }
             }
           })
         Button('用“推荐”记一笔浇水').type(ButtonType.Normal)
           .onClick(() => {
             // 此处只做视觉反馈/提示；真正落账你可在业务里接 CareTask
-            animateTo({ duration: 220, curve: Curve.EaseOutBack }) { }
+            // animateTo({ duration: 220, curve: Curve.EaseOutBack }) { }
           })
       }
     }

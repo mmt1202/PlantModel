@@ -37,13 +37,13 @@ struct ManualStartDialog {
     .borderRadius(18)
   }
 
-  private LevelChip(text: string, lvl: LightLevel) {
-    const on: boolean = this.level === lvl;
+  @Builder LevelChip(text: string, lvl: LightLevel) {
+    // const on: boolean = this.level === lvl;
     Row() {
-      Text(text).fontSize(14).fontWeight(on ? FontWeight.Medium : FontWeight.Normal)
+      Text(text).fontSize(14).fontWeight(this.level === lvl ? FontWeight.Medium : FontWeight.Normal)
         .padding({ left: 10, right: 10, top: 6, bottom: 6 })
     }
-    .backgroundColor(on ? '#E0F2F1' : '#F2F3F5')
+    .backgroundColor(this.level === lvl ? '#E0F2F1' : '#F2F3F5')
     .borderRadius(14)
     .onClick(() => { this.level = lvl; })
   }
@@ -81,13 +81,13 @@ struct ManualInstantDialog {
     .borderRadius(18)
   }
 
-  private LevelChip(text: string, lvl: LightLevel) {
-    const on: boolean = this.level === lvl;
+  @Builder LevelChip(text: string, lvl: LightLevel) {
+    // const on: boolean = this.level === lvl;
     Row() {
-      Text(text).fontSize(14).fontWeight(on ? FontWeight.Medium : FontWeight.Normal)
+      Text(text).fontSize(14).fontWeight(this.level === lvl ? FontWeight.Medium : FontWeight.Normal)
         .padding({ left: 10, right: 10, top: 6, bottom: 6 })
     }
-    .backgroundColor(on ? '#E0F2F1' : '#F2F3F5')
+    .backgroundColor(this.level === lvl ? '#E0F2F1' : '#F2F3F5')
     .borderRadius(14)
     .onClick(() => { this.level = lvl; })
   }
@@ -102,14 +102,14 @@ export struct LightExposurePage {
   private startDlg: CustomDialogController = new CustomDialogController({
     builder: ManualStartDialog({ onConfirm: (lvl: LightLevel) => {
       this.vm.startManual(lvl);
-      animateTo({ duration: 220, curve: Curve.EaseOut }) { /* 微动效 */ }
+      // animateTo({ duration: 220, curve: Curve.EaseOut }) { /* 微动效 */ }
     } })
   });
 
   private instantDlg: CustomDialogController = new CustomDialogController({
     builder: ManualInstantDialog({ onConfirm: (lvl: LightLevel, minutes: number) => {
       this.vm.addManualInstant(lvl, minutes);
-      animateTo({ duration: 240, curve: Curve.EaseOut }) { /* 轻微动效 */ }
+      // animateTo({ duration: 240, curve: Curve.EaseOut }) { /* 轻微动效 */ }
     } })
   });
 
@@ -153,7 +153,7 @@ export struct LightExposurePage {
     .edgeEffect(EdgeEffect.Spring)
   }
 
-  private ActionButtons() {
+  @Builder ActionButtons() {
     Row({ space: 10 }) {
       if (!this.vm.hasActive) {
         Button('开始光照').type(ButtonType.Capsule).onClick(() => {
@@ -162,7 +162,7 @@ export struct LightExposurePage {
       } else {
         Button('结束光照').type(ButtonType.Capsule).backgroundColor('#26A69A').onClick(() => {
           this.vm.endManualWithAutoDuration();
-          animateTo({ duration: 240, curve: Curve.EaseOut }) { /* ring 刷新 */ }
+          // animateTo({ duration: 240, curve: Curve.EaseOut }) { /* ring 刷新 */ }
         })
       }
       Button('手动补记').type(ButtonType.Normal).onClick(() => {
@@ -171,18 +171,15 @@ export struct LightExposurePage {
     }
   }
 
-  private RingAndStatus() {
-    const rate: number = this.vm.todayRatePercent; // 0..100
-    const status: LightStatus = this.vm.todayStatus;
-    const color: string = statusColor(status);
+  @Builder RingAndStatus() {
     Column() {
       Column() {
-        Progress({ value: rate, total: 100, type: ProgressType.Ring })
+        Progress({ value: this.vm.todayRatePercent, total: 100, type: ProgressType.Ring })
           .style({ enableSmoothEffect: true })
           .width(150).height(150)
-          .color(color)
-        Text(`${rate}% 达标`).fontSize(16).margin({ top: 8 })
-        Text(statusLabel(status)).fontSize(14).fontColor(color).margin({ top: 2 })
+          .color(statusColor(this.vm.todayStatus))
+        Text(`${this.vm.todayRatePercent}% 达标`).fontSize(16).margin({ top: 8 })
+        Text(statusLabel(this.vm.todayStatus)).fontSize(14).fontColor(statusColor(this.vm.todayStatus)).margin({ top: 2 })
       }
       .padding(16)
       .backgroundColor('#FFFFFF')
@@ -192,7 +189,7 @@ export struct LightExposurePage {
     .padding({ left: 16, right: 16 })
   }
 
-  private ProfileCard() {
+  @Builder ProfileCard() {
     Column({ space: 8 }) {
       Text('目标区间（lux-min）').fontSize(14).opacity(0.8)
       Row({ space: 10 }) {
@@ -227,7 +224,7 @@ export struct LightExposurePage {
     .margin({ left: 16, right: 16 })
   }
 
-  private ValueBox(label: string, value: number) {
+  @Builder ValueBox(label: string, value: number) {
     Column() {
       Text(label).fontSize(12).opacity(0.6)
       Text(`${value}`).fontSize(16).fontWeight(FontWeight.Medium)
@@ -238,7 +235,7 @@ export struct LightExposurePage {
     .padding({ left: 10, right: 10 })
   }
 
-  private LevelTag(text: string, lvl: LightLevel, on: boolean) {
+  @Builder LevelTag(text: string, lvl: LightLevel, on: boolean) {
     Row() {
       Text(text).fontSize(12).fontWeight(on ? FontWeight.Medium : FontWeight.Normal)
         .padding({ left: 8, right: 8, top: 4, bottom: 4 })
@@ -250,7 +247,7 @@ export struct LightExposurePage {
     })
   }
 
-  private SevenDaysChart() {
+  maxLux(){
     const data: DailyLightStat[] = this.vm.sevenDays;
     // 计算最大 luxMin，用于归一化
     let maxLux: number = 1;
@@ -259,16 +256,20 @@ export struct LightExposurePage {
         maxLux = data[i].luxMinutes;
       }
     }
+    return maxLux
+  }
+
+  @Builder SevenDaysChart() {
     Column({ space: 10 }) {
       Text('近 7 天光照趋势').fontSize(16).fontWeight(FontWeight.Medium)
       Row({ space: 10 }) {
-        ForEach(data, (d: DailyLightStat) => {
-          const h: number = Math.floor(100 * (d.luxMinutes / maxLux));
-          const col: string = statusColor(d.status);
+        ForEach(this.vm.sevenDays, (d: DailyLightStat) => {
+          // const h: number = Math.floor(100 * (d.luxMinutes / maxLux));
+          // const col: string = statusColor(d.status);
           Column() {
             // 柱
-            Column().width(16).height(h + 10)
-              .backgroundColor(col).borderRadius(8)
+            Column().width(16).height(Math.floor(100 * (d.luxMinutes / this.maxLux())) + 10)
+              .backgroundColor(statusColor(d.status)).borderRadius(8)
               .align(Alignment.Bottom)
               .opacity(0.9)
             // 日期简记
@@ -287,7 +288,7 @@ export struct LightExposurePage {
     .padding({ left: 16, right: 16 })
   }
 
-  private TodaySessions() {
+  exposureSessionList(){
     const today: string = this.todayKey();
     const list: ExposureSession[] = this.vm.sessions.filter((s: ExposureSession) => {
       const d: Date = new Date(s.endAt);
@@ -299,7 +300,10 @@ export struct LightExposurePage {
       const key: string = `${y}-${mmStr}-${ddStr}`;
       return key === today;
     });
+    return list;
+  }
 
+  @Builder TodaySessions() {
     Column({ space: 8 }) {
       Row() {
         Text('今日记录').fontSize(16).fontWeight(FontWeight.Medium)
@@ -310,7 +314,7 @@ export struct LightExposurePage {
       }
       .padding({ left: 2, right: 2 })
 
-      if (list.length === 0 && !this.vm.hasActive) {
+      if (this.exposureSessionList().length === 0 && !this.vm.hasActive) {
         Column() {
           Text('今天还没有光照记录').fontSize(13).opacity(0.6)
           Text('点击“开始光照”或“手动补记”试试').fontSize(12).opacity(0.5).margin({ top: 4 })
@@ -322,13 +326,11 @@ export struct LightExposurePage {
         .borderRadius(12)
       } else {
         List() {
-          ForEach(list, (s: ExposureSession) => {
+          ForEach(this.exposureSessionList(), (s: ExposureSession) => {
             ListItem() {
               Row() {
                 Column() {
-                  const st: Date = new Date(s.startAt);
-                  const ed: Date = new Date(s.endAt);
-                  Text(`${this.hm(st)} - ${this.hm(ed)}  ·  ${s.durationMin} 分钟`).fontSize(14)
+                  Text(`${this.hm(new Date(s.startAt))} - ${this.hm(new Date(s.endAt))}  ·  ${s.durationMin} 分钟`).fontSize(14)
                   Text(`${lightLevelLabel(s.level)} · ${s.luxMinutes} lux-min`).fontSize(12).opacity(0.6)
                 }
                 Blank()

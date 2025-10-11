@@ -5,8 +5,9 @@
 
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { GrowthCompareViewModel } from '../viewmodel/GrowthCompareViewModel';
-import CompareSliderV2 from '../component/CompareSliderV2';
+// import CompareSliderV2 from '../component/CompareSliderV2';
 import GrowthPair from '../model/GrowthPair';
+import { CompareSliderV2 } from './CompareSliderV2';
 
 @ComponentV2
 export struct GrowthComparePage {
@@ -69,10 +70,11 @@ export struct GrowthComparePage {
       this.PairsList()
     }
     .backgroundColor('#FAFAFA')
-    .edgeEffect(EdgeEffect.Spring)
+    // .edgeEffect(EdgeEffect.Spring)
   }
 
-  private TopActions() {
+  @Builder
+  TopActions() {
     Row({ space: 8 }) {
       Button(this.vm.alignMode ? '对齐中' : '对齐').type(ButtonType.Normal)
         .onClick(() => { this.vm.toggleAlignMode(); })
@@ -85,7 +87,8 @@ export struct GrowthComparePage {
     }
   }
 
-  private SelectorBar() {
+  @Builder
+  SelectorBar() {
     Column({ space: 10 }) {
       Row({ space: 12 }) {
         // 选择前照
@@ -97,7 +100,7 @@ export struct GrowthComparePage {
     .padding({ left: 16, right: 16 })
   }
 
-  private SelectCard(title: string, uri: string, isBefore: boolean) {
+  @Builder SelectCard(title: string, uri: string, isBefore: boolean) {
     Column({ space: 8 }) {
       Text(title).fontSize(14).opacity(0.8)
       Row() {
@@ -122,7 +125,7 @@ export struct GrowthComparePage {
     }
   }
 
-  private AlignToolbar() {
+  @Builder AlignToolbar() {
     Column({ space: 10 }) {
       Text('分割位置与缩放/平移（对齐在“对齐”模式下单指拖动后图，双指缩放）')
         .fontSize(12).opacity(0.6)
@@ -156,7 +159,7 @@ export struct GrowthComparePage {
     .padding({ left: 16, right: 16 })
   }
 
-  private SaveBar() {
+  @Builder SaveBar() {
     Column({ space: 10 }) {
       Row() {
         Text('备注').fontSize(14).opacity(0.8)
@@ -173,7 +176,7 @@ export struct GrowthComparePage {
             if (this.vm.canSave()) {
               const p: GrowthPair | undefined = this.vm.savePair();
               if (p) {
-                animateTo({ duration: 200, curve: Curve.EaseOut }) { /* 微动效 */ }
+                // animateTo({ duration: 200, curve: Curve.EaseOut }) { /* 微动效 */ }
               }
             }
           })
@@ -183,7 +186,7 @@ export struct GrowthComparePage {
     .padding({ left: 16, right: 16 })
   }
 
-  private PairsList() {
+  @Builder PairsList() {
     Column({ space: 10 }) {
       Row() {
         Text('已保存的对比卡').fontSize(16).fontWeight(FontWeight.Medium)
@@ -226,24 +229,24 @@ export struct GrowthComparePage {
 
   // 选择图片
   private async pickPhoto(isBefore: boolean): Promise<void> {
-    try {
-      const picker = new photoAccessHelper.PhotoViewPicker();
-      const res = await picker.select({
-        // 单选图片
-        MIMEType: ['image/*'],
-        maxSelectNumber: 1
-      });
-      // 返回为永久授权的 photoUris
-      if (res && res.photoUris && res.photoUris.length > 0) {
-        const uri: string = res.photoUris[0];
-        if (isBefore) {
-          this.vm.setBefore(uri);
-        } else {
-          this.vm.setAfter(uri);
-        }
-      }
-    } catch (e) {
-      // 选择被取消或权限问题，静默处理
-    }
+    // try {
+    //   const picker = new photoAccessHelper.PhotoViewPicker();
+    //   const res = await picker.select({
+    //     // 单选图片
+    //     MIMEType: ['image/*'],
+    //     maxSelectNumber: 1
+    //   });
+    //   // 返回为永久授权的 photoUris
+    //   if (res && res.photoUris && res.photoUris.length > 0) {
+    //     const uri: string = res.photoUris[0];
+    //     if (isBefore) {
+    //       this.vm.setBefore(uri);
+    //     } else {
+    //       this.vm.setAfter(uri);
+    //     }
+    //   }
+    // } catch (e) {
+    //   // 选择被取消或权限问题，静默处理
+    // }
   }
 }

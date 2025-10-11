@@ -58,7 +58,7 @@ export function plantLabel(k: PlantKind): string {
 // 可用水量 ≈ V * porosity(0.55) * strategy * plant * retention
 export function estimateWaterML(
   d: number, h: number, rt: RetentionType, st: StrategyType, pk: PlantKind
-): { low: number, mid: number, high: number } {
+): EstimateWater{
   const V: number = Math.PI * Math.pow(d / 2.0, 2.0) * h; // cm³ ≈ ml
   const porosity: number = 0.55;
   const midFloat: number = V * porosity * strategyFactor(st) * plantFactor(pk) * retentionFactor(rt);
@@ -73,3 +73,5 @@ export function roundInt(v: number): number {
   if (v < 0) { return 0; }
   return Math.round(v);
 }
+
+export interface EstimateWater { low: number, mid: number, high: number }
