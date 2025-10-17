@@ -9,17 +9,17 @@ import {
   levelWeight, clampRate, ymd, genId
 } from '../model/LightTypes';
 
-@Observed
+@ObservedV2
 export class LightExposureViewModel {
   // 状态
-  plantId: string = '';
-  profile: LightProfile = new LightProfile('');
-  sessions: ExposureSession[] = [];       // 所有（你可按需换成按日分桶）
-  dailyStats: DailyLightStat[] = [];      // 每日聚合
-  hasActive: boolean = false;
-  activeSession: ExposureSession | undefined = undefined;
+  @Trace plantId: number = 0;
+  @Trace profile: LightProfile = new LightProfile(0);
+  @Trace sessions: ExposureSession[] = [];       // 所有（你可按需换成按日分桶）
+  @Trace dailyStats: DailyLightStat[] = [];      // 每日聚合
+  @Trace hasActive: boolean = false;
+  @Trace activeSession: ExposureSession | undefined = undefined;
 
-  constructor(plantId: string) {
+  constructor(plantId: number) {
     this.plantId = plantId;
     this.profile = LightProfile.defaultFor(plantId);
   }

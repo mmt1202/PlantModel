@@ -5,7 +5,7 @@ import { LightStatus } from './LightTypes';
 
 export default class DailyLightStat {
   id: string = '';
-  plantId: string = '';
+  plantId: number = 0;
   date: string = '';        // YYYY-MM-DD
   luxMinutes: number = 0;   // 当日累积
   durationMin: number = 0;  // 当日总时长

@@ -5,6 +5,7 @@ import { PlantCard } from '../view/PlantCard'
 export struct PlantListPage {
   @Param @Require plants: Array<Plant>
   @Param @Require allTasks: Array<PlantTask>
+  @Event onOpenDetail: (p: Plant) => void
   @Event onQuickAdd: (plantId: number, type: string) => void
   @Event onEdit: (p: Plant) => void
   @Event onDeleteAsk: (plantId: number) => void
@@ -12,6 +13,7 @@ export struct PlantListPage {
   @Event onOpenTemplatenew: (pid: number) => void
   @Event onOpenLogs: (p: Plant) => void
   @Event onOpenMetrics: (p: Plant) => void
+  @Event onOpenEmergencyAndRotate: (p: Plant) => void
 
   @Event onOpenMetric: (plantId: number) => void
   // —— 新增本地状态：筛选与排序 —— //
@@ -161,12 +163,15 @@ export struct PlantListPage {
                   this.onDeleteAsk(p.id)
                 },
                 onOpenLogs: () => { this.onOpenLogs(p) },
+                onOpenEmergencyAndRotate: ()=>{ this.onOpenEmergencyAndRotate(p) },
                 onOpenMetrics: () => { this.onOpenMetrics(p) },
                 onOpenTemplate: () => { this.onOpenTemplate(p) },
                 onOpenTemplatenew: (pid:number) => { this.onOpenTemplatenew(pid) }, // ← 新增透传
                 onOpenMetric: () => { this.onOpenMetric(p.id) }
               })
-            }
+            }.onClick(()=>{
+              this.onOpenDetail(p)
+            })
           }, (p: Plant) => p.id.toString())
         }
         .padding({

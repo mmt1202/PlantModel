@@ -25,19 +25,29 @@ export struct EmergencyAndRotatePage {
   }
 
   build() {
-    Scroll() {
-      Column({ space: 14 }) {
-        this.Header()
-        this.TabSwitch()
-        if (this.tabBarIndex === 0) {
-          this.EmergencyPanel()
-        } else {
-          this.RotatePanel()
+    NavDestination(){
+      Scroll() {
+        Column({ space: 14 }) {
+          this.Header()
+          this.TabSwitch()
+          if (this.tabBarIndex === 0) {
+            this.EmergencyPanel()
+          } else {
+            this.RotatePanel()
+          }
         }
       }
+      .edgeEffect(EdgeEffect.Spring)
     }
-    .backgroundColor('#FAFAFA')
-    .edgeEffect(EdgeEffect.Spring)
+    .linearGradient({
+      direction: GradientDirection.Top,
+      colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
+    })
+    .padding({
+      top: AppStorage.get<number>('topRectHeight'),
+      bottom: AppStorage.get<number>('bottomRectHeight')
+    })
+    // .backgroundColor('#FAFAFA')
   }
 
   // ===== 顶部 =====

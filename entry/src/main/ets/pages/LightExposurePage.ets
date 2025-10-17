@@ -93,11 +93,12 @@ struct ManualInstantDialog {
   }
 }
 
-@Component
+@Preview
+@ComponentV2
 export struct LightExposurePage {
   // 通过 Navigation 传参：plantId（你在上层 NavDestination 注入即可）
-  @Prop plantId: string = '';
-  @State vm: LightExposureViewModel = new LightExposureViewModel('');
+  @Param plantId: number = 0;
+  @Local vm: LightExposureViewModel = new LightExposureViewModel(0);
 
   private startDlg: CustomDialogController = new CustomDialogController({
     builder: ManualStartDialog({ onConfirm: (lvl: LightLevel) => {
@@ -115,11 +116,11 @@ export struct LightExposurePage {
 
   aboutToAppear() {
     // 初始化 VM
-    if (this.plantId !== '') {
+    if (this.plantId !== 0) {
       this.vm = new LightExposureViewModel(this.plantId);
     } else {
       // 没有传参时给一个占位 ID，方便页面自测
-      this.vm = new LightExposureViewModel('PLANT_DEMO');
+      this.vm = new LightExposureViewModel(0);
     }
   }
 
@@ -149,7 +150,7 @@ export struct LightExposurePage {
         this.TodaySessions()
       }
     }
-    .backgroundColor('#FAFAFA')
+    // .backgroundColor('#FAFAFA')
     .edgeEffect(EdgeEffect.Spring)
   }
 

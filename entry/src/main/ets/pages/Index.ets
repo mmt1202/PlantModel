@@ -27,6 +27,9 @@ import { TemplateApplySheet } from '../view/TemplateApplySheet'
 import { RdbManager } from '../viewmodel/RdbManager'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { PlantLogPage } from './PlantLogPage'
+import { EmergencyAndRotatePage } from './EmergencyAndRotatePage'
+import { LightExposurePage } from './LightExposurePage'
+import { PlantDetail } from './PlantDetail'
 
 @Entry
 @ComponentV2
@@ -843,8 +846,18 @@ struct Index {
               onEdit: (p: Plant) => {
                 this.openPanel(p.id, p)
               },
+              onOpenDetail: async (p: Plant) => {
+                this.pageStack.pushPathByName('PlantDetail', p.id,(PopInfo)=>{
+                  this.reloadAll()
+                })
+              },
               onOpenLogs: async (p: Plant) => {
                 this.pageStack.pushPathByName('PlantLogPage', p.id,(PopInfo)=>{
+                  this.reloadAll()
+                })
+              },
+              onOpenEmergencyAndRotate: async (p: Plant) => {
+                this.pageStack.pushPathByName('EmergencyAndRotatePage', p.id,(PopInfo)=>{
                   this.reloadAll()
                 })
               },
@@ -1151,6 +1164,12 @@ struct Index {
   pageMap(name: string) {
     if (name === "PlantLogPage") {
       PlantLogPage()
+    } else if (name === "EmergencyAndRotatePage") {
+      EmergencyAndRotatePage()
+    } else if(name === 'LightExposurePage'){
+
+    } else if (name === 'PlantDetail'){
+      PlantDetail()
     }
   }
 

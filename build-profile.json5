@@ -3,14 +3,15 @@
     "signingConfigs": [
       {
         "name": "default",
+        "type": "HarmonyOS",
         "material": {
           "storeFile": "D:/app/plant.p12",
-          "storePassword": "0000001819B9FCD4172E3DCE93E53C32BEEC500FECAF9975439923E694B9CF8A47D6DAAD10610484",
+          "storePassword": "000000187AFB9E04CD11AFED0E6E60D04014AAA08D5358A670BA47EE89C5664963E0D4EEA510BB77",
           "keyAlias": "plant",
-          "keyPassword": "00000018426AC5E2FA55A98E24CD1A0208B9E5CFB550ADEC4F8825922495F1E988045E3604E9FF36",
+          "keyPassword": "00000018D961CA38D864CA646B1778585F9E4A4D52896A542EA21FE786154670EFEED6C6E1093D8C",
           "signAlg": "SHA256withECDSA",
-          "profile": "D:/app/plantRelease.p7b",
-          "certpath": "D:/app/plant.cer"
+          "profile": "D:/app/plantdebugDebug.p7b",
+          "certpath": "D:/app/plantdebug.cer"
         }
       },
       {

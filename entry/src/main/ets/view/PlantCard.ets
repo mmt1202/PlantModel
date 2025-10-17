@@ -14,6 +14,7 @@ export struct PlantCard {
   @Event onEdit: () => void
   @Event onDeleteAsk: () => void
   @Event onOpenLogs: () => void
+  @Event onOpenEmergencyAndRotate: (p: Plant) => void
   @Event onOpenMetrics: () => void
   @Event onOpenTemplate: () => void // ← 新增
   @Event onOpenTemplatenew: (pid: number) => void
@@ -181,6 +182,21 @@ export struct PlantCard {
           .backgroundColor(0x10BA68C8)
           .onClick(() => {
             this.onOpenTemplatenew(this.p.id)
+          })
+          .margin({ right: 8 })
+        Text('盆栽')
+          .fontSize(12)
+          .fontColor(0xFF8E24AA)
+          .padding({
+            left: 10,
+            right: 10,
+            top: 6,
+            bottom: 6
+          })
+          .borderRadius(12)
+          .backgroundColor(0x10BA68C8)
+          .onClick(() => {
+            this.onOpenEmergencyAndRotate(this.p)
           })
           .margin({ right: 8 })
 

@@ -5,7 +5,7 @@ import { LightLevel, genId } from './LightTypes';
 
 export default class ExposureSession {
   id: string = '';
-  plantId: string = '';
+  plantId: number = 0;
   startAt: number = 0;
   endAt: number = 0;
   durationMin: number = 0;
@@ -14,12 +14,12 @@ export default class ExposureSession {
   luxMinutes: number = 0;
   note: string = '';
 
-  constructor(plantId: string) {
+  constructor(plantId: number) {
     this.id = genId('SES');
     this.plantId = plantId;
   }
 
-  static createStarted(plantId: string, level: LightLevel, startAt: number): ExposureSession {
+  static createStarted(plantId: number, level: LightLevel, startAt: number): ExposureSession {
     const s: ExposureSession = new ExposureSession(plantId);
     s.level = level;
     s.startAt = startAt;
@@ -33,7 +33,7 @@ export default class ExposureSession {
     this.luxMinutes = luxMinutes;
   }
 
-  static createInstant(plantId: string, level: LightLevel, minutes: number, endAt: number): ExposureSession {
+  static createInstant(plantId: number, level: LightLevel, minutes: number, endAt: number): ExposureSession {
     const s: ExposureSession = new ExposureSession(plantId);
     s.level = level;
     s.endAt = endAt;
