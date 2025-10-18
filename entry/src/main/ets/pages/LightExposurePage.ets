@@ -10,6 +10,7 @@ import {
   LightLevel, LightStatus,
   lightLevelLabel, statusLabel, statusColor
 } from '../model/LightTypes';
+import { Plant } from '../model/PlantModel';
 
 @CustomDialog
 struct ManualStartDialog {
@@ -93,11 +94,10 @@ struct ManualInstantDialog {
   }
 }
 
-@Preview
 @ComponentV2
 export struct LightExposurePage {
   // 通过 Navigation 传参：plantId（你在上层 NavDestination 注入即可）
-  @Param plantId: number = 0;
+  @Local plantId: number = 0;
   @Local vm: LightExposureViewModel = new LightExposureViewModel(0);
 
   private startDlg: CustomDialogController = new CustomDialogController({
@@ -125,33 +125,42 @@ export struct LightExposurePage {
   }
 
   build() {
-    Scroll() {
-      Column({ space: 14 }) {
-        // 顶部：标题 + 操作
-        Row() {
-          Column() {
-            Text('光照记录').fontSize(22).fontWeight(FontWeight.Medium)
-            Text(`植物ID：${this.vm.plantId}`).fontSize(12).opacity(0.6)
-          }
-          Blank()
-          this.ActionButtons()
-        }.padding({ left: 16, right: 16, top: 12 })
+    NavDestination(){
+      Scroll() {
+        Column({ space: 14 }) {
+          // 顶部：标题 + 操作
 
-        // 环形进度 + 状态徽标
-        this.RingAndStatus()
 
-        // 目标配置（可选编辑）
-        this.ProfileCard()
+          // 环形进度 + 状态徽标
+          this.RingAndStatus()
 
-        // 近 7 天条形图
-        this.SevenDaysChart()
+          // 目标配置（可选编辑）
+          this.ProfileCard()
 
-        // 今日会话列表
-        this.TodaySessions()
+          // 近 7 天条形图
+          this.SevenDaysChart()
+
+          // 今日会话列表
+          this.TodaySessions()
+        }
       }
-    }
-    // .backgroundColor('#FAFAFA')
-    .edgeEffect(EdgeEffect.Spring)
+      .edgeEffect(EdgeEffect.Spring)
+    }.title(this.NavTitle()).onReady((parma)=>{
+      const plant = parma.pathInfo.param as Plant
+      this.plantId = plant.id
+    })
+
+  }
+
+  @Builder NavTitle(){
+    Row() {
+      Column() {
+        Text('光照记录').fontSize(22).fontWeight(FontWeight.Medium)
+        Text(`植物ID：${this.vm.plantId}`).fontSize(12).opacity(0.6)
+      }
+      Blank()
+      this.ActionButtons()
+    }.padding({ left: 16, right: 16, top: 12 })
   }
 
   @Builder ActionButtons() {

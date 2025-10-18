@@ -12,7 +12,7 @@ export struct PlantDetail {
         if (this.plant) {
           Column() {
             // 头图
-            // LightExposurePage({ plantId: this.plant.id })
+            LightExposurePage({ plantId: this.plant.id })
             GrowthComparePage({ plantId: this.plant.id })
             // Image(this.plant.cover).height(220).objectFit(ImageFit.Cover)
             // 基本信息
