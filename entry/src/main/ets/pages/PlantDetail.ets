@@ -1,4 +1,5 @@
 import { Plant } from '../model/PlantModel';
+import { GrowthComparePage } from './GrowthComparePage';
 import { LightExposurePage } from './LightExposurePage';
 
 @ComponentV2
@@ -11,7 +12,8 @@ export struct PlantDetail {
         if (this.plant) {
           Column() {
             // 头图
-            LightExposurePage({ plantId: this.plant.id })
+            // LightExposurePage({ plantId: this.plant.id })
+            GrowthComparePage({ plantId: this.plant.id })
             // Image(this.plant.cover).height(220).objectFit(ImageFit.Cover)
             // 基本信息
             Text(this.plant.name).fontSize(22).fontWeight(FontWeight.Medium).padding(16)

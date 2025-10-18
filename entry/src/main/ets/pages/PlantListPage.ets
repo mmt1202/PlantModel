@@ -12,6 +12,7 @@ export struct PlantListPage {
   @Event onOpenTemplate: (p: Plant) => void
   @Event onOpenTemplatenew: (pid: number) => void
   @Event onOpenLogs: (p: Plant) => void
+  @Event onOpenWaterEstimator: (p: Plant) => void
   @Event onOpenMetrics: (p: Plant) => void
   @Event onOpenEmergencyAndRotate: (p: Plant) => void
 
@@ -163,6 +164,7 @@ export struct PlantListPage {
                   this.onDeleteAsk(p.id)
                 },
                 onOpenLogs: () => { this.onOpenLogs(p) },
+                onOpenWaterEstimator: () => { this.onOpenWaterEstimator(p) },
                 onOpenEmergencyAndRotate: ()=>{ this.onOpenEmergencyAndRotate(p) },
                 onOpenMetrics: () => { this.onOpenMetrics(p) },
                 onOpenTemplate: () => { this.onOpenTemplate(p) },

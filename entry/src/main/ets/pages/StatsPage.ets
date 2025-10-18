@@ -3,9 +3,11 @@ import { Plant, PlantTask } from '../model/PlantModel'
 
 @ComponentV2
 export struct StatsPage {
+  @Consumer('pageStack') pageStack: NavPathStack = new NavPathStack();
   @Param @Require plants: Array<Plant>
   @Param @Require tasks: Array<PlantTask>
   @Event onReloadAll: () => void
+  @Event onOpenMixPlanner: (p:Plant)=>void
   // 小图配置
   @Local weekOption: Options = new Options({
     title: {
@@ -347,6 +349,12 @@ export struct StatsPage {
         GridItem() {
           this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
         }
+        GridItem() {
+          this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
+        }.onClick(()=>{
+          this.onOpenMixPlanner(this.plants[0])
+          // this.pageStack.pushPathByName('MixPlannerPage',)
+        })
       }
       .width('100%')
       .height(340)

@@ -11,22 +11,22 @@ function genId(prefix: string): string {
 
 @ObservedV2
 export class GrowthCompareViewModel {
-  plantId: string = '';
+  @Trace plantId: number = 0;
   // 当前工作区（未保存）
-  beforeUri: string = '';
-  afterUri: string = '';
-  note: string = '';
+  @Trace beforeUri: string = '';
+  @Trace afterUri: string = '';
+  @Trace note: string = '';
   // 对齐参数：仅作用于“后图”
-  split: number = 0.5;       // 0..1
-  zoom: number = 1.0;        // 缩放
-  offsetX: number = 0;       // 平移X（vp）
-  offsetY: number = 0;       // 平移Y（vp）
-  showGrid: boolean = false; // 网格开关
-  alignMode: boolean = false;// 对齐模式（启用后，单指拖动为平移）
+  @Trace split: number = 0.5;       // 0..1
+  @Trace zoom: number = 1.0;        // 缩放
+  @Trace offsetX: number = 0;       // 平移X（vp）
+  @Trace offsetY: number = 0;       // 平移Y（vp）
+  @Trace showGrid: boolean = false; // 网格开关
+  @Trace alignMode: boolean = false;// 对齐模式（启用后，单指拖动为平移）
   // 已保存的对比卡
-  pairs: Array<GrowthPair> = new Array<GrowthPair>();
+  @Trace pairs: Array<GrowthPair> = new Array<GrowthPair>();
 
-  constructor(plantId: string) {
+  constructor(plantId: number) {
     this.plantId = plantId;
   }
 

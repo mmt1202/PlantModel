@@ -5,12 +5,12 @@ import { RetentionType, StrategyType, PlantKind } from './WaterEstimatorTypes';
 
 export default class WaterEstimateLog {
   id: string = '';
-  plantId: string = '';
+  plantId: number = 0;
   diameterCm: number = 0;
   depthCm: number = 0;
   retention: RetentionType = RetentionType.GENERAL;
   strategy: StrategyType = StrategyType.MAINT;
-  plant: PlantKind = PlantKind.FOLIAGE;
+  plantKind: PlantKind = PlantKind.FOLIAGE;
   low: number = 0;
   mid: number = 0;
   high: number = 0;

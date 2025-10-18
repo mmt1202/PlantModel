@@ -4,6 +4,7 @@
 
 import MixRecipe, { MixItem } from '../model/MixRecipe';
 import MixRun, { MixResultItem } from '../model/MixRun';
+import { Plant } from '../model/PlantModel';
 import { MixPlannerViewModel } from '../viewmodel/MixPlannerViewModel';
 
 @CustomDialog
@@ -34,10 +35,11 @@ struct SaveRecipeDialog {
   }
 }
 
+
 @ComponentV2
 export struct MixPlannerPage {
-  @Param plantId: string = '';
-  @Local vm: MixPlannerViewModel = new MixPlannerViewModel('');
+  @Local plantId: number = 0;
+  @Local vm: MixPlannerViewModel = new MixPlannerViewModel(0);
 
   private saveDlg: CustomDialogController = new CustomDialogController({
     builder: SaveRecipeDialog({ onConfirm: (name: string, note: string) => {
@@ -49,28 +51,40 @@ export struct MixPlannerPage {
   });
 
   aboutToAppear() {
-    if (this.plantId && this.plantId !== '') {
+    if (this.plantId && this.plantId !== 0) {
       this.vm = new MixPlannerViewModel(this.plantId);
     } else {
-      this.vm = new MixPlannerViewModel('PLANT_DEMO');
+      this.vm = new MixPlannerViewModel(0);
     }
   }
 
   build() {
-    Scroll() {
-      Column({ space: 14 }) {
-        this.Header()
-        this.RecipeSelector()
-        this.ItemsEditor()
-        this.TotalAndCompute()
-        this.ResultCard()
-        this.ActionsBar()
-        this.MyRecipesList()
-        this.RunHistoryList()
+    NavDestination(){
+      Scroll() {
+        Column({ space: 14 }) {
+          this.Header()
+          this.RecipeSelector()
+          this.ItemsEditor()
+          this.TotalAndCompute()
+          this.ResultCard()
+          this.ActionsBar()
+          this.MyRecipesList()
+          this.RunHistoryList()
+        }
       }
-    }
-    .backgroundColor('#FAFAFA')
-    .edgeEffect(EdgeEffect.Spring)
+      .edgeEffect(EdgeEffect.Spring)
+    }.linearGradient({
+      direction: GradientDirection.Top,
+      colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
+    })
+    .padding({
+      top: AppStorage.get<number>('topRectHeight'),
+      bottom: AppStorage.get<number>('bottomRectHeight')
+    })
+    .onReady((param) => {
+      const plant = param.pathInfo.param as Plant
+      this.plantId = plant.id
+    })
   }
 
   // ===== Header =====

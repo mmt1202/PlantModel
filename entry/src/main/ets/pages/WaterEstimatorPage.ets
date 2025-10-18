@@ -10,30 +10,40 @@ import WaterEstimateLog from '../model/WaterEstimateLog';
 
 @ComponentV2
 export struct WaterEstimatorPage {
-  @Param plantId: string = '';
-  @Local vm: WaterEstimatorViewModel = new WaterEstimatorViewModel('');
+  @Param plantId: number = 0;
+  @Local vm: WaterEstimatorViewModel = new WaterEstimatorViewModel(0);
 
   aboutToAppear() {
-    if (this.plantId && this.plantId !== '') {
+    if (this.plantId && this.plantId !== 0) {
       this.vm = new WaterEstimatorViewModel(this.plantId);
     } else {
-      this.vm = new WaterEstimatorViewModel('PLANT_DEMO');
+      this.vm = new WaterEstimatorViewModel(0);
     }
   }
 
   build() {
-    Scroll() {
-      Column({ space: 14 }) {
-        this.Header()
-        this.SizeCard()
-        this.OptionCard()
-        this.ResultCard()
-        this.SaveBar()
-        this.LogList()
+    NavDestination(){
+      Scroll() {
+        Column({ space: 14 }) {
+          this.Header()
+          this.SizeCard()
+          this.OptionCard()
+          this.ResultCard()
+          this.SaveBar()
+          this.LogList()
+        }
       }
+      .edgeEffect(EdgeEffect.Spring)
     }
-    .backgroundColor('#FAFAFA')
-    .edgeEffect(EdgeEffect.Spring)
+    .width('100%').height('100%')
+    .linearGradient({
+      direction: GradientDirection.Top,
+      colors: [[0xFFF1F8E9, 0], [0xFFE8F5E9, 0.5], [0xFFE3F2FD, 1.0]]
+    }).padding({
+      top: AppStorage.get<number>('topRectHeight'),
+      bottom: AppStorage.get<number>('bottomRectHeight')
+    })
+
   }
 
   // ===== Header =====
@@ -119,8 +129,8 @@ export struct WaterEstimatorPage {
       Column({ space: 8 }) {
         Text(`植株：${this.vm.labelPlant()}`).fontSize(14)
         Row({ space: 8 }) {
-          this.Chip('多肉', this.vm.plant === PlantKind.SUCC, () => this.vm.setPlant(PlantKind.SUCC))
-          this.Chip('观叶', this.vm.plant === PlantKind.FOLIAGE, () => this.vm.setPlant(PlantKind.FOLIAGE))
+          this.Chip('多肉', this.vm.plantKind === PlantKind.SUCC, () => this.vm.setPlant(PlantKind.SUCC))
+          this.Chip('观叶', this.vm.plantKind === PlantKind.FOLIAGE, () => this.vm.setPlant(PlantKind.FOLIAGE))
         }
       }
     }

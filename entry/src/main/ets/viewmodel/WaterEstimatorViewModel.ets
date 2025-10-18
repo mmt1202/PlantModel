@@ -15,23 +15,23 @@ function genId(prefix: string): string {
 
 @ObservedV2
 export class WaterEstimatorViewModel {
-  plantId: string = '';
+  @Trace plantId: number = 0;
   // 输入
-  diameterCm: number = 14;     // 盆径
-  depthCm: number = 12;        // 深度
-  retention: RetentionType = RetentionType.GENERAL;
-  strategy: StrategyType = StrategyType.MAINT;
-  plant: PlantKind = PlantKind.FOLIAGE;
+  @Trace diameterCm: number = 14;     // 盆径
+  @Trace depthCm: number = 12;        // 深度
+  @Trace retention: RetentionType = RetentionType.GENERAL;
+  @Trace strategy: StrategyType = StrategyType.MAINT;
+  @Trace plantKind: PlantKind = PlantKind.FOLIAGE;
 
   // 结果
-  low: number = 0;
-  mid: number = 0;
-  high: number = 0;
+  @Trace low: number = 0;
+  @Trace mid: number = 0;
+  @Trace high: number = 0;
 
   // 历史记录
-  logs: Array<WaterEstimateLog> = new Array<WaterEstimateLog>();
+  @Trace logs: Array<WaterEstimateLog> = new Array<WaterEstimateLog>();
 
-  constructor(plantId: string) {
+  constructor(plantId: number) {
     this.plantId = plantId;
     this.compute();
   }
@@ -64,13 +64,13 @@ export class WaterEstimatorViewModel {
   }
 
   setPlant(k: PlantKind): void {
-    this.plant = k;
+    this.plantKind = k;
     this.compute();
   }
 
   // —— 计算 ——
   compute(): void {
-    const r = estimateWaterML(this.diameterCm, this.depthCm, this.retention, this.strategy, this.plant);
+    const r = estimateWaterML(this.diameterCm, this.depthCm, this.retention, this.strategy, this.plantKind);
     this.low = r.low;
     this.mid = r.mid;
     this.high = r.high;
@@ -80,12 +80,12 @@ export class WaterEstimatorViewModel {
   getSuggestText(): string {
     // 简易建议：按策略与植株给一句提示
     if (this.strategy === StrategyType.FULL) {
-      if (this.plant === PlantKind.SUCC) {
+      if (this.plantKind === PlantKind.SUCC) {
         return '建议沿盆壁缓慢注水至底孔初渗，静置 5 分钟后倒去积水。';
       }
       return '建议从盆缘环浇至下渗，确保介质均匀湿润，避免中心区积水。';
     } else {
-      if (this.plant === PlantKind.SUCC) {
+      if (this.plantKind === PlantKind.SUCC) {
         return '少量沿盆壁补水，避免叶心积水；盆土 7~10 天干透后再浇透。';
       }
       return '少量多次，保持介质微湿；避免长期积水。';
@@ -105,7 +105,7 @@ export class WaterEstimatorViewModel {
     log.depthCm = this.depthCm;
     log.retention = this.retention;
     log.strategy = this.strategy;
-    log.plant = this.plant;
+    log.plantKind = this.plantKind;
     log.low = this.low;
     log.mid = this.mid;
     log.high = this.high;
@@ -121,5 +121,5 @@ export class WaterEstimatorViewModel {
   // —— 标签 ——
   labelRetention(): string { return retentionLabel(this.retention); }
   labelStrategy(): string { return strategyLabel(this.strategy); }
-  labelPlant(): string { return plantLabel(this.plant); }
+  labelPlant(): string { return plantLabel(this.plantKind); }
 }

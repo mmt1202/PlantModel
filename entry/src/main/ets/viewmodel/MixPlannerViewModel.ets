@@ -16,7 +16,7 @@ function round2(v: number): number {
 
 @ObservedV2
 export class MixPlannerViewModel {
-  plantId: string = '';
+  plantId: number = 0;
 
   // 当前编辑的配方（名称可能来自内置或“自定义”）
   recipeName: string = '自定义配方';
@@ -32,7 +32,7 @@ export class MixPlannerViewModel {
   // 历史调配记录
   runs: Array<MixRun> = new Array<MixRun>();
 
-  constructor(plantId: string) {
+  constructor(plantId: number) {
     this.plantId = plantId;
     this.loadBuiltin();
     this.loadDefaultCustom();

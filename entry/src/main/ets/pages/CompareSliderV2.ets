@@ -79,27 +79,80 @@ export struct CompareSliderV2 {
   @Local fadeProgress: number = 0;          // 淡入淡出进度
 
   build() {
-    Column() {
+    Column({space:10}) {
       // 显示区域
       Stack({ alignContent: Alignment.Center }) {
         // 底图：before
-        Image(this.beforeUri)
-          .width('100%')
-          .height(300)
-          .objectFit(ImageFit.Cover)
-            // 为了对齐预览时的一致性，这里不做变换
-          .clip(true)
+        // Image(this.beforeUri)
+        //   .width('100%')
+        //   .height(300)
+        //   .objectFit(ImageFit.Cover)
+        //     // 为了对齐预览时的一致性，这里不做变换
+        //   .clip(true)
 
         // 根据不同的对比模式显示不同的UI
         if (this.compareMode === CompareMode.SPLIT) {
           // 分割模式：原始的滑块对比
-          this.SplitModeContent();
+          this.SplitModeContent(false);
         } else if (this.compareMode === CompareMode.SWIPE) {
           // 滑动模式：左右滑动切换图片
-          this.SwipeModeContent();
+          this.SwipeModeContent(false);
         } else if (this.compareMode === CompareMode.FADE) {
           // 淡入淡出模式：渐变过渡
-          this.FadeModeContent();
+          this.FadeModeContent(false);
+        }
+
+        // 网格（叠加在最上层，弱透明）
+        if (this.showGrid) {
+          this.GridOverlay()
+        }
+
+        // 分割模式下显示中央拖杆
+        if (this.compareMode === CompareMode.SPLIT) {
+          this.SplitHandle()
+        }
+      }
+      .onAreaChange((oldArea, newArea) => {
+        this.containerW = newArea.width as number;
+        this.containerH = newArea.height as number;
+      })
+      .height(300)
+      .width('100%')
+      .backgroundColor('#111111')
+      .borderRadius(16)
+      .clip(true)
+      .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 2 })
+      // 长按预览“仅前图”
+      .gesture(
+        LongPressGesture({ repeat: false })
+          .onAction((e) => {
+            if (e && e.repeat === false) {
+              this.previewBeforeOnly = true;
+            }
+          })
+          .onActionEnd(() => { this.previewBeforeOnly = false; })
+      )
+
+      // 显示区域2
+      Stack({ alignContent: Alignment.Center }) {
+        // 底图：before
+        // Image(this.afterUri)
+        //   .width('100%')
+        //   .height(300)
+        //   .objectFit(ImageFit.Cover)
+        //   // 为了对齐预览时的一致性，这里不做变换
+        //   .clip(true)
+
+        // 根据不同的对比模式显示不同的UI
+        if (this.compareMode === CompareMode.SPLIT) {
+          // 分割模式：原始的滑块对比
+          this.SplitModeContent(true);
+        } else if (this.compareMode === CompareMode.SWIPE) {
+          // 滑动模式：左右滑动切换图片
+          this.SwipeModeContent(true);
+        } else if (this.compareMode === CompareMode.FADE) {
+          // 淡入淡出模式：渐变过渡
+          this.FadeModeContent(true);
         }
 
         // 网格（叠加在最上层，弱透明）
@@ -161,12 +214,12 @@ export struct CompareSliderV2 {
 
   // 分割模式内容
   @Builder
-  SplitModeContent() {
+  SplitModeContent(isAfter: boolean) {
     // 顶图裁剪容器（宽度 = split * 容器宽度）
     // 利用 clip(true) 防止 after 图平移/缩放后溢出
     Row() {
       // after 图（可缩放、平移）
-      Image(this.afterUri)
+      Image(isAfter ? this.afterUri : this.beforeUri)
         .width('100%')
         .height(300)
         .objectFit(ImageFit.Cover)
@@ -203,9 +256,9 @@ export struct CompareSliderV2 {
 
   // 滑动模式内容
   @Builder
-  SwipeModeContent(): void {
+  SwipeModeContent(isAfter: boolean): void {
     // after 图（可缩放、平移）
-    Image(this.afterUri)
+    Image(isAfter ? this.afterUri : this.beforeUri)
       .width('100%')
       .height(300)
       .objectFit(ImageFit.Cover)
@@ -242,9 +295,9 @@ export struct CompareSliderV2 {
 
   // 淡入淡出模式内容
   @Builder
-  FadeModeContent(): void {
+  FadeModeContent(isAfter: boolean): void {
     // after 图（可缩放、平移、透明度变化）
-    Image(this.afterUri)
+    Image(isAfter ? this.afterUri : this.beforeUri)
       .width('100%')
       .height(300)
       .objectFit(ImageFit.Cover)
@@ -278,7 +331,7 @@ export struct CompareSliderV2 {
 
   // 模式选择器
   @Builder
-  private ModeSelector(): void {
+  ModeSelector(): void {
     Row() {
       ToggleButtonComponent({
         params: {

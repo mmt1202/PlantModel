@@ -28,8 +28,9 @@ import { RdbManager } from '../viewmodel/RdbManager'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { PlantLogPage } from './PlantLogPage'
 import { EmergencyAndRotatePage } from './EmergencyAndRotatePage'
-import { LightExposurePage } from './LightExposurePage'
 import { PlantDetail } from './PlantDetail'
+import { MixPlannerPage } from './MixPlannerPage'
+import { WaterEstimatorPage } from './WaterEstimatorPage'
 
 @Entry
 @ComponentV2
@@ -847,25 +848,30 @@ struct Index {
                 this.openPanel(p.id, p)
               },
               onOpenDetail: async (p: Plant) => {
-                this.pageStack.pushPathByName('PlantDetail', p.id,(PopInfo)=>{
+                this.pageStack.pushPathByName('PlantDetail', p.id, (PopInfo) => {
                   this.reloadAll()
                 })
               },
               onOpenLogs: async (p: Plant) => {
-                this.pageStack.pushPathByName('PlantLogPage', p.id,(PopInfo)=>{
+                this.pageStack.pushPathByName('PlantLogPage', p.id, (PopInfo) => {
+                  this.reloadAll()
+                })
+              },
+              onOpenWaterEstimator: async (p: Plant) => {
+                this.pageStack.pushPathByName('WaterEstimatorPage', p.id, (PopInfo) => {
                   this.reloadAll()
                 })
               },
               onOpenEmergencyAndRotate: async (p: Plant) => {
-                this.pageStack.pushPathByName('EmergencyAndRotatePage', p.id,(PopInfo)=>{
+                this.pageStack.pushPathByName('EmergencyAndRotatePage', p.id, (PopInfo) => {
                   this.reloadAll()
                 })
               },
               onDeleteAsk: (pid: number) => {
                 this.pendingDeletePlantId = pid;
-                this.pendingDeleteTaskId = 0
+                this.pendingDeleteTaskId = 0;
                 this.confirmText = '删除该植物及其任务？'
-                this.confirmVisible = true
+                this.confirmVisible = true;
               },
               onOpenMetrics: async (p: Plant) => {
                 this.metricPlantId = p.id;
@@ -954,7 +960,9 @@ struct Index {
                   this.showBanner('刷新数据成功', 'ok')
                 } catch (e) {
                 }
-
+              },
+              onOpenMixPlanner: async (p: Plant) => {
+                this.pageStack.pushPathByName('MixPlannerPage', p)
               }
             })
           }.tabBar(this.TabChip('统计', 4))
@@ -1166,10 +1174,14 @@ struct Index {
       PlantLogPage()
     } else if (name === "EmergencyAndRotatePage") {
       EmergencyAndRotatePage()
-    } else if(name === 'LightExposurePage'){
+    } else if (name === 'LightExposurePage') {
 
-    } else if (name === 'PlantDetail'){
+    } else if (name === 'PlantDetail') {
       PlantDetail()
+    } else if (name === 'MixPlannerPage') {
+      MixPlannerPage()
+    } else if (name === 'WaterEstimatorPage') {
+      WaterEstimatorPage()
     }
   }
 
@@ -1217,7 +1229,9 @@ struct Index {
 
         Row() {
           Text('🔎').fontSize(18).margin({ right: 8 })
-          TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword }).placeholderColor('#747474').fontColor('#000000')
+          TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword })
+            .placeholderColor('#747474')
+            .fontColor('#000000')
             .onChange((v: string) => {
               this.keyword = v
             })

@@ -8,20 +8,26 @@ import { GrowthCompareViewModel } from '../viewmodel/GrowthCompareViewModel';
 // import CompareSliderV2 from '../component/CompareSliderV2';
 import GrowthPair from '../model/GrowthPair';
 import { CompareSliderV2 } from './CompareSliderV2';
+import { AddImageFileViewModel } from '../viewmodel/AddImageFileViewModel';
+import { common } from '@kit.AbilityKit';
 
 @ComponentV2
 export struct GrowthComparePage {
+  private context: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+
   // 路由参数
-  @Param plantId: string = '';
+  @Param plantId: number = 0;
 
   // 本地 VM（V2）
-  @Local vm: GrowthCompareViewModel = new GrowthCompareViewModel('');
+  @Local vm: GrowthCompareViewModel = new GrowthCompareViewModel(0);
+
+  private addImageFileViewModel:AddImageFileViewModel = AddImageFileViewModel.getInstance(this.context)
 
   aboutToAppear() {
-    if (this.plantId && this.plantId !== '') {
+    if (this.plantId && this.plantId !== 0) {
       this.vm = new GrowthCompareViewModel(this.plantId);
     } else {
-      this.vm = new GrowthCompareViewModel('PLANT_DEMO');
+      this.vm = new GrowthCompareViewModel(0);
     }
   }
 
@@ -69,7 +75,7 @@ export struct GrowthComparePage {
       this.SaveBar()
       this.PairsList()
     }
-    .backgroundColor('#FAFAFA')
+    // .backgroundColor('#FAFAFA')
     // .edgeEffect(EdgeEffect.Spring)
   }
 
@@ -90,12 +96,12 @@ export struct GrowthComparePage {
   @Builder
   SelectorBar() {
     Column({ space: 10 }) {
-      Row({ space: 12 }) {
+      // Row({ space: 12 }) {
         // 选择前照
         this.SelectCard('选择前照', this.vm.beforeUri, true)
         // 选择后照
         this.SelectCard('选择后照', this.vm.afterUri, false)
-      }
+      // }
     }
     .padding({ left: 16, right: 16 })
   }
@@ -129,7 +135,7 @@ export struct GrowthComparePage {
     Column({ space: 10 }) {
       Text('分割位置与缩放/平移（对齐在“对齐”模式下单指拖动后图，双指缩放）')
         .fontSize(12).opacity(0.6)
-      Row({ space: 12 }) {
+      Column({ space: 12 }) {
         // 分割滑杆（与组件内的滑杆保持同步）
         Column() {
           Text(`分割：${Math.floor(this.vm.split * 100)}%`).fontSize(12).opacity(0.7)
@@ -229,24 +235,22 @@ export struct GrowthComparePage {
 
   // 选择图片
   private async pickPhoto(isBefore: boolean): Promise<void> {
-    // try {
-    //   const picker = new photoAccessHelper.PhotoViewPicker();
-    //   const res = await picker.select({
-    //     // 单选图片
-    //     MIMEType: ['image/*'],
-    //     maxSelectNumber: 1
-    //   });
-    //   // 返回为永久授权的 photoUris
-    //   if (res && res.photoUris && res.photoUris.length > 0) {
-    //     const uri: string = res.photoUris[0];
-    //     if (isBefore) {
-    //       this.vm.setBefore(uri);
-    //     } else {
-    //       this.vm.setAfter(uri);
-    //     }
-    //   }
-    // } catch (e) {
-    //   // 选择被取消或权限问题，静默处理
-    // }
+    try {
+      this.addImageFileViewModel.selectAndProcessImages([],(newImage)=>{
+        // 返回为永久授权的 photoUris
+        const res = newImage[0]
+        if (newImage && res.path && res.path.length > 0) {
+          // const uri: string = res.photoUris[0];
+          if (isBefore) {
+            this.vm.setBefore(res.path);
+          } else {
+            this.vm.setAfter(res.path);
+          }
+        }
+      },1)
+
+    } catch (e) {
+      // 选择被取消或权限问题，静默处理
+    }
   }
 }
