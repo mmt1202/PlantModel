@@ -7,7 +7,7 @@ export enum EnvParam {
   HUMID = 'humidity'
 }
 
-export type Snapshot = {
+export interface  Snapshot {
   plantId: string,
   light: number,
   soil: number,

@@ -15,7 +15,7 @@ export struct WaterParticle {
       Column() {
         // 我们用一组小圆模拟水滴，从上到下做出落下视觉（实际动画用 animateTo 在页面侧触发）
         Row({ space: 8 }) {
-          ForEach<number>([1,2,3,4,5], (i: number) => {
+          ForEach([1,2,3,4,5], (i: number) => {
             Column()
               .width(8).height(12)
               .borderRadius(4)
@@ -28,7 +28,7 @@ export struct WaterParticle {
       // 波纹层（3 个同心圆）
       Column() {
         Row({ space: 6 }) {
-          ForEach<number>([1,2,3], (r: number) => {
+          ForEach([1,2,3], (r: number) => {
             Column()
               .width(40 + r * 20 * this.intensity).height(10 + r * 6 * this.intensity)
               .borderRadius(50)

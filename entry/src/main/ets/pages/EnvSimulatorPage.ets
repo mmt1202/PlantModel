@@ -2,9 +2,10 @@
 // 环境模拟器页面（完整）：使用 V2 装饰器 + @Builder UI，绑定 Vm，并提供保存快照（返回 snapshot JSON）
 // 说明：页面不直接写入数据库；若你想持久化，调用 vm.saveSnapshot() 的结果并用你项目的 RdbManager 写入 log 表。
 
-import { ComponentV2, Param, Local } from '@ohos.aafwk.ace'; // 示意装饰器
+// import { ComponentV2, Param, Local } from '@ohos.aafwk.ace'; // 示意装饰器
+import { PlantRenderer } from '../component/PlantRenderer';
 import { EnvSimulatorViewModel } from '../viewmodel/EnvSimulatorViewModel';
-import PlantRenderer from '../component/PlantRenderer';
+// import PlantRenderer from '../component/PlantRenderer';
 
 @ComponentV2
 export struct EnvSimulatorPage {
@@ -25,7 +26,7 @@ export struct EnvSimulatorPage {
     }
   }
 
-  @Builder build() {
+  build() {
     Column({ space: 12 }) {
       // Header
       Row() {
@@ -120,6 +121,6 @@ export struct EnvSimulatorPage {
       .padding({ left: 16, right: 16, bottom: 20 })
     }
     .backgroundColor('#FAFAFA')
-    .edgeEffect(EdgeEffect.Spring)
+    // .edgeEffect(EdgeEffect.Spring)
   }
 }

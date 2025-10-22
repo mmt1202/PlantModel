@@ -2,7 +2,7 @@
 // 环境模拟器视图模型（V2）：管理 light/soil/humidity，提供计算属性与快照导出
 // 不直接持久化，仅返回 snapshot 供调用者决定是否写入数据库
 
-import { ObservedV2 } from '@ohos.aafwk.ace'; // 仅示意，实际装饰器由平台注入
+
 import {
   EnvParam, Snapshot,
   leafColorBy, bgGradientBy, moodBy, recommendationBy

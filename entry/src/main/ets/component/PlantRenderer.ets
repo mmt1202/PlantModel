@@ -4,19 +4,19 @@
 // 这个组件侧重表现力，用 ArkUI 基础组件绘制（不依赖外部图片资源）
 // UI 结构必须写在 @Builder 中
 
-import { ComponentV2, Require, Event } from '@ohos.aafwk.ace'; // 示意装饰器
+// import { ComponentV2, Require, Event } from '@ohos.aafwk.ace'; // 示意装饰器
 
 @ComponentV2
 export struct PlantRenderer {
-  @Require light: number = 50;
-  @Require soil: number = 50;
-  @Require humidity: number = 50;
-  @Require leafTone: string = '#66AA66';
-  @Require backgroundTone: string = 'rgb(220,220,240)';
-  @Require mood: string = '😊（健康）';
+  @Param @Require light: number = 50;
+  @Param @Require soil: number = 50;
+  @Param @Require humidity: number = 50;
+  @Param @Require leafTone: string = '#66AA66';
+  @Param @Require backgroundTone: string = 'rgb(220,220,240)';
+  @Param @Require mood: string = '😊（健康）';
 
   // 动画控制（页面或 vm 可传入）
-  @Require isAnimating: boolean = false;
+  @Param @Require isAnimating: boolean = false;
 
   // 交互回调：当用户点中植株时可以触发
   @Event onTap: () => void = () => {};
@@ -28,12 +28,16 @@ export struct PlantRenderer {
       Stack({ alignContent: Alignment.Center }) {
         // 背景层（用一个大圆做太阳光晕 + 线性块）
         Column() {
-          Box()
-            .width('100%').height(180)
-            .backgroundColor(this.backgroundTone)
-            .borderRadius(12)
-            .shadow({ radius: 12, color: '#22000000', offsetX: 0, offsetY: 6 })
+          // Box()
+          //   .width('100%').height(180)
+          //   .backgroundColor(this.backgroundTone)
+          //   .borderRadius(12)
+          //   .shadow({ radius: 12, color: '#22000000', offsetX: 0, offsetY: 6 })
         }
+          .width('100%').height(180)
+          .backgroundColor(this.backgroundTone)
+          .borderRadius(12)
+          .shadow({ radius: 12, color: '#22000000', offsetX: 0, offsetY: 6 })
 
         // 植物 & pot 层（使用简单形状模拟）
         Column({ space: 6 }) {
@@ -43,17 +47,17 @@ export struct PlantRenderer {
               .width(160).height(120)
               .borderRadius(80)
               .backgroundColor(this.leafGradientLeft())
-              .transformOrigin({ x: '50%', y: '50%' })
+              .transform({ x: '50%', y: '50%' })
               .scale({ x: this.leafScale(), y: this.leafScale() })
               .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 4 })
             Column()
               .width(160).height(120)
               .borderRadius(80)
               .backgroundColor(this.leafGradientRight())
-              .transformOrigin({ x: '50%', y: '50%' })
+              .transform({ x: '50%', y: '50%' })
               .scale({ x: this.leafScale(), y: this.leafScale() })
               .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 4 })
-          }.alignItems(HorizontalAlign.Center)
+          }.alignItems(VerticalAlign.Center)
 
           // 花盆（矩形 + 圆角）
           Column({ space: 4 }) {
