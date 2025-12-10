@@ -97,7 +97,7 @@ struct ManualInstantDialog {
 @ComponentV2
 export struct LightExposurePage {
   // 通过 Navigation 传参：plantId（你在上层 NavDestination 注入即可）
-  @Local plantId: number = 0;
+  @Param plantId: number = 0;
   @Local vm: LightExposureViewModel = new LightExposureViewModel(0);
 
   private startDlg: CustomDialogController = new CustomDialogController({
@@ -147,7 +147,7 @@ export struct LightExposurePage {
       .edgeEffect(EdgeEffect.Spring)
     }.title(this.NavTitle()).onReady((parma)=>{
       const plant = parma.pathInfo.param as Plant
-      this.plantId = plant.id
+      // this.plantId = plant.id
     })
 
   }

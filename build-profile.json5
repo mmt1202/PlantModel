@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "storeFile": "D:/app/plant.p12",
-          "storePassword": "000000187AFB9E04CD11AFED0E6E60D04014AAA08D5358A670BA47EE89C5664963E0D4EEA510BB77",
-          "keyAlias": "plant",
-          "keyPassword": "00000018D961CA38D864CA646B1778585F9E4A4D52896A542EA21FE786154670EFEED6C6E1093D8C",
+          "certpath": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B6C50C3F6FE55508342854A728DB294D64445EC1AD642282290987235BD99F8A6060B3493379149",
+          "profile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p7b",
           "signAlg": "SHA256withECDSA",
-          "profile": "D:/app/plantdebugDebug.p7b",
-          "certpath": "D:/app/plantdebug.cer"
+          "storeFile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p12",
+          "storePassword": "0000001BE956DA34A293A97534ADCA093C289D60E0A247B90133E845F8561D8F5E8534B38B43E21658C51D"
         }
       },
       {
