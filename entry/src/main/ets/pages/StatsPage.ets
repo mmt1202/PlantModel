@@ -8,7 +8,6 @@ export struct StatsPage {
   @Param @Require tasks: Array<PlantTask>
   @Event onReloadAll: () => void
   @Event onOpenMixPlanner: (p:Plant)=>void
-  // 小图配置
   @Local weekOption: Options = new Options({
     title: {
       show: true,
@@ -35,11 +34,9 @@ export struct StatsPage {
   }
 
   aboutToRender(): void {
-    // 当父组件传入 tasks 变化时，重算小图
     this.refreshWeekOption()
   }
 
-  // ======= 工具：日期字符串 =======
   private two(n: number): string {
     const s: string = n.toString()
     if (s.length === 1) {
@@ -64,7 +61,6 @@ export struct StatsPage {
     return `${d.getFullYear()}-${this.two(d.getMonth() + 1)}-${this.two(d.getDate())}`
   }
 
-  // ======= 基础统计 =======
   private plantCount(): number {
     return this.plants.length
   }
@@ -80,7 +76,6 @@ export struct StatsPage {
       if (this.tasks[i].done === 1) {
         c = c + 1
       }
-      ;
       i = i + 1
     }
     return c
@@ -90,7 +85,6 @@ export struct StatsPage {
     return this.taskCount() - this.doneCount()
   }
 
-  // 逾期（计划日 < 今天 且 未完成）
   private overdueCount(): number {
     const td: string = this.todayISO()
     let i: number = 0;
@@ -105,10 +99,9 @@ export struct StatsPage {
     return c
   }
 
-  // 未来7天（含今天，未完成）
   private next7Count(): number {
     const td: string = this.todayISO()
-    const up: string = this.isoNDaysAgo(-7) // 往后7天
+    const up: string = this.isoNDaysAgo(-7)
     let i: number = 0;
     let c: number = 0
     while (i < this.tasks.length) {
@@ -121,9 +114,8 @@ export struct StatsPage {
     return c
   }
 
-  // 近7天完成数（按 doneAt 统计）
   private doneLast7(): number {
-    const from: string = this.isoNDaysAgo(6) // 含今天，共7天
+    const from: string = this.isoNDaysAgo(6)
     const to: string = this.todayISO()
     let i: number = 0;
     let c: number = 0
@@ -140,9 +132,7 @@ export struct StatsPage {
     return c
   }
 
-  // 连续打卡天数（从今天往回，连续有完成）
   private streakDays(): number {
-    // 先做一个 hasDone(iso) 判定
     const hasDone = (iso: string): boolean => {
       let i: number = 0
       while (i < this.tasks.length) {
@@ -156,7 +146,6 @@ export struct StatsPage {
     }
     let days: number = 0
     let n: number = 0
-    // 最多从今天往回数 365 天以防长循环
     while (n < 365) {
       const iso: string = this.isoNDaysAgo(n)
       if (hasDone(iso)) {
@@ -169,7 +158,6 @@ export struct StatsPage {
     return days
   }
 
-  // 类型分布（按任务总数统计）
   private typeCount(tn: string): number {
     let i: number = 0;
     let c: number = 0
@@ -182,13 +170,10 @@ export struct StatsPage {
     return c
   }
 
-  // Top 植物（近30天完成最多）
   private topPlantName(): string {
     const from: string = this.isoNDaysAgo(29)
-    // 先统计每个 plantId 的近30天完成数
     let maxCnt: number = 0;
     let maxPid: number = 0
-    // 遍历每个植物
     let p: number = 0
     while (p < this.plants.length) {
       const pid: number = this.plants[p].id
@@ -210,7 +195,6 @@ export struct StatsPage {
       }
       p = p + 1
     }
-    // 映射名字
     let j: number = 0
     while (j < this.plants.length) {
       if (this.plants[j].id === maxPid) {
@@ -226,7 +210,6 @@ export struct StatsPage {
     if (name === '—') {
       return '0'
     }
-    // 重新算一次 count（为了避免在 Builder 里做变量复用）
     const from: string = this.isoNDaysAgo(29)
     let j: number = 0;
     let pid: number = 0
@@ -234,7 +217,6 @@ export struct StatsPage {
       if (this.plants[j].name === name) {
         pid = this.plants[j].id
       }
-      ;
       j = j + 1
     }
     let i: number = 0;
@@ -252,7 +234,6 @@ export struct StatsPage {
     return c.toString()
   }
 
-  // 近7天完成柱状图数据
   private weekLabels(): Array<string> {
     const arr: Array<string> = []
     let i: number = 6
@@ -266,7 +247,6 @@ export struct StatsPage {
   }
 
   private weekDoneCounts(): Array<number> {
-    // 生成近7天 iso 列表
     const isoArr: Array<string> = []
     let i: number = 6
     while (i >= 0) {
@@ -304,201 +284,152 @@ export struct StatsPage {
       yAxis: { name: '次数' },
       series: [{ name: '完成', data: this.weekDoneCounts() }]
     })
-    // this.weekOption.title = { show: true, text: '近7天完成数', right: 16, top: 16 }
-    // this.weekOption.xAxis = { data: this.weekLabels() }
-    // this.weekOption.yAxis = { name: '次数' }
-    // this.weekOption.series = [{ name: '完成', data: this.weekDoneCounts() }]
   }
 
-  // ======= UI =======
   build() {
-    Column({ space: 8 }) {
-      this.Header()
-      // 第一行：总览
-      Grid() {
-        GridItem() {
-          this.Card('植物数', this.plantCount().toString(), 0xFF1B5E20)
-        }
-
-        GridItem() {
-          this.Card('任务数', this.taskCount().toString(), 0xFF1565C0)
-        }
-
-        GridItem() {
-          this.Card('完成率', this.taskCount() > 0 ? `${Math.round(this.doneCount() * 100 / this.taskCount())}%` : '0%',
-            0xFFE65100)
-        }
-
-        GridItem() {
-          this.Card('进行中', this.inProgressCount().toString(), 0xFF6A1B9A)
-        }
-
-        GridItem() {
-          this.Card('逾期未完成', this.overdueCount().toString(), 0xFFD32F2F)
-
-        }
-
-        GridItem() {
-          this.Card('未来7天待办', this.next7Count().toString(), 0xFF1976D2)
-        }
-
-        GridItem() {
-          this.Card('近7天完成', this.doneLast7().toString(), 0xFF2E7D32)
-        }
-
-        GridItem() {
-          this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
-        }
-        GridItem() {
-          this.Card('连续打卡(天)', this.streakDays().toString(), 0xFF00897B)
-        }.onClick(()=>{
-          this.onOpenMixPlanner(this.plants[0])
-          // this.pageStack.pushPathByName('MixPlannerPage',)
-        })
-      }
-      .width('100%')
-      .height(340)
-      .columnsTemplate('1fr 1fr')
-      .columnsGap(10)
-      .rowsGap(10)
-
+    NavDestination() {
       Scroll() {
-        Column() {
-          // this.SectionTitle('类型分布')
-          // Row() {
-          //   this.Chip(`浇水 ${this.typeCount('浇水')}`)
-          //   this.Chip(`施肥 ${this.typeCount('施肥')}`)
-          //   this.Chip(`修剪 ${this.typeCount('修剪')}`)
-          // }
-          // .padding({ left: 12, right: 12, bottom: 4 })
-
-          // 近30天 Top 植物
-          this.SectionTitle('近30天最活跃植物')
-          Row() {
-            this.BigBadge(this.topPlantName(), this.topPlantCount())
-          }
-          .padding({ left: 12, right: 12, bottom: 6 })
-
-          // 近7天完成柱状图
-          Row() {
-            McBarChart({ options: this.weekOption })
-          }
-          .height(220)
-          .padding({ left: 8, right: 8, top: 6 })
-
+        Column({ space: 20 }) {
+          this.Header()
+          this.OverviewCards()
+          this.TopPlantCard()
+          this.WeekChartCard()
         }
-      }.scrollBar(BarState.Off).height('calc(100% - 400vp)')
-
-      // 类型分布
-
+        .padding({ bottom: 32 })
+      }
+      .layoutWeight(1)
+      .edgeEffect(EdgeEffect.Spring)
     }
-
-    // .padding({ left: 12, right: 12, top: 12, bottom: 16 })
+    .title('数据统计')
+    .linearGradient({
+      direction: GradientDirection.Top,
+      colors: [[0xFFF3E5F5, 0], [0xFFE8EAF6, 0.5], [0xFFE3F2FD, 1.0]]
+    })
+    .padding({
+      top: AppStorage.get<number>('topRectHeight'),
+      bottom: AppStorage.get<number>('bottomRectHeight')
+    })
   }
 
   @Builder
   Header() {
-    Column() {
-      Column() {
-        Row() {
-          Text('PlantDiary 植物养护·统计').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
-          Blank()
-          Text('刷新数据')
-            .fontSize(12)
-            .fontColor(0xFF1565C0)
-            .padding({
-              left: 10,
-              right: 10,
-              top: 6,
-              bottom: 6
-            })
-            .borderRadius(12)
-            .backgroundColor(0x102196F3)
-            .onClick(async () => {
-              await this.onReloadAll()
-              this.refreshWeekOption()
-            })
-        }.width('100%')
-        .justifyContent(FlexAlign.Start)
-        .padding({
-          left: 20,
-          right: 20,
-          top: 16,
-          bottom: 8
-        })
-
-      }
-      .padding({ bottom: 4 })
-    }.width('100%')
-  }
-
-  @Builder
-  SectionTitle(text: string) {
     Row() {
-      Text(text).fontSize(12).fontColor(0xFF607D8B)
-    }
-    .padding({
-      left: 12,
-      right: 12,
-      top: 10,
-      bottom: 6
-    })
-  }
-
-  @Builder
-  Card(title: string, value: string, color: ResourceColor) {
-    Column() {
-      Text(title).fontSize(12).fontColor(0xFF607D8B)
-      Text(value).fontSize(22).fontWeight(FontWeight.Medium).fontColor(color)
-    }
-    .width(160)
-    .padding(16)
-    .borderRadius(16)
-    .backgroundColor(0xFFFFFFFF)
-    .shadow({
-      radius: 14,
-      color: 0x12000000,
-      offsetX: 0,
-      offsetY: 4
-    })
-    .animation({ duration: 240, curve: Curve.EaseInOut })
-  }
-
-  @Builder
-  Chip(text: string) {
-    Text(text)
-      .fontSize(12)
-      .fontColor(0xFF263238)
-      .padding({
-        left: 10,
-        right: 10,
-        top: 6,
-        bottom: 6
-      })
-      .borderRadius(12)
-      .backgroundColor(0xFFECEFF1)
-      .margin({ right: 8 })
-  }
-
-  @Builder
-  BigBadge(name: string, count: string) {
-    Row() {
-      Text('📈').fontSize(20).margin({ right: 8 })
       Column() {
-        Text(name).fontSize(14).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
-        Text(`${count} 次完成`).fontSize(12).fontColor(0xFF607D8B).margin({ top: 2 })
+        Text('数据统计').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+        Text('PlantDiary 植物养护').fontSize(14).fontColor(0xFF78909C)
       }
-
       Blank()
+      Button('刷新数据')
+        .type(ButtonType.Normal)
+        .fontSize(14)
+        .fontColor(0xFF673AB7)
+        .backgroundColor(0xFFF3E5F5)
+        .height(40)
+        .onClick(async () => {
+          await this.onReloadAll()
+          this.refreshWeekOption()
+        })
     }
-    .padding(14)
-    .borderRadius(16)
+    .padding({ left: 16, right: 16, top: 12, bottom: 8 })
+  }
+
+  @Builder
+  OverviewCards() {
+    Column({ space: 12 }) {
+      Row() {
+        Text('总体概览').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+        Blank()
+      }
+
+      Grid() {
+        GridItem() {
+          this.StatCard('🌱 植物数', this.plantCount().toString(), 0xFF4CAF50)
+        }
+        GridItem() {
+          this.StatCard('📋 任务数', this.taskCount().toString(), 0xFF2196F3)
+        }
+        GridItem() {
+          this.StatCard('✅ 完成率', this.taskCount() > 0 ? `${Math.round(this.doneCount() * 100 / this.taskCount())}%` : '0%', 0xFFFF9800)
+        }
+        GridItem() {
+          this.StatCard('⏳ 进行中', this.inProgressCount().toString(), 0xFF9C27B0)
+        }
+        GridItem() {
+          this.StatCard('⚠️ 逾期', this.overdueCount().toString(), 0xFFF44336)
+        }
+        GridItem() {
+          this.StatCard('📅 未来7天', this.next7Count().toString(), 0xFF00BCD4)
+        }
+        GridItem() {
+          this.StatCard('✅ 近7天', this.doneLast7().toString(), 0xFF009688)
+        }
+        GridItem() {
+          this.StatCard('🔥 连续打卡', this.streakDays().toString(), 0xFFFF5722)
+        }
+      }
+      .columnsTemplate('1fr 1fr')
+      .columnsGap(12)
+      .rowsGap(12)
+      .width('100%')
+    }
+    .padding({ left: 16, right: 16 })
+  }
+
+  @Builder
+  StatCard(title: string, value: string, color: ResourceColor) {
+    Column({ space: 6 }) {
+      Text(title).fontSize(13).fontColor(0xFF78909C)
+      Text(value).fontSize(24).fontWeight(FontWeight.Bold).fontColor(color)
+    }
+    .width('100%')
+    .padding(16)
     .backgroundColor(0xFFFFFFFF)
-    .shadow({
-      radius: 14,
-      color: 0x12000000,
-      offsetX: 0,
-      offsetY: 4
-    })
+    .borderRadius(20)
+    .shadow({ radius: 10, color: '#10000000', offsetX: 0, offsetY: 2 })
+  }
+
+  @Builder
+  TopPlantCard() {
+    Column({ space: 16 }) {
+      Row() {
+        Text('近30天最活跃').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+        Blank()
+      }
+
+      Row({ space: 12 }) {
+        Text('🏆').fontSize(32)
+        Column({ space: 4 }) {
+          Text(this.topPlantName()).fontSize(18).fontWeight(FontWeight.Bold).fontColor(0xFF263238)
+          Text(`${this.topPlantCount()} 次完成`).fontSize(14).fontColor(0xFF78909C)
+        }
+        Blank()
+      }
+      .width('100%')
+      .padding(20)
+      .backgroundColor(0xFFFFFFFF)
+      .borderRadius(24)
+      .shadow({ radius: 12, color: '#11000000', offsetX: 0, offsetY: 2 })
+    }
+    .padding({ left: 16, right: 16 })
+  }
+
+  @Builder
+  WeekChartCard() {
+    Column({ space: 16 }) {
+      Row() {
+        Text('近7天趋势').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+        Blank()
+      }
+
+      Column() {
+        McBarChart({ options: this.weekOption })
+      }
+      .height(240)
+      .width('100%')
+      .backgroundColor(0xFFFFFFFF)
+      .borderRadius(24)
+      .shadow({ radius: 12, color: '#11000000', offsetX: 0, offsetY: 2 })
+    }
+    .padding({ left: 16, right: 16 })
   }
 }

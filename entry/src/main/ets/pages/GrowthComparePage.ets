@@ -1,256 +1,472 @@
-// /page/GrowthComparePage.ets
-// 页面：前后对比（选择图片→对齐→滑动对比→保存对比卡列表）
-// - V2 装饰器 & Navigation 友好：@Param plantId 由上层路由传入；不使用 Router.*
-// - 图片选择使用 MediaLibraryKit 的 PhotoViewPicker（系统自带图库选择器）
-
-import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { GrowthCompareViewModel } from '../viewmodel/GrowthCompareViewModel';
-// import CompareSliderV2 from '../component/CompareSliderV2';
-import GrowthPair from '../model/GrowthPair';
-import { CompareSliderV2 } from './CompareSliderV2';
-import { AddImageFileViewModel } from '../viewmodel/AddImageFileViewModel';
+import { Plant } from '../model/PlantModel';
+import { LogPhoto } from '../view/PlantLogSheet';
+import { RdbManager } from '../viewmodel/RdbManager';
+import relationalStore from '@ohos.data.relationalStore';
 import { common } from '@kit.AbilityKit';
+import { AddImageFileViewModel } from '../viewmodel/AddImageFileViewModel';
+import fs from '@ohos.file.fs';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 @ComponentV2
 export struct GrowthComparePage {
-  private context: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
-
-  // 路由参数
-  @Param plantId: number = 0;
-
-  // 本地 VM（V2）
-  @Local vm: GrowthCompareViewModel = new GrowthCompareViewModel(0);
-
-  private addImageFileViewModel:AddImageFileViewModel = AddImageFileViewModel.getInstance(this.context)
+  private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+  @Consumer('pageStack') pageStack: NavPathStack = new NavPathStack();
+  @Consumer('store') store: relationalStore.RdbStore | null = null;
+  @Local plant: Plant | undefined = undefined;
+  @Local photos: Array<LogPhoto> = [];
+  @Local selIdx: number = 0;
+  @Local picking: boolean = false;
+  private addImageFileViewModel = AddImageFileViewModel.getInstance(this.ctx);
 
   aboutToAppear() {
-    if (this.plantId && this.plantId !== 0) {
-      this.vm = new GrowthCompareViewModel(this.plantId);
-    } else {
-      this.vm = new GrowthCompareViewModel(0);
-    }
   }
 
   build() {
-    Column({ space: 12 }) {
-      // 顶部标题与工具
-      Row() {
-        Column() {
-          Text('成长对比').fontSize(22).fontWeight(FontWeight.Medium)
-          Text(`植物ID：${this.vm.plantId}`).fontSize(12).opacity(0.6)
+    NavDestination() {
+      Column() {
+        this.Header()
+        Scroll() {
+          Column({ space: 16 }) {
+            this.MainSlider()
+            this.PreviewGrid()
+            this.TimeTip()
+          }
+          .padding({
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: 32
+          })
         }
-        Blank()
-        this.TopActions()
+        .layoutWeight(1)
+        .edgeEffect(EdgeEffect.Spring)
       }
-      .padding({ left: 16, right: 16, top: 12 })
-
-      // 选择区（前/后）
-      this.SelectorBar()
-
-      // 对比滑块
-      CompareSliderV2({
-        beforeUri: this.vm.beforeUri,
-        afterUri: this.vm.afterUri,
-        split: this.vm.split,
-        zoom: this.vm.zoom,
-        offsetX: this.vm.offsetX,
-        offsetY: this.vm.offsetY,
-        showGrid: this.vm.showGrid,
-        alignMode: this.vm.alignMode,
-        onSplitChange: (v: number) => {
-          this.vm.setSplit(v);
-        },
-        onAlignChange: (z: number, x: number, y: number) => {
-          this.vm.setZoom(z);
-          this.vm.offsetX = x;
-          this.vm.offsetY = y;
-        }
-      })
-        .margin({ left: 16, right: 16 })
-
-      // 微调工具条
-      this.AlignToolbar()
-
-      // 保存 & 列表
-      this.SaveBar()
-      this.PairsList()
     }
-    // .backgroundColor('#FAFAFA')
-    // .edgeEffect(EdgeEffect.Spring)
+    .title('成长对比')
+    .padding({
+      top: AppStorage.get<number>('topRectHeight'),
+      bottom: AppStorage.get<number>('bottomRectHeight')
+    })
+    .linearGradient({
+      direction: GradientDirection.Top,
+      colors: [[0xFFFFF3E0, 0], [0xFFFFECB3, 0.5], [0xFFFFF8E1, 1.0]]
+    })
+    .onReady((param) => {
+      const plant = param.pathInfo.param as Plant;
+      this.plant = plant;
+      this.loadPhotos();
+    })
+  }
+
+  @Builder
+  Header() {
+    Row() {
+      Column() {
+        Text('成长对比').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238);
+        if (this.plant) {
+          Text(this.plant.name).fontSize(14).fontColor(0xFF78909C);
+        }
+      }
+      Blank();
+      this.TopActions()
+    }
+    .padding({
+      left: 16,
+      right: 16,
+      top: 12,
+      bottom: 8
+    })
   }
 
   @Builder
   TopActions() {
     Row({ space: 8 }) {
-      Button(this.vm.alignMode ? '对齐中' : '对齐').type(ButtonType.Normal)
-        .onClick(() => { this.vm.toggleAlignMode(); })
-      Button(this.vm.showGrid ? '隐藏网格' : '显示网格').type(ButtonType.Normal)
-        .onClick(() => { this.vm.toggleGrid(); })
-      Button('重置对齐').type(ButtonType.Normal)
-        .onClick(() => { this.vm.resetAlign(); })
-      Button('互换前后').type(ButtonType.Capsule)
-        .onClick(() => { this.vm.swap(); })
+      Button('添加照片')
+        .type(ButtonType.Capsule)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .backgroundColor(0xFFFF9800)
+        .height(40)
+        .onClick(() => {
+          this.pickAndAddPhoto();
+        })
     }
   }
 
   @Builder
-  SelectorBar() {
-    Column({ space: 10 }) {
-      // Row({ space: 12 }) {
-        // 选择前照
-        this.SelectCard('选择前照', this.vm.beforeUri, true)
-        // 选择后照
-        this.SelectCard('选择后照', this.vm.afterUri, false)
-      // }
-    }
-    .padding({ left: 16, right: 16 })
-  }
-
-  @Builder SelectCard(title: string, uri: string, isBefore: boolean) {
-    Column({ space: 8 }) {
-      Text(title).fontSize(14).opacity(0.8)
+  MainSlider() {
+    Column({ space: 16 }) {
       Row() {
-        if (uri === '') {
-          Column() {
-            Text('未选择').fontSize(12).opacity(0.5)
-          }
-          .width('100%').height(44)
-          .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
-          .backgroundColor('#FFFFFF').borderRadius(12)
-          .onClick(() => { this.pickPhoto(isBefore); })
-        } else {
-          Row() {
-            Text(uri).fontSize(12).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-            Blank()
-            Button('更换').type(ButtonType.Normal).onClick(() => { this.pickPhoto(isBefore); })
-          }
-          .padding(10)
-          .backgroundColor('#FFFFFF').borderRadius(12)
-        }
+        Text('滑动对比')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(0xFF263238);
+        Blank();
+        Text(`${this.selIdx + 1}/${Math.max(1, this.photos.length)}`)
+          .fontSize(14)
+          .fontColor(0xFF90A4AE);
       }
-    }
-  }
 
-  @Builder AlignToolbar() {
-    Column({ space: 10 }) {
-      Text('分割位置与缩放/平移（对齐在“对齐”模式下单指拖动后图，双指缩放）')
-        .fontSize(12).opacity(0.6)
       Column({ space: 12 }) {
-        // 分割滑杆（与组件内的滑杆保持同步）
-        Column() {
-          Text(`分割：${Math.floor(this.vm.split * 100)}%`).fontSize(12).opacity(0.7)
-          Slider({ value: this.vm.split, min: 0.02, max: 0.98, step: 0.01 })
-            .onChange((v: number) => this.vm.setSplit(v))
-        }.width('45%')
-        // 缩放
-        Column() {
-          Text(`缩放：${this.vm.zoom.toFixed(2)}x`).fontSize(12).opacity(0.7)
-          Slider({ value: this.vm.zoom, min: 0.5, max: 4.0, step: 0.01 })
-            .onChange((v: number) => this.vm.setZoom(v))
-        }.width('25%')
-        // 平移X
-        Column() {
-          Text(`X：${Math.floor(this.vm.offsetX)}vp`).fontSize(12).opacity(0.7)
-          Slider({ value: this.vm.offsetX, min: -600, max: 600, step: 1 })
-            .onChange((v: number) => { this.vm.offsetX = Math.floor(v); })
-        }.width('15%')
-        // 平移Y
-        Column() {
-          Text(`Y：${Math.floor(this.vm.offsetY)}vp`).fontSize(12).opacity(0.7)
-          Slider({ value: this.vm.offsetY, min: -600, max: 600, step: 1 })
-            .onChange((v: number) => { this.vm.offsetY = Math.floor(v); })
-        }.width('15%')
-      }
-    }
-    .padding({ left: 16, right: 16 })
-  }
+        if (this.photos.length === 0) {
+          Column() {
+            Text('📸')
+              .fontSize(56)
+              .opacity(0.3);
+            Text('还没有照片')
+              .fontSize(16)
+              .fontColor(0xFF90A4AE)
+              .margin({ top: 12 });
+            Text('点击"添加照片"开始记录成长')
+              .fontSize(14)
+              .fontColor(0xFFB0BEC5)
+              .margin({ top: 4 });
+          }
+          .width('100%')
+          .height(320)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(24);
+        } else {
+          Column({ space: 12 }) {
+            Stack() {
+              ForEach(this.photos, (p: LogPhoto) => {
+                Image(p.path)
+                  .width('100%')
+                  .height(320)
+                  .borderRadius(24)
+                  .objectFit(ImageFit.Cover)
+                  .opacity(this.selIdx === this.photos.indexOf(p) ? 1 : 0)
+                  .animation({
+                    duration: 300,
+                    curve: Curve.EaseInOut
+                  })
+              }, (p: LogPhoto) => p.id.toString());
 
-  @Builder SaveBar() {
-    Column({ space: 10 }) {
-      Row() {
-        Text('备注').fontSize(14).opacity(0.8)
-        Blank()
-      }
-      TextInput({ placeholder: '可填写拍摄时间/养护要点等...', text: this.vm.note })
-        .onChange((v: string) => { this.vm.note = v; })
-        .height(38).backgroundColor('#FFFFFF').borderRadius(10).padding({ left: 10, right: 10 })
-
-      Row({ space: 10 }) {
-        Button('保存对比卡').type(ButtonType.Capsule)
-          .backgroundColor(this.vm.canSave() ? '#26A69A' : '#BDBDBD')
-          .onClick(() => {
-            if (this.vm.canSave()) {
-              const p: GrowthPair | undefined = this.vm.savePair();
-              if (p) {
-                // animateTo({ duration: 200, curve: Curve.EaseOut }) { /* 微动效 */ }
+              if (this.photos[this.selIdx]) {
+                Column() {
+                  Text(this.labelOf(this.photos[this.selIdx]))
+                    .fontSize(14)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor(0xFFFFFFFF)
+                    .padding({
+                      left: 12,
+                      right: 12,
+                      top: 8,
+                      bottom: 8
+                    })
+                    .backgroundColor(0x99000000)
+                    .borderRadius(100);
+                }
+                .width('100%')
+                .alignItems(HorizontalAlign.End)
+                .padding(16);
               }
             }
-          })
-        Text(this.vm.canSave() ? '' : '请先选择前照与后照').fontSize(12).opacity(0.5)
-      }
-    }
-    .padding({ left: 16, right: 16 })
-  }
+            .width('100%')
+            .height(320)
+            .backgroundColor('#FFFFFF')
+            .borderRadius(24)
+            .shadow({
+              radius: 16,
+              color: '#15000000',
+              offsetX: 0,
+              offsetY: 8
+            });
 
-  @Builder PairsList() {
-    Column({ space: 10 }) {
-      Row() {
-        Text('已保存的对比卡').fontSize(16).fontWeight(FontWeight.Medium)
-        Blank()
-      }
-      if (this.vm.pairs.length === 0) {
-        Column() {
-          Text('暂无对比卡').fontSize(12).opacity(0.6)
-        }
-        .height(60).width('100%').justifyContent(FlexAlign.Center)
-        .backgroundColor('#FFFFFF').borderRadius(10)
-        .margin({ bottom: 16 })
-      } else {
-        List() {
-          ForEach(this.vm.pairs, (p: GrowthPair) => {
-            ListItem() {
-              Row({ space: 10 }) {
-                // 小缩略（并排 2 图）
-                Row() {
-                  Image(p.beforeUri).width(72).height(54).objectFit(ImageFit.Cover).borderRadius(6)
-                  Image(p.afterUri).width(72).height(54).objectFit(ImageFit.Cover).borderRadius(6).margin({ left: 6 })
-                }
-                Column({ space: 4 }) {
-                  Text(new Date(p.createdAt).toLocaleString()).fontSize(12).opacity(0.7)
-                  Text(p.note === '' ? '无备注' : p.note).fontSize(12).maxLines(2)
-                }
-                Blank()
+            Column({ space: 12 }) {
+              Row() {
+                Text('选择照片')
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(0xFF263238);
               }
-              .padding(10)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(12)
-            }
-          }, (p: GrowthPair) => p.id)
-        }
-        .margin({ bottom: 16 })
-      }
-    }
-    .padding({ left: 16, right: 16 })
-  }
 
-  // 选择图片
-  private async pickPhoto(isBefore: boolean): Promise<void> {
-    try {
-      this.addImageFileViewModel.selectAndProcessImages([],(newImage)=>{
-        // 返回为永久授权的 photoUris
-        const res = newImage[0]
-        if (newImage && res.path && res.path.length > 0) {
-          // const uri: string = res.photoUris[0];
-          if (isBefore) {
-            this.vm.setBefore(res.path);
-          } else {
-            this.vm.setAfter(res.path);
+              Slider({
+                value: this.selIdx,
+                min: 0,
+                max: Math.max(0, this.photos.length - 1),
+                step: 1,
+                style: SliderStyle.OutSet
+              })
+                .blockSize({
+                  width: 24,
+                  height: 24
+                })
+                .trackColor(0xFFFFE0B2)
+                .selectedColor(0xFFFF9800)
+                .blockColor(0xFFFF9800)
+                .showSteps(true)
+                .onChange((value: number) => {
+                  this.selIdx = Math.floor(value);
+                });
+
+              Row({ space: 8 }) {
+                Button('最早')
+                  .type(ButtonType.Normal)
+                  .fontSize(14)
+                  .fontColor(0xFFFF9800)
+                  .backgroundColor(0xFFFFF3E0)
+                  .height(36)
+                  .onClick(() => {
+                    this.selIdx = 0;
+                  });
+                Blank();
+                Button('最新')
+                  .type(ButtonType.Normal)
+                  .fontSize(14)
+                  .fontColor(0xFFFF9800)
+                  .backgroundColor(0xFFFFF3E0)
+                  .height(36)
+                  .onClick(() => {
+                    this.selIdx = this.photos.length - 1;
+                  });
+              }
+            }
+            .padding(16)
+            .backgroundColor(0xFFFFFFFF)
+            .borderRadius(20)
+            .shadow({
+              radius: 8,
+              color: '#10000000',
+              offsetX: 0,
+              offsetY: 2
+            });
           }
         }
-      },1)
-
-    } catch (e) {
-      // 选择被取消或权限问题，静默处理
+      }
     }
+    .padding({ left: 16, right: 16 });
+  }
+
+  @Builder
+  PreviewGrid() {
+    if (this.photos.length > 1) {
+      Column({ space: 12 }) {
+        Row() {
+          Text('全部照片')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(0xFF263238);
+          Blank();
+        }
+
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+          ForEach(this.photos, (p: LogPhoto) => {
+            Column({ space: 6 }) {
+              Image(p.path)
+                .width('100%')
+                .aspectRatio(1)
+                .borderRadius(16)
+                .objectFit(ImageFit.Cover);
+
+              Text(this.shortLabelOf(p))
+                .fontSize(12)
+                .fontColor(0xFF78909C)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis });
+            }
+            .width('30%')
+            .onClick(() => {
+              this.selIdx = this.photos.indexOf(p);
+            })
+            .borderRadius(16)
+            .border({
+              width: this.photos.indexOf(p) === this.selIdx ? 3 : 0,
+              color: 0xFFFF9800
+            })
+            .margin({ bottom: 12 });
+          }, (p: LogPhoto) => p.id.toString());
+        }
+      }
+      .padding(20)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(24)
+      .shadow({
+        radius: 12,
+        color: '#11000000',
+        offsetX: 0,
+        offsetY: 2
+      })
+      .margin({ left: 16, right: 16 });
+    }
+  }
+
+  @Builder
+  TimeTip() {
+    if (this.photos.length >= 2) {
+      Column({ space: 8 }) {
+        Row() {
+          Text('时间跨度')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(0xFF263238);
+          Blank();
+        }
+
+        Row() {
+          Text('从')
+            .fontSize(14)
+            .fontColor(0xFF78909C);
+          Text(this.shortLabelOf(this.photos[0]))
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(0xFFFF9800);
+          Text('到')
+            .fontSize(14)
+            .fontColor(0xFF78909C)
+            .margin({ left: 8 });
+          Text(this.shortLabelOf(this.photos[this.photos.length - 1]))
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(0xFFFF9800)
+            .margin({ left: 8 });
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Start);
+      }
+      .padding(20)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(24)
+      .shadow({
+        radius: 12,
+        color: '#11000000',
+        offsetX: 0,
+        offsetY: 2
+      })
+      .margin({ left: 16, right: 16 });
+    }
+  }
+
+  labelOf(p: LogPhoto): string {
+    const d: Date = new Date(p.createdAt);
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  }
+
+  shortLabelOf(p: LogPhoto): string {
+    const d: Date = new Date(p.createdAt);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+
+  private async loadPhotos(): Promise<void> {
+    if (!this.store || !this.plant) {
+      return;
+    }
+    const rs = await this.store.querySql(
+      `SELECT p.id, p.logId, p.path, p.thumbPath, p.createdAt
+     FROM ${RdbManager.T_LOG_PHOTO} p
+     JOIN ${RdbManager.T_LOG} l ON p.logId = l.id
+     WHERE l.plantId = ?
+     ORDER BY p.createdAt ASC`, [this.plant.id]
+    );
+    const arr: Array<LogPhoto> = [];
+    while (rs.goToNextRow()) {
+      arr.push(new LogPhoto(rs.getLong(0), rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4)));
+    }
+    rs.close();
+    this.photos = arr;
+    if (this.photos.length > 0 && this.selIdx >= this.photos.length) {
+      this.selIdx = this.photos.length - 1;
+    }
+  }
+
+  private async pickAndAddPhoto(): Promise<void> {
+    if (this.picking || !this.plant) {
+      return;
+    }
+    this.picking = true;
+    try {
+      await this.addImageFileViewModel.selectAndProcessImages([], async (newImages) => {
+        if (newImages.length > 0) {
+          const dir = await this.ensurePhotosDir();
+          for (let i: number = 0; i < newImages.length; i++) {
+            const srcUri: string = newImages[i].path;
+            const dstPath: string = await this.copyImageToAppFiles(srcUri, dir);
+            await this.insertTemporaryPhoto(this.plant!.id, dstPath);
+          }
+          await this.loadPhotos();
+          hilog.info(0x0000, 'GrowthCompare', 'Photos added successfully');
+        }
+      }, 12);
+    } catch (e) {
+      console.error(`pickAndAddPhoto error: ${(e as Error).message}`);
+    } finally {
+      this.picking = false;
+    }
+  }
+
+  private async ensurePhotosDir(): Promise<string> {
+    const base: string = this.ctx.filesDir;
+    const dir: string = `${base}/photos`;
+    try {
+      await fs.mkdir(dir);
+    } catch (e) {
+    }
+    return dir;
+  }
+
+  private genPhotoName(): string {
+    const d = new Date();
+    const y = d.getFullYear().toString();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    const h = d.getHours().toString().padStart(2, '0');
+    const mi = d.getMinutes().toString().padStart(2, '0');
+    const s = d.getSeconds().toString().padStart(2, '0');
+    const ms = d.getMilliseconds().toString().padStart(3, '0');
+    return `GC_${y}${m}${day}_${h}${mi}${s}_${ms}.jpg`;
+  }
+
+  private async copyImageToAppFiles(srcUri: string, dstDir: string): Promise<string> {
+    const name: string = this.genPhotoName();
+    const dstPath: string = `${dstDir}/${name}`;
+    if (srcUri.length >= 7 && srcUri.substring(0, 7) === 'file://') {
+      const srcPath: string = srcUri.substring(7);
+      try {
+        await fs.copyFile(srcPath, dstPath);
+        return dstPath;
+      } catch (_e) {
+        return srcPath;
+      }
+    }
+    return dstPath;
+  }
+
+  private ensureFileUri(path: string): string {
+    if (path.startsWith('file://')) {
+      return path;
+    }
+    return `file://${path}`;
+  }
+
+  private async insertTemporaryPhoto(plantId: number, filePath: string): Promise<void> {
+    if (!this.store) {
+      return;
+    }
+    const uri: string = this.ensureFileUri(filePath);
+    const now: number = Date.now();
+    const rs = await this.store.querySql(
+      `SELECT id FROM ${RdbManager.T_LOG} WHERE plantId = ? LIMIT 1`, [plantId]
+    );
+    let logId: number = 0;
+    if (rs.goToNextRow()) {
+      logId = rs.getLong(0);
+    } else {
+      const logValues: relationalStore.ValuesBucket = {
+        plantId: plantId,
+        note: '成长对比照片',
+        createdAt: now
+      };
+      logId = await this.store.insert(RdbManager.T_LOG, logValues) as number;
+    }
+    rs.close();
+
+    const photoValues: relationalStore.ValuesBucket = {
+      logId: logId,
+      path: uri,
+      thumbPath: uri,
+      createdAt: now
+    };
+    await this.store.insert(RdbManager.T_LOG_PHOTO, photoValues);
   }
 }

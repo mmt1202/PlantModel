@@ -120,7 +120,7 @@ export struct PlantCard {
         }
       }.width('100%').justifyContent(FlexAlign.SpaceBetween)
 
-      Row() {
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         Text('日志')
           .fontSize(12)
           .fontColor(0xFF1565C0)
@@ -135,7 +135,7 @@ export struct PlantCard {
           .onClick(() => {
             this.onOpenLogs()
           })
-          .margin({ right: 8 })
+          .margin({ right: 8, bottom: 8 })
 
         Text('指标')
           .fontSize(12)
@@ -151,9 +151,8 @@ export struct PlantCard {
           .onClick(() => {
             this.onOpenMetrics()
           })
-          .margin({ right: 8 })
+          .margin({ right: 8, bottom: 8 })
 
-        // ← 新增：模板
         Text('模板')
           .fontSize(12)
           .fontColor(0xFF8E24AA)
@@ -168,7 +167,7 @@ export struct PlantCard {
           .onClick(() => {
             this.onOpenTemplate()
           })
-          .margin({ right: 8 })
+          .margin({ right: 8, bottom: 8 })
 
         Text('新模板')
           .fontSize(12)
@@ -184,7 +183,8 @@ export struct PlantCard {
           .onClick(() => {
             this.onOpenTemplatenew(this.p.id)
           })
-          .margin({ right: 8 })
+          .margin({ right: 8, bottom: 8 })
+
         Text('盆栽')
           .fontSize(12)
           .fontColor(0xFF8E24AA)
@@ -199,7 +199,7 @@ export struct PlantCard {
           .onClick(() => {
             this.onOpenEmergencyAndRotate(this.p)
           })
-          .margin({ right: 8 })
+          .margin({ right: 8, bottom: 8 })
 
         Text('用量估算器')
           .fontSize(12)
@@ -215,9 +215,7 @@ export struct PlantCard {
           .onClick(() => {
             this.onOpenWaterEstimator(this.p)
           })
-          .margin({ right: 8 })
-
-
+          .margin({ right: 8, bottom: 8 })
       }
 
       // 进度条

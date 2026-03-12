@@ -35,7 +35,7 @@ export struct ToggleButtonComponent {
       .fontColor(this.params.selected ? '#FFFFFF' : '#333333')
       .width(80)
       .height(36)
-      .margin({  left: 4, right: 4 })
+      .margin({ left: 4, right: 4 })
       .onClick(() => {
         this.params.onToggle();
       })
@@ -67,10 +67,10 @@ export struct CompareSliderV2 {
   @Param compareMode: CompareMode = CompareMode.SPLIT; // 对比模式
 
   // 回调事件
-  @Event onSplitChange: (v: number) => void = (v: number) => {}; // 分割比例变化回调
-  @Event onAlignChange: (zoom: number, offsetX: number, offsetY: number) => void = 
-    (zoom: number, offsetX: number, offsetY: number) => {}; // 对齐参数变化回调
-  @Event onModeChange: (mode: CompareMode) => void = (mode: CompareMode) => {}; // 模式变化回调
+  @Event onSplitChange: (v: number) => void = (v: number) => { }; // 分割比例变化回调
+  @Event onAlignChange: (zoom: number, offsetX: number, offsetY: number) => void =
+    (zoom: number, offsetX: number, offsetY: number) => { }; // 对齐参数变化回调
+  @Event onModeChange: (mode: CompareMode) => void = (mode: CompareMode) => { }; // 模式变化回调
 
   // 本地状态
   @Local containerW: number = 0;            // 容器宽度
@@ -79,7 +79,7 @@ export struct CompareSliderV2 {
   @Local fadeProgress: number = 0;          // 淡入淡出进度
 
   build() {
-    Column({space:10}) {
+    Column({ space: 10 }) {
       // 显示区域
       Stack({ alignContent: Alignment.Center }) {
         // 底图：before
@@ -116,22 +116,22 @@ export struct CompareSliderV2 {
         this.containerW = newArea.width as number;
         this.containerH = newArea.height as number;
       })
-      .height(300)
-      .width('100%')
-      .backgroundColor('#111111')
-      .borderRadius(16)
-      .clip(true)
-      .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 2 })
-      // 长按预览“仅前图”
-      .gesture(
-        LongPressGesture({ repeat: false })
-          .onAction((e) => {
-            if (e && e.repeat === false) {
-              this.previewBeforeOnly = true;
-            }
-          })
-          .onActionEnd(() => { this.previewBeforeOnly = false; })
-      )
+        .height(300)
+        .width('100%')
+        .backgroundColor('#111111')
+        .borderRadius(16)
+        .clip(true)
+        .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 2 })
+        // 长按预览“仅前图”
+        .gesture(
+          LongPressGesture({ repeat: false })
+            .onAction((e) => {
+              if (e && e.repeat === false) {
+                this.previewBeforeOnly = true;
+              }
+            })
+            .onActionEnd(() => { this.previewBeforeOnly = false; })
+        )
 
       // 显示区域2
       Stack({ alignContent: Alignment.Center }) {
@@ -169,33 +169,33 @@ export struct CompareSliderV2 {
         this.containerW = newArea.width as number;
         this.containerH = newArea.height as number;
       })
-      .height(300)
-      .width('100%')
-      .backgroundColor('#111111')
-      .borderRadius(16)
-      .clip(true)
-      .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 2 })
-      // 长按预览“仅前图”
-      .gesture(
-        LongPressGesture({ repeat: false })
-          .onAction((e) => {
-            if (e && e.repeat === false) {
-              this.previewBeforeOnly = true;
-            }
-          })
-          .onActionEnd(() => { this.previewBeforeOnly = false; })
-      )
+        .height(300)
+        .width('100%')
+        .backgroundColor('#111111')
+        .borderRadius(16)
+        .clip(true)
+        .shadow({ radius: 8, color: '#22000000', offsetX: 0, offsetY: 2 })
+        // 长按预览“仅前图”
+        .gesture(
+          LongPressGesture({ repeat: false })
+            .onAction((e) => {
+              if (e && e.repeat === false) {
+                this.previewBeforeOnly = true;
+              }
+            })
+            .onActionEnd(() => { this.previewBeforeOnly = false; })
+        )
 
       // 对比模式切换器
       this.ModeSelector();
 
       // 下方“精确滑杆”同步（可选；由父级决定是否显示，这里默认显示以增强可控性）
       if (this.compareMode === CompareMode.SPLIT || this.compareMode === CompareMode.FADE) {
-        Slider({ 
-          value: this.compareMode === CompareMode.FADE ? this.fadeProgress : this.split, 
-          min: 0.02, 
-          max: 0.98, 
-          step: 0.01 
+        Slider({
+          value: this.compareMode === CompareMode.FADE ? this.fadeProgress : this.split,
+          min: 0.02,
+          max: 0.98,
+          step: 0.01
         })
           .onChange((v: number) => {
             if (this.compareMode === CompareMode.FADE) {
@@ -226,17 +226,17 @@ export struct CompareSliderV2 {
         .scale({ x: this.zoom, y: this.zoom, centerX: '50%', centerY: '50%' })
         .translate({ x: this.offsetX, y: this.offsetY })
         .clip(true)
-          // 对齐模式：单指拖动平移 after 图
+        // 对齐模式：单指拖动平移 after 图
         .gesture(
           this.alignMode
             ? PanGesture({ fingers: 1 })
-            .onActionUpdate((e) => {
-              // e.offsetX / e.offsetY 为增量（vp）
-              this.onAlignChange(this.zoom, this.offsetX + e.offsetX, this.offsetY + e.offsetY);
-            })
+              .onActionUpdate((e) => {
+                // e.offsetX / e.offsetY 为增量（vp）
+                this.onAlignChange(this.zoom, this.offsetX + e.offsetX, this.offsetY + e.offsetY);
+              })
             : PanGesture({ fingers: 1 }) // 非对齐模式，不消费手势
         )
-          // 双指缩放
+        // 双指缩放
         .gesture(
           PinchGesture()
             .onActionUpdate((e) => {
@@ -250,8 +250,8 @@ export struct CompareSliderV2 {
         )
     }
     .width(this.overlayWidth())
-    .height(300)
-    .clip(true)
+      .height(300)
+      .clip(true)
   }
 
   // 滑动模式内容
@@ -263,9 +263,9 @@ export struct CompareSliderV2 {
       .height(300)
       .objectFit(ImageFit.Cover)
       .scale({ x: this.zoom, y: this.zoom, centerX: '50%', centerY: '50%' })
-      .translate({ 
-        x: this.offsetX + (this.split - 0.5) * this.containerW, 
-        y: this.offsetY 
+      .translate({
+        x: this.offsetX + (this.split - 0.5) * this.containerW,
+        y: this.offsetY
       })
       .clip(true)
       // 左右滑动切换
@@ -365,7 +365,7 @@ export struct CompareSliderV2 {
       });
     }
     .justifyContent(FlexAlign.Center)
-    .margin({ top: 15, bottom: 5 })
+      .margin({ top: 15, bottom: 5 })
   }
 
   private overlayWidth(): number {
@@ -405,20 +405,20 @@ export struct CompareSliderV2 {
       }.width(28)
     }
     .width(28)
-    .height('100%')
-    .position({ x: this.overlayWidth() - 14, y: 0 }) // 让中线居中于裁剪边缘
-    .gesture(
-      PanGesture({ fingers: 1 })
-        .onActionUpdate((e) => {
-          if (this.containerW > 0) {
-            const nx: number = this.overlayWidth() + e.offsetX;
-            let ns: number = nx / this.containerW;
-            if (ns < 0.02) { ns = 0.02; }
-            if (ns > 0.98) { ns = 0.98; }
-            this.onSplitChange(ns);
-          }
-        })
-    )
+      .height('100%')
+      .position({ x: this.overlayWidth() - 14, y: 0 }) // 让中线居中于裁剪边缘
+      .gesture(
+        PanGesture({ fingers: 1 })
+          .onActionUpdate((e) => {
+            if (this.containerW > 0) {
+              const nx: number = this.overlayWidth() + e.offsetX;
+              let ns: number = nx / this.containerW;
+              if (ns < 0.02) { ns = 0.02; }
+              if (ns > 0.98) { ns = 0.98; }
+              this.onSplitChange(ns);
+            }
+          })
+      )
   }
 
   // 三阶两横网格（九宫格）
@@ -442,6 +442,6 @@ export struct CompareSliderV2 {
       }
     }
     .width('100%')
-    .height('100%')
+      .height('100%')
   }
 }

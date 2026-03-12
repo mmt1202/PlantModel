@@ -31,6 +31,10 @@ import { EmergencyAndRotatePage } from './EmergencyAndRotatePage'
 import { PlantDetail } from './PlantDetail'
 import { MixPlannerPage } from './MixPlannerPage'
 import { WaterEstimatorPage } from './WaterEstimatorPage'
+import { TextCollapseTest } from './EText'
+import { LightExposurePage } from './LightExposurePage'
+import { GrowthComparePage } from './GrowthComparePage'
+import { GrowthIndicatorPage } from './GrowthIndicatorPage'
 
 @Entry
 @ComponentV2
@@ -848,7 +852,7 @@ struct Index {
                 this.openPanel(p.id, p)
               },
               onOpenDetail: async (p: Plant) => {
-                this.pageStack.pushPathByName('PlantDetail', p.id, (PopInfo) => {
+                this.pageStack.pushPathByName('PlantDetail', p, (PopInfo) => {
                   this.reloadAll()
                 })
               },
@@ -897,7 +901,7 @@ struct Index {
                 this.Header()
               },
             })
-          }.tabBar(this.TabChip('植物', 0))
+          }.tabBar(this.TabChip('植物', '🌱', 0))
 
           TabContent() {
             TaskListPage({
@@ -913,7 +917,7 @@ struct Index {
                 this.confirmVisible = true
               }
             })
-          }.tabBar(this.TabChip('任务', 1))
+          }.tabBar(this.TabChip('任务', '📋', 1))
 
           TabContent() {
           }.tabBar(this.Fab(() => {
@@ -947,7 +951,7 @@ struct Index {
                 this.confirmVisible = true
               }
             })
-          }.tabBar(this.TabChip('日历', 3))
+          }.tabBar(this.TabChip('日历', '📅', 3))
 
           TabContent() {
             StatsPage({
@@ -965,7 +969,7 @@ struct Index {
                 this.pageStack.pushPathByName('MixPlannerPage', p)
               }
             })
-          }.tabBar(this.TabChip('统计', 4))
+          }.tabBar(this.TabChip('统计', '📊', 4))
 
         }
         .barWidth('100%')
@@ -1154,6 +1158,7 @@ struct Index {
             }
           })
         }
+        // TextCollapseTest()
       }
       .width('100%').height('100%')
       .linearGradient({
@@ -1175,9 +1180,13 @@ struct Index {
     } else if (name === "EmergencyAndRotatePage") {
       EmergencyAndRotatePage()
     } else if (name === 'LightExposurePage') {
-
+      LightExposurePage()
+    } else if (name === 'GrowthComparePage') {
+      GrowthComparePage()
+    } else if (name === 'GrowthIndicatorPage') {
+      GrowthIndicatorPage({ pageStack: this.pageStack })
     } else if (name === 'PlantDetail') {
-      PlantDetail()
+      PlantDetail({ pageStack: this.pageStack })
     } else if (name === 'MixPlannerPage') {
       MixPlannerPage()
     } else if (name === 'WaterEstimatorPage') {
@@ -1249,27 +1258,28 @@ struct Index {
   }
 
   @Builder
-  TabChip(text: string, idx: number) {
-    Text(text)
-      .fontSize(14)
-      .fontWeight(this.tabBarIndex === idx ? FontWeight.Medium : FontWeight.Regular)
-      .fontColor(this.tabBarIndex === idx ? 0xFF1B5E20 : 0xFF607D8B)
-      .padding({
-        left: 14,
-        right: 14,
-        top: 8,
-        bottom: 8
+  TabChip(text: string, icon: string, idx: number) {
+    Column({ space: 4 }) {
+      Text(icon)
+        .fontSize(22)
+        .fontColor(this.tabBarIndex === idx ? 0xFF4CAF50 : 0xFF90A4AE)
+      Text(text)
+        .fontSize(12)
+        .fontWeight(this.tabBarIndex === idx ? FontWeight.Medium : FontWeight.Regular)
+        .fontColor(this.tabBarIndex === idx ? 0xFF4CAF50 : 0xFF90A4AE)
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+
+    .onClick(() => {
+      animateTo({ duration: 160, curve: Curve.EaseInOut }, () => {
+        if (idx !== 2) {
+          this.tabBarIndex = idx
+          this.tabsController.changeIndex(this.tabBarIndex)
+        }
       })
-      .borderRadius(16)
-      .backgroundColor(this.tabBarIndex === idx ? 0xFFE8F5E9 : 0xFFFFFFFF)
-      .onClick(() => {
-        animateTo({ duration: 160, curve: Curve.EaseInOut }, () => {
-          if (idx !== 2) {
-            this.tabBarIndex = idx
-            this.tabsController.changeIndex(this.tabBarIndex)
-          }
-        })
-      })
+    })
   }
 
   @Builder
