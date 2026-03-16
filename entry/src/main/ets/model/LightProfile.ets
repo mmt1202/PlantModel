@@ -3,13 +3,14 @@
 
 import { LightLevel } from './LightTypes';
 
+@ObservedV2
 export default class LightProfile {
-  plantId: number = 0;
-  targetLuxMinLow: number = 12000;   // 达标下限（lux-minutes）
-  targetLuxMinHigh: number = 20000;  // 达标上限（满分参考）
-  highLuxThreshold: number = 25000;  // 视为“过强”的阈值（手动近似）
-  preferredLevel: LightLevel = LightLevel.MID;
-  updatedAt: number = 0;
+  @Trace plantId: number = 0;
+  @Trace targetLuxMinLow: number = 12000;   // 达标下限（lux-minutes）
+  @Trace targetLuxMinHigh: number = 20000;  // 达标上限（满分参考）
+  @Trace highLuxThreshold: number = 25000;  // 视为“过强”的阈值（手动近似）
+  @Trace preferredLevel: LightLevel = LightLevel.MID;
+  @Trace updatedAt: number = 0;
 
   constructor(plantId: number) {
     this.plantId = plantId;

@@ -3,16 +3,17 @@
 
 import { LightLevel, genId } from './LightTypes';
 
+@ObservedV2
 export default class ExposureSession {
-  id: string = '';
-  plantId: number = 0;
-  startAt: number = 0;
-  endAt: number = 0;
-  durationMin: number = 0;
-  source: string = 'MANUAL';
-  level: LightLevel = LightLevel.MID;
-  luxMinutes: number = 0;
-  note: string = '';
+  @Trace id: string = '';
+  @Trace plantId: number = 0;
+  @Trace startAt: number = 0;
+  @Trace endAt: number = 0;
+  @Trace durationMin: number = 0;
+  @Trace source: string = 'MANUAL';
+  @Trace level: LightLevel = LightLevel.MID;
+  @Trace luxMinutes: number = 0;
+  @Trace note: string = '';
 
   constructor(plantId: number) {
     this.id = genId('SES');

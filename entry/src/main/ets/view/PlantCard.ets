@@ -26,8 +26,36 @@ export struct PlantCard {
   @Local logs: Array<PlantLog> = []
   @Local photos: Array<LogPhoto> = []
 
+  @Local isLighting: boolean = false
+  @Local lightOpacity: number = 0.3
+
   async aboutToAppear() {
     await this.loadLogsWithPhotos(this.p.id)
+    this.checkLightingStatus()
+  }
+
+  private checkLightingStatus() {
+    this.isLighting = AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false
+    if (this.isLighting) {
+      this.startBreathing()
+    }
+  }
+
+  private startBreathing() {
+    animateTo({ duration: 1000, iterations: -1, curve: Curve.EaseInOut, playMode: PlayMode.Alternate }, () => {
+      this.lightOpacity = 1.0
+    })
+  }
+
+  @Builder
+  BreathingOverlay() {
+    Column()
+      .width('100%')
+      .height('100%')
+      .borderRadius(20)
+      .backgroundColor('#FFFF00')
+      .opacity(this.lightOpacity)
+      .hitTestBehavior(HitTestMode.None)
   }
 
   private typeColor(t: string): ResourceColor {
@@ -79,6 +107,8 @@ export struct PlantCard {
   }
 
   build() {
+    // const lighting = AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false
+
     Column({ space: 10 }) {
       Row() {
         // 头像圆片
@@ -96,12 +126,25 @@ export struct PlantCard {
         .width(40)
         .height(40)
         .borderRadius(20)
-        .backgroundColor(0xFF66BB6A)
+        // .backgroundColor(0xFF66BB6A)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
+        .border(AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false ? { width: 2, color: '#FFEB3B' } : undefined)
+        .shadow(AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false ? { radius: 10, color: '#FFFF00', offsetX: 0, offsetY: 0 } : undefined)
+        .overlay(AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false ? this.BreathingOverlay() : undefined)
 
-        Column() {
-          Text(this.p.name).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+        Column({ space: 4 }) {
+          Row({ space: 8 }) {
+            Text(this.p.name).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
+            if (AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false) {
+              Text("☀️ 光照中")
+                .fontSize(10)
+                .fontColor(0xFFFFFFFF)
+                .backgroundColor(0xFFFFA000)
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                .borderRadius(8)
+            }
+          }
           Text(`${this.p.species} · ${this.p.location}`).fontSize(12).fontColor(0xFF607D8B).margin({ top: 2 })
         }.margin({ left: 10 })
 
@@ -266,21 +309,21 @@ export struct PlantCard {
   }
 
   @Builder
-  QuickChip(text: string) {
-    Text(text)
+  QuickChip(type: string) {
+    Text(type)
       .fontSize(12)
-      .fontColor(0xFF263238)
+      .fontColor(0xFFFFFFFF)
+      .backgroundColor(this.typeColor(type))
       .padding({
-        left: 10,
-        right: 10,
+        left: 12,
+        right: 12,
         top: 6,
         bottom: 6
       })
       .borderRadius(12)
-      .backgroundColor(this.typeColor(text))
-      .onClick(() => {
-        this.onQuickAdd(text)
-      })
       .margin({ right: 8 })
+      .onClick(() => {
+        this.onQuickAdd(type)
+      })
   }
 }

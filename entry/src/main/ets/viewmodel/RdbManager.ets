@@ -13,6 +13,8 @@ export class RdbManager {
   static readonly T_LOG_PHOTO: string = 'log_photo'
   static readonly T_TEMPLATE: string = 'care_template'
   static readonly T_RULE: string = 'care_rule'
+  static readonly T_LIGHT_PROFILE: string = 'light_profile'
+  static readonly T_EXPOSURE_SESSION: string = 'exposure_session'
 
   static getInstance(): RdbManager {
     if (!RdbManager.instance) {
@@ -98,6 +100,32 @@ export class RdbManager {
     horizonDays INTEGER NOT NULL
   )`
     )
+
+    // ===== LIGHT EXPOSURE (光照) =====
+    // 光照配置 (plantId 为主键，每植物一条)
+    await this.rdbStore.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_LIGHT_PROFILE}(
+        plantId INTEGER PRIMARY KEY,
+        targetLuxMinLow INTEGER NOT NULL,
+        targetLuxMinHigh INTEGER NOT NULL,
+        preferredLevel INTEGER NOT NULL,
+        updatedAt INTEGER
+      )`
+    )
+    // 光照会话 (id 为主键，endAt=0 表示进行中)
+    await this.rdbStore.executeSql(
+      `CREATE TABLE IF NOT EXISTS ${RdbManager.T_EXPOSURE_SESSION}(
+        id TEXT PRIMARY KEY,
+        plantId INTEGER NOT NULL,
+        startAt INTEGER NOT NULL,
+        endAt INTEGER DEFAULT 0,
+        durationMin INTEGER DEFAULT 0,
+        level INTEGER NOT NULL,
+        luxMinutes INTEGER DEFAULT 0,
+        note TEXT
+      )`
+    )
+
     // ===== TASK（任务）=====
     // 唯一：同一植物 + 类型 + 计划日 不重复
     await this.rdbStore.executeSql(
@@ -240,5 +268,23 @@ export class RdbManager {
       intervalDays: 30,
       horizonDays: 120
     })
+  }
+  // 查询所有活跃的光照会话 (endAt=0)
+  async getActiveLightSessions(): Promise<Map<number, boolean>> {
+    const map = new Map<number, boolean>()
+    if (!this.rdbStore) return map
+
+    try {
+      const rs = await this.rdbStore.querySql(
+        `SELECT DISTINCT plantId FROM ${RdbManager.T_EXPOSURE_SESSION} WHERE endAt = 0`, []
+      )
+      while (rs.goToNextRow()) {
+        map.set(rs.getLong(0), true)
+      }
+      rs.close()
+    } catch (e) {
+      // 失败降级：返回空 map
+    }
+    return map
   }
 }

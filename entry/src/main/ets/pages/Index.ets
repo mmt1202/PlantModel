@@ -151,6 +151,17 @@ struct Index {
     }
     rs.close()
     this.plants = items
+
+    // 顺便刷新光照状态
+    await this.refreshActiveSessions()
+  }
+
+  private async refreshActiveSessions(): Promise<void> {
+    const activeMap = await this.RdbManager.getActiveLightSessions()
+    // 遍历所有 plant，设置状态
+    this.plants.forEach(p => {
+      AppStorage.setOrCreate<boolean>(`lighting_${p.id}`, activeMap.has(p.id))
+    })
   }
 
   private async loadTasks(): Promise<void> {

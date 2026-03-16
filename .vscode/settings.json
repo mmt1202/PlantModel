@@ -1,0 +1,6 @@
+{
+    "ets.sdkPath": "d:\\DevEco Studio\\sdk\\default\\openharmony",
+    "ets.hmsPath": "d:\\DevEco Studio\\sdk\\default\\hms",
+    "typescript.validate.enable": false,
+    "typescript.suggest.enabled": false
+}

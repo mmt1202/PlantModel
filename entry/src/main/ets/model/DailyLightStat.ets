@@ -3,15 +3,16 @@
 
 import { LightStatus } from './LightTypes';
 
+@ObservedV2
 export default class DailyLightStat {
-  id: string = '';
-  plantId: number = 0;
-  date: string = '';        // YYYY-MM-DD
-  luxMinutes: number = 0;   // 当日累积
-  durationMin: number = 0;  // 当日总时长
-  maxLux: number = 0;       // 手动模式恒为 0（保留字段）
-  rate: number = 0;         // 0..1
-  status: LightStatus = LightStatus.OK;
+  @Trace id: string = '';
+  @Trace plantId: number = 0;
+  @Trace date: string = '';        // YYYY-MM-DD
+  @Trace luxMinutes: number = 0;   // 当日累积
+  @Trace durationMin: number = 0;  // 当日总时长
+  @Trace maxLux: number = 0;       // 手动模式恒为 0（保留字段）
+  @Trace rate: number = 0;         // 0..1
+  @Trace status: LightStatus = LightStatus.OK;
 
   constructor(id: string) {
     this.id = id;
