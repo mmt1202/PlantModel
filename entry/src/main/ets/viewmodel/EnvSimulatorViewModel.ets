@@ -1,7 +1,6 @@
 // /viewmodel/EnvSimulatorViewModel.ets
-// 环境模拟器视图模型（V2）：管理 light/soil/humidity，提供计算属性与快照导出
-// 不直接持久化，仅返回 snapshot 供调用者决定是否写入数据库
-
+// 环境模拟器视图模型（V2）：管理 light/soil/humidity，提供派生展示状态与快照导出
+// 不直接持久化，只返回 snapshot 供调用方决定是否写入数据库
 
 import {
   EnvParam, Snapshot,
@@ -10,40 +9,42 @@ import {
 
 @ObservedV2
 export class EnvSimulatorViewModel {
-  // 绑定植物 ID（由页面通过 Param 或构造传入）
+  // 绑定植物 ID，由页面通过 Param 或构造时传入。
   plantId: string = '';
 
-  // 三个主要参数（0..100）
+  // 三个主参数都约束在 0..100，用来模拟光照、土壤湿度与空气湿度。
   light: number = 50;
   soil: number = 50;
   humidity: number = 50;
 
-  // 额外状态（UI 友好）
+  // UI 友好的附加状态。
   lastSnapshot: Snapshot | null = null;
   isAnimating: boolean = false;
 
   constructor(plantId: string) {
     this.plantId = plantId ? plantId : 'PLANT_DEMO';
-    // 默认可以尝试恢复上次设置（若你实现 Prefs）
-    // 这里不自动读取持久化，外部调用方可以通过 vm.setXXX 恢复
   }
 
-  // setters（会触发视图刷新）
+  // 模拟器是纯计算型 VM：参数变化即刷新派生状态，不依赖数据库。
   setLight(v: number): void {
     this.light = clamp(v, 0, 100);
   }
+
   setSoil(v: number): void {
     this.soil = clamp(v, 0, 100);
   }
+
   setHumidity(v: number): void {
     this.humidity = clamp(v, 0, 100);
   }
 
   reset(): void {
-    this.light = 50; this.soil = 50; this.humidity = 50;
+    this.light = 50;
+    this.soil = 50;
+    this.humidity = 50;
   }
 
-  // 动态计算属性（纯函数）
+  // 以下 getter 都是纯派生值，页面可以直接消费而不必重复拼展示文案。
   get leafTone(): string {
     return leafColorBy(this.light, this.soil);
   }
@@ -60,7 +61,7 @@ export class EnvSimulatorViewModel {
     return recommendationBy(this.light, this.soil, this.humidity);
   }
 
-  // 生成可持久化快照对象（调用方可把此对象写进 DB）
+  // snapshot 是当前模拟状态的快照，是否入库由页面或调用方决定。
   saveSnapshot(): Snapshot {
     const s: Snapshot = {
       plantId: this.plantId,
@@ -77,11 +78,16 @@ export class EnvSimulatorViewModel {
     return s;
   }
 
-  // 小动画开关（页面可在动画期间禁用滑杆）
-  startAnim() { this.isAnimating = true; }
-  stopAnim() { this.isAnimating = false; }
+  // 页面可以在动画期间用这个开关禁用某些交互。
+  startAnim() {
+    this.isAnimating = true;
+  }
 
-  // 一个辅助：把 snapshot 格式化为可存 DB 的 note 字符串
+  stopAnim() {
+    this.isAnimating = false;
+  }
+
+  // 提供一个轻量序列化出口，方便把模拟结果塞进日志或备注字段。
   snapshotToNote(s: Snapshot): string {
     return JSON.stringify({
       plantId: s.plantId,
@@ -94,7 +100,6 @@ export class EnvSimulatorViewModel {
   }
 }
 
-// 小帮助函数
 function clamp(v: number, lo: number, hi: number): number {
   if (v < lo) return lo;
   if (v > hi) return hi;

@@ -170,6 +170,7 @@ export struct StatsPage {
     return c
   }
 
+  // 统计最近 30 天谁最活跃，本质上是按植物聚合 doneAt 落在窗口内的完成任务数。
   private topPlantName(): string {
     const from: string = this.isoNDaysAgo(29)
     let maxCnt: number = 0;
@@ -246,6 +247,7 @@ export struct StatsPage {
     return arr
   }
 
+  // 图表数据与 weekLabels 一一对应，展示最近 7 天每天完成的任务数。
   private weekDoneCounts(): Array<number> {
     const isoArr: Array<string> = []
     let i: number = 6
@@ -272,6 +274,7 @@ export struct StatsPage {
     return out
   }
 
+  // 每次页面进入、渲染或用户主动刷新时，重新把聚合结果写回图表配置。
   private refreshWeekOption(): void {
     this.weekOption.setVal({
       title: {
@@ -288,6 +291,7 @@ export struct StatsPage {
 
   build() {
     NavDestination() {
+      // 统计页是只读聚合视图，不直接修改数据；刷新入口统一回调给首页重载。
       Scroll() {
         Column({ space: 20 }) {
           this.Header()
@@ -335,6 +339,7 @@ export struct StatsPage {
 
   @Builder
   OverviewCards() {
+    // 这一组卡片展示的是任务体系的几个核心健康指标，全部基于内存中的 plants/tasks 即时计算。
     Column({ space: 12 }) {
       Row() {
         Text('总体概览').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
@@ -415,6 +420,7 @@ export struct StatsPage {
 
   @Builder
   WeekChartCard() {
+    // 周趋势图只读取缓存好的 option，避免在 Builder 内频繁重新拼图表数据。
     Column({ space: 16 }) {
       Row() {
         Text('近7天趋势').fontSize(18).fontWeight(FontWeight.Medium).fontColor(0xFF263238)

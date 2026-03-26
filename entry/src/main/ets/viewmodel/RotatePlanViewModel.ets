@@ -30,6 +30,7 @@ export class RotatePlanViewModel {
     this.syncFromPlan();
   }
 
+  // VM 暴露给页面的是扁平字段，底层仍委托 RotatePlan 负责计算下次到期时间。
   private syncFromPlan(): void {
     this.enabled = this.plan.enabled;
     this.intervalDays = this.plan.intervalDays;
@@ -49,6 +50,7 @@ export class RotatePlanViewModel {
     this.plan.intervalDays = nv;
   }
 
+  // 每次打卡都会同步刷新 lastRotatedAt，并把这次动作追加进历史列表头部。
   markRotatedNow(): void {
     const now: number = Date.now();
     this.plan.markRotated(now);
@@ -59,6 +61,7 @@ export class RotatePlanViewModel {
     this.logs = next;
   }
 
+  // 到期判断统一走 plan，避免页面自己重复推导周期逻辑。
   nextDueAt(): number {
     return this.plan.nextDueAt(Date.now());
   }

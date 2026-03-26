@@ -18,6 +18,7 @@ struct SavePixelMapToAlbum {
   private context: Context = this.getUIContext().getHostContext()!;
 
   async aboutToAppear() {
+    // 这个页面更像一个独立示例：加载 rawfile 里的图片，再演示如何保存到系统相册。
     const resourceMgr: resourceManager.ResourceManager = this.context.resourceManager;
     // "beer.jpeg" is the name of the image file under the rawfile directory, which can be modified and used according to your own needs
     const fileData: Uint8Array = await resourceMgr.getRawFileContent('beer.jpeg');
@@ -28,6 +29,7 @@ struct SavePixelMapToAlbum {
   }
 
   async savePixelMapToAlbum() {
+    // 保存流程分三步：申请媒体资产 URI、把 PixelMap 编码成 JPEG、写入册目录。
     // Obtain the save path of the album
     let helper = photoAccessHelper.getPhotoAccessHelper(this.context);
     let uri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpeg');
@@ -54,6 +56,7 @@ struct SavePixelMapToAlbum {
   }
 
   build() {
+    // UI 很简单，只保留预览图和系统 SaveButton，重点在前面的媒体保存流程示例。
     Row() {
       Column() {
         Image(this.pixel)

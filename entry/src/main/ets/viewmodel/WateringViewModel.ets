@@ -40,7 +40,7 @@ export class WateringViewModel {
     this.isAnimating = false;
   }
 
-  // 记录一次浇水（不直接写 DB；返回 WaterRecord）
+  // 记录一次浇水时只更新内存态；真正是否持久化由页面或上层服务决定。
   recordWater(amountMl: number): WaterRecord {
     const amt: number = Math.max(0, Math.round(amountMl));
     const rec: WaterRecord = new WaterRecord(genId('W'), this.plantId, this.mode, amt);
@@ -62,7 +62,7 @@ export class WateringViewModel {
     return this.recentTimes[0];
   }
 
-  // 计算并更新 streakDays（连续天数）
+  // 连续天数按最近记录倒推，并容忍少量时间误差，避免跨天边界造成误判。
   private updateStreak(): void {
     if (this.recentTimes.length === 0) { this.streakDays = 0; return; }
     let days: number = 1;

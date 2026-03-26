@@ -38,6 +38,7 @@ export class GrowthCompareViewModel {
     this.afterUri = uri;
   }
 
+  // before/after 只是当前工作区状态，保存前允许继续交换、缩放和位移微调。
   swap(): void {
     const tmp: string = this.beforeUri;
     this.beforeUri = this.afterUri;
@@ -57,6 +58,7 @@ export class GrowthCompareViewModel {
     this.zoom = nz;
   }
 
+  // 对齐拖拽做了范围限制，避免图片被拖到过远位置后难以找回。
   panBy(dx: number, dy: number): void {
     // 限个相对范围，避免飘太远
     const maxPan: number = 600;
@@ -88,6 +90,7 @@ export class GrowthCompareViewModel {
     return this.beforeUri !== '' && this.afterUri !== '';
   }
 
+  // 保存时只固化图片关系和备注，不把临时对齐参数做成复杂持久化模型。
   savePair(): GrowthPair | undefined {
     if (!this.canSave()) {
       return undefined;

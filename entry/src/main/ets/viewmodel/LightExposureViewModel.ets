@@ -27,6 +27,7 @@ export class LightExposureViewModel {
   }
 
   // 初始化：从 DB 加载数据
+  // 初始化时把 profile、历史 session 和当天统计一次性恢复到内存，页面后续只和 VM 交互。
   async init(): Promise<void> {
     if (!this.rdbManager.rdbStore) {
       return;
@@ -96,6 +97,7 @@ export class LightExposureViewModel {
   }
 
   // 开始手动会话
+  // 开始手动会话：先写数据库里的进行中记录，再同步内存态和 AppStorage 标记。
   async startManual(level: LightLevel): Promise<void> {
     if (this.hasActive) {
       return;
@@ -126,6 +128,7 @@ export class LightExposureViewModel {
   }
 
   // 结束当前会话
+  // 结束当前会话时会反算持续分钟数和 luxMinutes，然后只增量刷新当天统计。
   async endManualWithAutoDuration(): Promise<void> {
     if (!this.hasActive || this.activeSession === undefined) {
       return;
@@ -159,6 +162,7 @@ export class LightExposureViewModel {
   }
 
   // 直接补记
+  // 直接补记用于补录历史/刚完成的光照，不会进入“进行中”状态。
   async addManualInstant(level: LightLevel, minutes: number): Promise<void> {
     const endAt: number = Date.now();
     const s: ExposureSession = ExposureSession.createInstant(this.plantId, level, minutes, endAt);
@@ -182,6 +186,7 @@ export class LightExposureViewModel {
   }
 
   // 删除记录
+  // 删除记录后需要顺手纠正 active 状态和对应日期的聚合结果。
   async deleteSession(id: string): Promise<void> {
     if (this.rdbManager.rdbStore) {
       const pred = new relationalStore.RdbPredicates(RdbManager.T_EXPOSURE_SESSION);
@@ -212,6 +217,7 @@ export class LightExposureViewModel {
   }
 
   // 重建所有每日统计
+  // 从 sessions 全量重建每日统计，适合初始化或需要兜底校正时使用。
   private rebuildDailyStats(): void {
     const map = new Map<string, DailyLightStat>();
     
@@ -243,6 +249,7 @@ export class LightExposureViewModel {
     this.dailyStats = arr;
   }
 
+  // 增量更新某一天的统计，避免每次结束会话都重扫全部历史。
   private updateDailyStatFor(day: Date): void {
     // 简单起见，直接重新计算当天的
     // 也可以复用 rebuildDailyStats 的逻辑，但为了性能只更新一天
@@ -291,6 +298,7 @@ export class LightExposureViewModel {
   }
 
   // 获取今日达标（0..100）
+  // 今日达标率会把“已完成历史 + 正在进行中的实时贡献”一起算进去。
   get todayRatePercent(): number {
     // 依赖 tick，确保每秒更新
     const _ = this.tick;
@@ -341,6 +349,7 @@ export class LightExposureViewModel {
   }
 
   // 最近 7 天
+  // 最近 7 天的数据专门服务图表展示；今天如果有 active session，会临时叠加实时值。
   get sevenDays(): DailyLightStat[] {
     const result: DailyLightStat[] = [];
     const base: Date = new Date();
@@ -399,6 +408,7 @@ export class LightExposureViewModel {
   }
 
   // 更新目标配置
+  // 更新目标配置后，今日状态和达标率都可能变化，所以最后会刷新当天统计。
   async updateProfile(low: number, high: number, preferred: LightLevel): Promise<void> {
     // 自动切换逻辑：根据 low 值所在的范围，动态建议/切换强度偏好
     let finalPreferred = preferred;

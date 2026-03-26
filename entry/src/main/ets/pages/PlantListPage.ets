@@ -23,6 +23,7 @@ export struct PlantListPage {
   @BuilderParam Header?:()=>void
 
 
+  // 卡片上的完成数、总数都从共享任务列表里现算，避免每个 PlantCard 再单独拉数据。
   private plantTaskDone(plantId: number): number {
     let i: number = 0;
     let d: number = 0
@@ -62,6 +63,7 @@ export struct PlantListPage {
   }
 
   // 物种芯片列表（含“全部”）
+  // 从现有植物中提取物种标签，筛选项永远和真实数据保持一致。
   private speciesChips(): Array<string> {
     const set: Array<string> = ['全部']
     let i: number = 0
@@ -87,6 +89,7 @@ export struct PlantListPage {
   }
 
   // 根据筛选+排序得到最终显示列表
+  // 先做本地筛选，再做排序，最终返回列表页真正渲染的数据源。
   private filteredAndSortedPlants(): Array<Plant> {
     // 过滤
     let tmp: Array<Plant> = []
@@ -111,6 +114,7 @@ export struct PlantListPage {
   }
 
   build() {
+    // Header 由首页透传进来，这样列表页可以复用统一的搜索与标题区域。
     Column() {
       // —— 新增：筛选与排序条 —— //
       if (this.Header){
@@ -149,6 +153,7 @@ export struct PlantListPage {
         List({ space: 8 }) {
           ForEach(this.filteredAndSortedPlants(), (p: Plant) => {
             ListItem() {
+              // PlantCard 只负责展示和抛事件，实际增删改统一交回上层页面处理。
               PlantCard({
                 p: p,
                 done: this.plantTaskDone(p.id),
@@ -189,6 +194,7 @@ export struct PlantListPage {
 
   }
   // —— UI 子块（Builder 内不做计算） —— //
+  // Builder 里尽量只保留展示代码，避免在重复渲染时夹杂复杂计算。
   @Builder
   SpeciesChip(text: string) {
     Text(text)

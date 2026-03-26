@@ -232,6 +232,7 @@ export struct LightExposurePage {
       this.vm.init();
     }
 
+    // 这里通过 tick 驱动 UI 周期刷新，让进行中的补光进度和达标率实时变化。
     // 添加定时器，每10秒更新一次UI，确保圆环图动态更新
     setInterval(() => {
       // 触发UI更新
@@ -241,6 +242,7 @@ export struct LightExposurePage {
 
   build() {
     NavDestination() {
+      // 光照页本质是“实时会话 + 历史记录 + 偏好配置”三块信息的组合视图。
       Column() {
         Scroll() {
           Column({ space: 20 }) {
@@ -422,6 +424,7 @@ export struct LightExposurePage {
 
   @Builder
   RingAndStatus() {
+    // 顶部卡片聚合了今日达标率、当前会话状态和主操作按钮，是页面的核心反馈区。
     Column() {
       Column({ space: 16 }) {
         Row() {
@@ -536,6 +539,7 @@ export struct LightExposurePage {
 
   @Builder
   ProfileCard() {
+    // 偏好卡片只改目标和偏好，不直接改历史记录；历史统计会由 VM 自动重算。
     Column({ space: 16 }) {
       Row() {
         Text("光照偏好")
@@ -745,6 +749,7 @@ export struct LightExposurePage {
     .padding({ left: 16, right: 16 });
   }
 
+  // 会话列表直接读 VM 的 sessions，让进行中与已结束记录共用同一条展示链路。
   exposureSessionList() {
     return this.vm.sessions;
   }

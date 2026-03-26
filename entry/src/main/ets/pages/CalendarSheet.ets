@@ -46,12 +46,14 @@ struct CalendarSheet1 {
   @Local pickType: string = '浇水'
 
   aboutToAppear(): void {
+    // 快速新增任务默认选第一株植物，减少第一次打开日历时的额外点击。
     if (this.plants.length > 0) { this.pickPlantId = this.plants[0].id }
   }
 
   // ================== 视图 ================== //
   build() {
     Column(){
+      // 这个日历页把“月视图概览、快速新增、当日任务列表”整合在同一屏完成。
       Row() {
         Text('PlantDiary 植物养护·日历').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
         Blank()
@@ -412,6 +414,7 @@ struct CalendarSheet1 {
     return 0xFFFB8C00 // 部分完成
   }
 
+  // 固定生成 42 个日历格子，把前后月补位一起算进去，Builder 只负责逐格渲染。
   private buildCells(): Array<DayInfo> {
     const cells: Array<DayInfo> = []
     // 获取一个月的第一天
@@ -469,6 +472,7 @@ struct CalendarSheet1 {
     return ''
   }
 
+  // 当日任务列表会复用顶部过滤条件，让月历和列表的语义保持一致。
   private dayTasks(dateISO: string): Array<PlantTask> {
     const out: Array<PlantTask> = []
     let i: number = 0

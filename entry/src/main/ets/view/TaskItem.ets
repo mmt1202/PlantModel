@@ -1,7 +1,7 @@
 import { PlantTask } from '../model/PlantModel'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 
-/** -------- 子组件：单条任务（V2） -------- */
+/** -------- 子组件：单条任务（V2）-------- */
 @ComponentV2
 export struct TaskItem {
   @Param @Require t: PlantTask
@@ -11,14 +11,16 @@ export struct TaskItem {
   @Local pressed: boolean = false
 
   aboutToAppear(): void {
-    hilog.info(0x0000, 'index', '%{public}s', `liheng 数据刷新${JSON.stringify(this.t)}`);
+    hilog.info(0x0000, 'index', '%{public}s', `liheng 鏁版嵁鍒锋柊${JSON.stringify(this.t)}`);
   }
 
   build() {
+    // 任务项保持很轻，只做展示和交互回调；真正状态以上层重载结果为准。
     Row() {
-      Text(this.t.done === 1 ? '✅' : '⬜').fontSize(20)
+      Text(this.t.done === 1 ? '✔' : '○').fontSize(20)
         .onClick(() => {
           this.onToggle(this.t)
+          // 这里的本地切换只是为了立刻给用户反馈，最终仍会被父层 reload 校正。
           this.t.done = this.t.done === 1 ? 0 : 1
         })
 
@@ -32,7 +34,7 @@ export struct TaskItem {
       }.margin({ left: 10 })
 
       Blank()
-      Text('🗑️').fontSize(16).onClick(() => {
+      Text('🗏').fontSize(16).onClick(() => {
         this.onDeleteAsk()
       })
     }
@@ -40,12 +42,7 @@ export struct TaskItem {
     .padding(12)
     .borderRadius(12)
     .backgroundColor(0xFFFFFFFF)
-    .shadow({
-      radius: 12,
-      color: 0x14000000,
-      offsetX: 0,
-      offsetY: 3
-    })
+    .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
     .scale(this.pressed ? { x: 0.98, y: 0.98 } : { x: 1, y: 1 })
     .onTouch((e: TouchEvent) => {
       if (e.type === TouchType.Down) {

@@ -54,12 +54,14 @@ export struct GrowthIndicatorPage {
   });
 
   aboutToAppear(): void {
+    // 成长指标页直接复用全局 RDB store，不额外引入 VM，逻辑集中在页面内完成。
     this.store = RdbManager.getInstance().rdbStore;
     this.dateISO = this.todayISO();
   }
 
   build() {
     NavDestination() {
+      // 这一页同时承载“录入指标”和“查看趋势”两个场景，通过 showChart 在列表/图表间切换。
       Column() {
         this.Header()
         Scroll() {
@@ -395,6 +397,7 @@ export struct GrowthIndicatorPage {
     .shadow({ radius: 12, color: '#13000000', offsetX: 0, offsetY: 4 })
   }
 
+  // 指标按时间升序读取，便于图表直接按采集时间展开。
   private async loadMetrics(): Promise<void> {
     if (!this.store || !this.plant) {
       return
@@ -416,6 +419,7 @@ export struct GrowthIndicatorPage {
     this.metrics = arr
   }
 
+  // 新增指标时先做输入兜底和分数裁剪，再统一落到 metric 表。
   private async addMetric(): Promise<void> {
     if (!this.store || !this.plant) {
       return
@@ -450,6 +454,7 @@ export struct GrowthIndicatorPage {
     await this.loadMetrics()
   }
 
+  // 图表数据只在切到大图模式时重建，避免平时列表模式下频繁更新 chart option。
   private updateChartData(): void {
     this.defOption.setVal({
       xAxis: { data: this.toXAxis(this.metrics) },
@@ -461,6 +466,7 @@ export struct GrowthIndicatorPage {
     })
   }
 
+  // 列表展示顺序和图表原始顺序分开处理：图表按时间，列表可切换升降序。
   private sorted(): Array<Metric> {
     const arr: Array<Metric> = []
     let i: number = 0

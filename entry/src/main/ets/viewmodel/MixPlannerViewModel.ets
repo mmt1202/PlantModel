@@ -38,7 +38,8 @@ export class MixPlannerViewModel {
     this.loadDefaultCustom();
   }
 
-  // —— 初始化 ——
+  // 初始化时先准备内置配方，再给用户一份可编辑的默认自定义配方。
+  // —— 初始化 —— 
   private loadBuiltin(): void {
     // 预置几个常用配方（密度kg/L为经验估算。为0时使用默认0.15）
     const r1: MixRecipe = new MixRecipe(genId('R'), '多肉·排水型(2:2:1)', true);
@@ -76,6 +77,7 @@ export class MixPlannerViewModel {
   }
 
   // —— 选择内置 ——
+  // 选择配方时总是深拷贝一份材料列表，避免修改编辑态时污染内置模板。
   chooseBuiltin(index: number): void {
     if (index < 0 || index >= this.builtinRecipes.length) {
       return;
@@ -164,6 +166,7 @@ export class MixPlannerViewModel {
   }
 
   // —— 计算 ——
+  // 配土计算的核心：先按 ratio 分摊总体积，再根据密度估算每项重量。
   compute(): Array<MixResultItem> {
     const sum: number = this.sumRatio();
     const out: Array<MixResultItem> = new Array<MixResultItem>();
@@ -178,6 +181,7 @@ export class MixPlannerViewModel {
   }
 
   // —— 保存为“我的配方” ——
+  // “我的配方”更像可复用模板，保存时会冻结当前 items 的快照。
   saveMyRecipe(name: string, note: string): MixRecipe | undefined {
     if (name === '') { return undefined; }
     const rec: MixRecipe = new MixRecipe(genId('R'), name, false);
@@ -209,6 +213,7 @@ export class MixPlannerViewModel {
   }
 
   // —— 保存一次调配 ——
+  // 调配记录保存的是计算结果快照，后续查看历史时不依赖当前编辑态。
   saveRun(note: string): MixRun {
     const run: MixRun = new MixRun(genId('RUN'), this.recipeName, this.totalLiters);
     run.result = this.compute();

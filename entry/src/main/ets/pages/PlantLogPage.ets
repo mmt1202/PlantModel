@@ -57,6 +57,7 @@ export struct PlantLogPage {
     }
   }
 
+  // 日志新增完成后统一重新拉取日志和照片，保证列表与附件区同步刷新。
   async onAddLog(note: string, iso: string) {
     if (!this.store) {
       return
@@ -77,6 +78,7 @@ export struct PlantLogPage {
   }
 
   // 删除一条日志及其关联照片（含本地文件），并自动刷新当前植物的日志列表
+  // 单条日志删除遵循“事务删记录、事务后删文件”的顺序，和植物删除逻辑保持一致。
   private async deleteLogAndPhotos(logId: number): Promise<void> {
     if (!this.store) {
       return
@@ -199,6 +201,7 @@ export struct PlantLogPage {
   }
 
   // xuanzhe
+  // 选择图片后会先复制进应用私有目录，再记录到 log_photo 表，避免外部 URI 失效。
   private async pickPhotosForLog(logId: number): Promise<void> {
     if (this.picking) {
       return
@@ -312,6 +315,7 @@ export struct PlantLogPage {
   // 1) 加载「日志 +（按需）照片」
   // 说明：这里先只加载日志列表；照片仍按你当前交互在选择某条日志后，调用 loadLogPhotos(logId) 单独加载。
   // 这样不会影响你把 logPhotos 用作“当前编辑日志照片”的语义。
+  // 页面展示需要“日志列表 + 全部照片附件”两个数据源，这里一次性并行感知它们的最新状态。
   private async loadLogsWithPhotos(plantId: number): Promise<void> {
     if (!this.store) {
       return
@@ -669,6 +673,7 @@ export struct PlantLogPage {
   }
 
   // 通过 filePath 定位并删除该照片（含本地文件），随后刷新当前日志照片与预览列表
+  // 预览层按 filePath 定位照片记录，这样删除时不需要额外把 photoId 透传到每个子组件。
   private async deletePhotoByFilePath(fp: string): Promise<void> {
     if (!this.store) {
       return
@@ -886,6 +891,7 @@ export struct PlantLogPage {
   }
 
   // —— 逻辑方法 —— //
+  // 只在普通方法里排序，Builder 直接消费结果，避免列表重绘时重复创建临时数组。
   private sorted(): Array<PlantLog> {
     // 先简单复制再排序（不在 @Builder 内部）
     const arr: Array<PlantLog> = []
@@ -909,6 +915,7 @@ export struct PlantLogPage {
     return false
   }
 
+  // 多选态通过“重建新数组”切换勾选，便于触发 ArkUI 对 selected 的响应式更新。
   private toggleSelect(id: number): void {
     const arr: Array<number> = []
     let removed: boolean = false

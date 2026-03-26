@@ -51,6 +51,7 @@ export struct MixPlannerPage {
   });
 
   aboutToAppear() {
+    // 配土页允许“绑定植物”或“独立使用”，因此 plantId 缺省时也能正常工作。
     if (this.plantId && this.plantId !== 0) {
       this.vm = new MixPlannerViewModel(this.plantId);
     } else {
@@ -60,6 +61,7 @@ export struct MixPlannerPage {
 
   build() {
     NavDestination(){
+      // 页面按典型工作流组织：选配方 -> 调材料 -> 设总量 -> 看结果 -> 保存方案/记录。
       Scroll() {
         Column({ space: 14 }) {
           this.Header()
@@ -105,6 +107,7 @@ export struct MixPlannerPage {
 
   // ===== 选择配方（内置 / 我的 / 自定义） =====
   @Builder RecipeSelector() {
+    // 这里把“内置配方 / 我的配方 / 自定义编辑态”放在同一层入口，方便直接切换后微调。
     Column({ space: 10 }) {
       Text(`当前：${this.vm.recipeName}`).fontSize(14).opacity(0.8)
       // 内置
@@ -150,6 +153,7 @@ export struct MixPlannerPage {
 
   // ===== 材料编辑 =====
   @Builder ItemsEditor() {
+    // 材料编辑区只负责修改 VM 中的 items，结果区会根据同一份数据实时重新计算。
     Column({ space: 10 }) {
       Row() {
         Text('材料与配比').fontSize(16).fontWeight(FontWeight.Medium)
@@ -247,6 +251,7 @@ export struct MixPlannerPage {
 
   // ===== 结果卡 =====
   @Builder ResultCard() {
+    // 结果区不缓存临时状态，始终直接读取 VM 的 compute() 结果，保证和上方配置同步。
     Column({ space: 10 }) {
       Text('计算结果').fontSize(16).fontWeight(FontWeight.Medium)
       // 直接将 VM 的计算结果用于渲染，不在UI里声明变量
@@ -269,6 +274,7 @@ export struct MixPlannerPage {
 
   // ===== 操作栏：保存为我的配方 / 保存调配记录 =====
   @Builder ActionsBar() {
+    // “保存为我的配方”和“保存这次调配”分别对应模板化复用与单次操作留痕两种需求。
     Column({ space: 10 }) {
       Row({ space: 10 }) {
         Button('保存为我的配方').type(ButtonType.Capsule)

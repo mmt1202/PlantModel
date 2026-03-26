@@ -25,6 +25,7 @@ export struct MetricSheet {
   // ================== 视图 ================== //
   build() {
     Stack() {
+      // 指标抽屉是成长指标页的轻量版：支持快速录入、迷你趋势和历史删除。
       // 蒙层
       Column() {
         Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => {
@@ -240,6 +241,7 @@ export struct MetricSheet {
 
   @Builder
   MiniChart() {
+    // 迷你图只做趋势感知，不追求完整坐标轴；详细分析交给独立图表页。
     // 外框
     Column() {
       // 标题
@@ -334,6 +336,7 @@ export struct MetricSheet {
   }
 
   // =============== 逻辑/工具方法（非 Builder） =============== //
+  // 列表和迷你图共用同一份排序结果，保证用户看到的时间顺序一致。
   private sorted(): Array<PlantMetric> {
     const arr: Array<PlantMetric> = []
     let i: number = 0

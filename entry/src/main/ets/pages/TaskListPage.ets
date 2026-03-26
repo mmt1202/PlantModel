@@ -37,6 +37,7 @@ export struct TaskListPage {
     }
   }
 
+  // 日视图弹层和列表视图共用同一套过滤结果，避免两个入口看到的任务不一致。
   private tasksOfDate(dateISO: string): Array<PlantTask> {
     const src: Array<PlantTask> = this.filteredTasks() // 已有方法，保持与列表筛选一致
     const out: Array<PlantTask> = []
@@ -130,6 +131,7 @@ export struct TaskListPage {
     return false
   }
 
+  // 这里是任务页的核心聚合逻辑：统一串联顶部 tab、类型和关键字三个维度。
   private filteredTasks(): Array<PlantTask> {
     // 先复制
     const arr: Array<PlantTask> = []
@@ -162,6 +164,7 @@ export struct TaskListPage {
   // —— 视图 —— //
   build() {
     Column() {
+      // 当前默认走列表视图；日历视图代码保留在这里，后续恢复时不需要重写筛选逻辑。
       // 顶部：视图模式切换
       // Row() {
       //   Text('筛选/排序')
@@ -331,6 +334,7 @@ export struct TaskListPage {
 
   @Builder
   Header() {
+    // 任务页单独维护自己的搜索框，因为搜索对象是“植物名 + 任务类型”，和首页植物搜索不同。
     Column() {
       Row() {
         Text('PlantDiary 植物养护·任务').fontSize(22).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
@@ -363,6 +367,7 @@ export struct TaskListPage {
   }
 
   // —— 辅助（非 Builder） —— //
+  // 预留给日历视图切换月份使用，当前虽然未启用，但保持独立方法更方便恢复。
   private changeMonth(delta: number): void {
     const arr: Array<string> = this.currentMonthISO.split('-')
     const y = Number.parseInt(arr[0]);

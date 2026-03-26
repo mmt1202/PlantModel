@@ -3,7 +3,7 @@ import { RdbManager } from '../viewmodel/RdbManager'
 import { relationalStore } from '@kit.ArkData'
 import { LogPhoto, PlantLog } from './PlantLogSheet'
 
-/** -------- 子组件：单个植物卡片（V2） -------- */
+/** -------- 子组件：单个植物卡片（V2）-------- */
 @ComponentV2
 export struct PlantCard {
   @Param @Require p: Plant
@@ -17,7 +17,7 @@ export struct PlantCard {
   @Event onOpenWaterEstimator: (p: Plant) => void
   @Event onOpenEmergencyAndRotate: (p: Plant) => void
   @Event onOpenMetrics: () => void
-  @Event onOpenTemplate: () => void // ← 新增
+  @Event onOpenTemplate: () => void
   @Event onOpenTemplatenew: (pid: number) => void
   @Event onOpenMetric: (plantId: number) => void
   @Consumer('RdbManager') RdbManager: RdbManager = RdbManager.getInstance()
@@ -25,15 +25,16 @@ export struct PlantCard {
   @Local pressed: boolean = false
   @Local logs: Array<PlantLog> = []
   @Local photos: Array<LogPhoto> = []
-
   @Local isLighting: boolean = false
   @Local lightOpacity: number = 0.3
 
   async aboutToAppear() {
+    // 卡片自身会补拉最近日志和照片，用来展示封面图和补光状态。
     await this.loadLogsWithPhotos(this.p.id)
     this.checkLightingStatus()
   }
 
+  // 补光状态通过 AppStorage 广播给卡片层，这样首页重载后也能立刻恢复视觉反馈。
   private checkLightingStatus() {
     this.isLighting = AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false
     if (this.isLighting) {
@@ -71,12 +72,12 @@ export struct PlantCard {
     return 0xFF607D8B
   }
 
+  // 植物卡片默认取第一张日志照片做缩略封面，没有照片时才退回首字头像。
   private async loadLogsWithPhotos(plantId: number): Promise<void> {
     if (!this.store) {
       return
     }
 
-    // 1) 加载日志（新→旧）
     const rs1 = await this.store.querySql(
       `SELECT id, plantId, note, createdAt
      FROM ${RdbManager.T_LOG}
@@ -90,7 +91,6 @@ export struct PlantCard {
     rs1.close()
     this.logs = arrLogs
 
-    // 2) 加载该植物所有日志的照片（按照片 id 新→旧）
     const rs2 = await this.store.querySql(
       `SELECT p.id, p.logId, p.path, p.thumbPath, p.createdAt
      FROM ${RdbManager.T_LOG_PHOTO} p
@@ -107,11 +107,9 @@ export struct PlantCard {
   }
 
   build() {
-    // const lighting = AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false
-
+    // 这个卡片既是植物概览，也是多个功能入口的聚合导航节点。
     Column({ space: 10 }) {
       Row() {
-        // 头像圆片
         Column() {
           if (this.p.name.length > 0) {
             if (this.photos.length > 0) {
@@ -126,7 +124,6 @@ export struct PlantCard {
         .width(40)
         .height(40)
         .borderRadius(20)
-        // .backgroundColor(0xFF66BB6A)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
         .border(AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false ? { width: 2, color: '#FFEB3B' } : undefined)
@@ -137,7 +134,7 @@ export struct PlantCard {
           Row({ space: 8 }) {
             Text(this.p.name).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
             if (AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false) {
-              Text("☀️ 光照中")
+              Text('☀️ 光照中')
                 .fontSize(10)
                 .fontColor(0xFFFFFFFF)
                 .backgroundColor(0xFFFFA000)
@@ -151,13 +148,13 @@ export struct PlantCard {
         Blank()
 
         Row({ space: 8 }) {
-          Text('📈').fontSize(16).onClick(() => {
+          Text('📱').fontSize(16).onClick(() => {
             this.onOpenMetric(this.p.id)
           })
           Text('✏️').fontSize(16).onClick(() => {
             this.onEdit()
           })
-          Text('🗑️').fontSize(16).onClick(() => {
+          Text('🗏').fontSize(16).onClick(() => {
             this.onDeleteAsk()
           })
         }
@@ -167,12 +164,7 @@ export struct PlantCard {
         Text('日志')
           .fontSize(12)
           .fontColor(0xFF1565C0)
-          .padding({
-            left: 10,
-            right: 10,
-            top: 6,
-            bottom: 6
-          })
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(12)
           .backgroundColor(0x102196F3)
           .onClick(() => {
@@ -183,12 +175,7 @@ export struct PlantCard {
         Text('指标')
           .fontSize(12)
           .fontColor(0xFF2E7D32)
-          .padding({
-            left: 10,
-            right: 10,
-            top: 6,
-            bottom: 6
-          })
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(12)
           .backgroundColor(0xE8F5E9)
           .onClick(() => {
@@ -199,12 +186,7 @@ export struct PlantCard {
         Text('模板')
           .fontSize(12)
           .fontColor(0xFF8E24AA)
-          .padding({
-            left: 10,
-            right: 10,
-            top: 6,
-            bottom: 6
-          })
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(12)
           .backgroundColor(0x10BA68C8)
           .onClick(() => {
@@ -215,12 +197,7 @@ export struct PlantCard {
         Text('新模板')
           .fontSize(12)
           .fontColor(0xFF8E24AA)
-          .padding({
-            left: 10,
-            right: 10,
-            top: 6,
-            bottom: 6
-          })
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(12)
           .backgroundColor(0x10BA68C8)
           .onClick(() => {
@@ -231,12 +208,7 @@ export struct PlantCard {
         Text('盆栽')
           .fontSize(12)
           .fontColor(0xFF8E24AA)
-          .padding({
-            left: 10,
-            right: 10,
-            top: 6,
-            bottom: 6
-          })
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(12)
           .backgroundColor(0x10BA68C8)
           .onClick(() => {
@@ -247,12 +219,7 @@ export struct PlantCard {
         Text('用量估算器')
           .fontSize(12)
           .fontColor(0xFF8E24AA)
-          .padding({
-            left: 10,
-            right: 10,
-            top: 6,
-            bottom: 6
-          })
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(12)
           .backgroundColor(0x10BA68C8)
           .onClick(() => {
@@ -261,7 +228,6 @@ export struct PlantCard {
           .margin({ right: 8, bottom: 8 })
       }
 
-      // 进度条
       Row() {
         Column() {
           Progress({ value: this.done, total: this.total, type: ProgressType.Linear })
@@ -270,18 +236,14 @@ export struct PlantCard {
             .backgroundColor(0xFFE0E0E0)
             .color(0xFF66BB6A)
             .animation({ duration: 220, curve: Curve.EaseInOut })
-          // Blank().width('100%').height(6).borderRadius(3).backgroundColor(0xFFE0E0E0)
-          // Blank().position({ x: 0, y: -6 }).width(this.total > 0 ? this.ratioText : '0%').height(6).borderRadius(3)
-
         }.width('70%')
 
         Text(`${this.done}/${this.total}`).fontSize(12).fontColor(0xFF455A64).margin({ left: 12 })
       }.margin({ top: 10 })
 
-      // 快捷添加
       Row() {
-        this.QuickChip('浇水');
-        this.QuickChip('施肥');
+        this.QuickChip('浇水')
+        this.QuickChip('施肥')
         this.QuickChip('修剪')
       }.margin({ top: 10 })
     }
@@ -290,12 +252,7 @@ export struct PlantCard {
     .borderRadius(16)
     .backgroundColor(0xFFFFFFFF)
     .linearGradient({ direction: GradientDirection.Right, colors: [[0x10A5D6A7, 0], [0x1000BCD4, 1]] })
-    .shadow({
-      radius: 16,
-      color: 0x1F000000,
-      offsetX: 0,
-      offsetY: 4
-    })
+    .shadow({ radius: 16, color: 0x1F000000, offsetX: 0, offsetY: 4 })
     .scale(this.pressed ? { x: 0.98, y: 0.98 } : { x: 1, y: 1 })
     .onTouch((e: TouchEvent) => {
       if (e.type === TouchType.Down) {
@@ -310,16 +267,12 @@ export struct PlantCard {
 
   @Builder
   QuickChip(type: string) {
+    // 快捷按钮只是帮用户快速创建今日任务，真正落库仍由父页面统一完成。
     Text(type)
       .fontSize(12)
       .fontColor(0xFFFFFFFF)
       .backgroundColor(this.typeColor(type))
-      .padding({
-        left: 12,
-        right: 12,
-        top: 6,
-        bottom: 6
-      })
+      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
       .borderRadius(12)
       .margin({ right: 8 })
       .onClick(() => {

@@ -15,6 +15,7 @@ export struct EmergencyAndRotatePage {
   @Local rotVM: RotatePlanViewModel = new RotatePlanViewModel("");
 
   aboutToAppear() {
+    // 这个合并页把“应急流程”和“转盆提醒”两条能力线放在同一入口，分别交给独立 VM 管理。
     const pid: string = this.plantId && this.plantId !== "" ? this.plantId : "PLANT_DEMO";
     this.emgVM = new EmergencyViewModel(pid);
     this.rotVM = new RotatePlanViewModel(pid);
@@ -22,6 +23,7 @@ export struct EmergencyAndRotatePage {
 
   build() {
     NavDestination() {
+      // 页面只负责在两个 panel 之间切换，具体状态与规则都下沉到各自 ViewModel。
       Scroll() {
         Column({ space: 20 }) {
           this.Header()
@@ -96,6 +98,7 @@ export struct EmergencyAndRotatePage {
   }
 
   @Builder EmergencyPanel() {
+    // 应急面板的顺序就是完整流程：选症状 -> 勾步骤 -> 记录观察 -> 查看历史。
     Column({ space: 20 }) {
       this.SymptomSelector()
       this.StepCards()
@@ -355,6 +358,7 @@ export struct EmergencyAndRotatePage {
   }
 
   @Builder RotatePanel() {
+    // 转盆面板围绕一个简单计划展开：设置周期、查看下次到期、记录历史。
     Column({ space: 20 }) {
       this.RotateSettingCard()
       this.NextDueCard()

@@ -17,6 +17,7 @@ export struct CalendarGrid {
   @Param @Require filterType: string // '' 或具体类型
 
   aboutToAppear(): void {
+    // 默认高亮当月第一天，保证首次进入时下方“当日任务”区有稳定的选中日期。
     if (this.selectedDateISO.length === 0) {
       const arr: Array<string> = this.monthISO.split('-')
       const y: number = Number.parseInt(arr[0]);
@@ -83,6 +84,7 @@ export struct CalendarGrid {
   }
 
   // 生成 6x7 的日期矩阵（用 0 代表空白），供 ForEach 渲染
+  // 生成固定 6x7 网格，空白位用 0 占位，Builder 层只负责渲染这个结果。
   private monthMatrix(): Array<Array<number>> {
     const lead: number = this.weekdayOfFirst()
     const days: number = this.daysInMonth()
@@ -163,6 +165,7 @@ export struct CalendarGrid {
   // ---------- 视图 ----------
   build() {
     Column() {
+      // 日历网格上半部分负责选日期，下半部分负责展开当天任务，形成一个轻量 master-detail 结构。
       // 月份标题与切换
       Row() {
         Text('〈').fontSize(18).onClick(() => {
@@ -297,6 +300,7 @@ export struct CalendarGrid {
 
   @Builder
   DayCell(day: number) {
+    // 日期格只负责展示统计摘要，具体任务详情在底部列表或外层弹层中展开。
     // Builder 内不声明变量，所有判断通过方法调用完成
     Column() {
       Text(day.toString())

@@ -13,6 +13,7 @@ export struct WaterEstimatorPage {
   @Local noteText: string = "";
 
   aboutToAppear() {
+    // 估算器是纯前端计算页，进入页面时只需要为当前植物准备对应的 VM 即可。
     if (this.plantId && this.plantId !== 0) {
       this.vm = new WaterEstimatorViewModel(this.plantId);
     } else {
@@ -22,6 +23,7 @@ export struct WaterEstimatorPage {
 
   build() {
     NavDestination() {
+      // 页面结构对应完整估算流程：输入容器尺寸、选择场景参数、查看结果、决定是否落日志。
       Scroll() {
         Column({ space: 20 }) {
           this.Header()
@@ -177,6 +179,7 @@ export struct WaterEstimatorPage {
 
   @Builder
   OptionCard() {
+    // 介质、策略、植物类型三组参数共同影响公式系数，因此拆成三段独立选择区。
     Column({ space: 16 }) {
       Row() {
         Text("介质 / 策略 / 植株")
@@ -302,6 +305,7 @@ export struct WaterEstimatorPage {
 
   @Builder
   ResultCard() {
+    // 结果卡展示的是区间值而不是单点值，目的是给用户一个更安全的操作范围。
     Column({ space: 16 }) {
       Row() {
         Text("估算结果")
@@ -356,6 +360,7 @@ export struct WaterEstimatorPage {
 
   @Builder
   SaveBar() {
+    // 这里既支持保存“估算记录”，也支持直接把推荐值记成一次浇水决策。
     Column({ space: 16 }) {
       Column({ space: 8 }) {
         Text("备注（可选）")

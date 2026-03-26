@@ -28,6 +28,7 @@ export class EmergencyViewModel {
     this.ensureStepArray();
   }
 
+  // 根据当前症状重建勾选数组，保证不同 playbook 的步骤数始终和 UI 一致。
   ensureStepArray(): void {
     const item: PlaybookItem | undefined = findPlaybookByKey(this.playbook, this.selectedKey);
     const n: number = item ? item.steps.length : 3;
@@ -55,6 +56,7 @@ export class EmergencyViewModel {
   }
 
   // 生成一条急救记录，并安排复查时间（仅写入日志，不做系统闹钟）
+  // 开始观察相当于生成一条待复查的任务日志，但暂时只存在内存里。
   startObservation(): EmergencyLog | undefined {
     const item: PlaybookItem | undefined = this.currentItem();
     if (!item) { return undefined; }
@@ -72,6 +74,7 @@ export class EmergencyViewModel {
     return log;
   }
 
+  // 这里通过重建对象而不是原地修改，保证 ArkUI 能正确感知列表项更新。
   markCompleted(id: string): void {
     const next: Array<EmergencyLog> = new Array<EmergencyLog>();
     for (let i: number = 0; i < this.logs.length; i++) {

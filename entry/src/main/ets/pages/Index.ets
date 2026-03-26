@@ -125,6 +125,7 @@ struct Index {
   }
 
   /** ---- DB 初始化/加载 ---- */
+  // 首页是应用的状态中枢：先初始化数据库，再一次性恢复植物、任务和模板等全局数据。
   private async initDb(): Promise<void> {
     await this.RdbManager.initDb(this.ctx)
     this.store = this.RdbManager.rdbStore
@@ -133,6 +134,7 @@ struct Index {
     await this.loadTemplates()
   }
 
+  // 目前植物和任务是多个页面共享的主数据，统一从这里重载，避免局部状态不一致。
   private async reloadAll(): Promise<void> {
     await this.loadPlants();
     await this.loadTasks()
@@ -156,6 +158,7 @@ struct Index {
     await this.refreshActiveSessions()
   }
 
+  // 光照页会把进行中状态同步到 AppStorage，首页刷新时据此补齐植物卡片上的实时状态。
   private async refreshActiveSessions(): Promise<void> {
     const activeMap = await this.RdbManager.getActiveLightSessions()
     // 遍历所有 plant，设置状态
@@ -312,6 +315,7 @@ struct Index {
     this.showBanner('已更新植物信息', 'ok')
   }
 
+  // 删除植物时按“先删表记录，后删文件”的顺序执行，避免文件先删导致事务失败后无法恢复。
   private async deletePlant(id: number): Promise<void> {
     if (!this.store) {
       return
@@ -427,6 +431,7 @@ struct Index {
   }
 
   // —— 守护：清理孤儿记录/文件 —— //
+  // 清理孤儿照片分两类：DB 指向已不存在日志的记录，以及磁盘文件已丢失的残留记录。
   private async cleanupOrphanPhotos(): Promise<void> {
     if (!this.store) {
       return
@@ -799,6 +804,7 @@ struct Index {
   }
 
   // 事务落库：根据 templateId + startISO 生成任务，命中唯一索引自动跳过
+  // 模板应用本质上是按 care_rule 展开任务；唯一索引冲突直接跳过，不阻塞整个批量流程。
   private async applyTemplateToPlant(templateId: number, startISO: string): Promise<void> {
     if (!this.store) {
       return
@@ -840,6 +846,7 @@ struct Index {
   }
 
   /** ---- 视图 ---- */
+  // 首页同时承担导航容器、全局弹层宿主和共享数据 provider 的职责。
   build() {
     Navigation(this.pageStack) {
       Stack({ alignContent: Alignment.Center }) {
@@ -1185,6 +1192,7 @@ struct Index {
   }
 
   @Builder
+  // 统一维护导航 name 到页面组件的映射，避免各子页面自己关心实例化细节。
   pageMap(name: string) {
     if (name === "PlantLogPage") {
       PlantLogPage()

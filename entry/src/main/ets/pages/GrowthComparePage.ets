@@ -23,6 +23,7 @@ export struct GrowthComparePage {
 
   build() {
     NavDestination() {
+      // 成长对比页的核心不是复杂计算，而是把同一植物的时间序列照片按时间顺序浏览出来。
       Column() {
         this.Header()
         Scroll() {
@@ -95,6 +96,7 @@ export struct GrowthComparePage {
 
   @Builder
   MainSlider() {
+    // 主视图一次只突出一张照片，底部 slider 负责在植物成长时间线里跳转。
     Column({ space: 16 }) {
       Row() {
         Text('滑动对比')
@@ -348,6 +350,7 @@ export struct GrowthComparePage {
     return `${d.getMonth() + 1}/${d.getDate()}`;
   }
 
+  // 照片来源仍然是日志系统，这里只是按 plantId 聚合读取并转成“成长相册”视图。
   private async loadPhotos(): Promise<void> {
     if (!this.store || !this.plant) {
       return;
@@ -370,6 +373,7 @@ export struct GrowthComparePage {
     }
   }
 
+  // 新增照片时如果当前植物还没有日志，会自动创建一条占位日志来承接图片。
   private async pickAndAddPhoto(): Promise<void> {
     if (this.picking || !this.plant) {
       return;

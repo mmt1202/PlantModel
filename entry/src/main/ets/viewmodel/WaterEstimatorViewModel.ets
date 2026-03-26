@@ -36,7 +36,8 @@ export class WaterEstimatorViewModel {
     this.compute();
   }
 
-  // —— 修改输入 ——
+  // 任一输入改变后都会立刻重算区间，页面因此不需要单独维护“点击计算”动作。
+  // —— 修改输入 —— 
   setDiameter(v: number): void {
     let nv: number = v;
     if (nv < 6) { nv = 6; }
@@ -69,6 +70,7 @@ export class WaterEstimatorViewModel {
   }
 
   // —— 计算 ——
+  // 真正的估算公式封装在 model 层，这里只负责把结果同步回可观察字段。
   compute(): void {
     const r = estimateWaterML(this.diameterCm, this.depthCm, this.retention, this.strategy, this.plantKind);
     this.low = r.low;
@@ -77,6 +79,7 @@ export class WaterEstimatorViewModel {
   }
 
   // —— 文案与建议 ——
+  // 建议文案不是医学或园艺诊断，只是基于当前策略和植物类型给操作提示。
   getSuggestText(): string {
     // 简易建议：按策略与植株给一句提示
     if (this.strategy === StrategyType.FULL) {
@@ -98,6 +101,7 @@ export class WaterEstimatorViewModel {
   }
 
   // —— 保存日志 ——
+  // 保存日志时会把当下全部输入和结果打包成快照，保证后续可追溯。
   saveLog(note: string): WaterEstimateLog {
     const log: WaterEstimateLog = new WaterEstimateLog(genId('WLOG'));
     log.plantId = this.plantId;

@@ -23,6 +23,7 @@ export class RdbManager {
     return RdbManager.instance
   }
 
+  // 统一负责数据库建表、索引初始化和默认数据种子，页面层只依赖这里暴露的 store。
   async initDb(context: common.Context) {
     const config: relationalStore.StoreConfig = {
       name: RdbManager.DB_NAME,
@@ -102,6 +103,7 @@ export class RdbManager {
     )
 
     // ===== LIGHT EXPOSURE (光照) =====
+    // 光照配置是一株植物一条记录，曝光会话则是一株植物多条历史记录。
     // 光照配置 (plantId 为主键，每植物一条)
     await this.rdbStore.executeSql(
       `CREATE TABLE IF NOT EXISTS ${RdbManager.T_LIGHT_PROFILE}(
@@ -127,6 +129,7 @@ export class RdbManager {
     )
 
     // ===== TASK（任务）=====
+    // 这里用唯一索引约束重复任务，页面在批量生成时可以直接“尝试插入，冲突即跳过”。
     // 唯一：同一植物 + 类型 + 计划日 不重复
     await this.rdbStore.executeSql(
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_task_unique
@@ -143,6 +146,7 @@ export class RdbManager {
     )
 
     // ===== LOG（日志）=====
+    // 典型读法是按 plantId 拉某株植物的日志，再按 createdAt 倒序展示。
     // 典型查询：WHERE plantId=? ORDER BY createdAt DESC
     // 用组合索引即可，避免再单独建 plantId / createdAt 两个索引的重复
     await this.rdbStore.executeSql(
@@ -157,6 +161,7 @@ export class RdbManager {
     )
 
     // ===== METRIC（指标）=====
+    // 成长指标页和图表页都会按 plantId + createdAt 维度做查询。
     // 典型查询：按植物 + 时间范围/排序
     await this.rdbStore.executeSql(
       `CREATE INDEX IF NOT EXISTS idx_metric_plant_created
@@ -164,7 +169,7 @@ export class RdbManager {
     )
   }
 
-  // 启动一次性初始化 5 个模板（存在即跳过）
+  // 启动一次性初始化养护模板；只在空库时插入，避免覆盖用户后续修改的数据。
   async ensureCareTemplates(): Promise<void> {
     if (!this.rdbStore) {
       return
@@ -179,7 +184,7 @@ export class RdbManager {
       return
     }
 
-    // 插入模板
+    // 插入模板主表，再为每个模板写入多条“任务类型 + 间隔 + 生成范围”规则。
     const idSucc: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '多肉', desc: '耐旱，少浇' })
     const idMon: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '龟背竹', desc: '喜湿散光' })
     const idRose: number = await this.rdbStore.insert(RdbManager.T_TEMPLATE, { name: '月季', desc: '勤花，需修剪' })
@@ -269,7 +274,7 @@ export class RdbManager {
       horizonDays: 120
     })
   }
-  // 查询所有活跃的光照会话 (endAt=0)
+  // 查询所有活跃的光照会话 (endAt=0)，供首页快速给植物卡片同步“正在补光”状态。
   async getActiveLightSessions(): Promise<Map<number, boolean>> {
     const map = new Map<number, boolean>()
     if (!this.rdbStore) return map

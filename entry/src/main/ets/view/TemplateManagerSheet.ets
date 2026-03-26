@@ -28,6 +28,7 @@ export struct TemplateManagerSheet {
     return n
   }
 
+  // 模板管理弹层在“浏览态”和“编辑态”之间切换，编辑字段单独保存避免污染列表数据。
   private startEdit(t: PlanTpl): void {
     this.editingId = t.id
     this.editName = t.name
@@ -38,22 +39,21 @@ export struct TemplateManagerSheet {
 
   private cancelEdit(): void {
     this.editingId = 0
-    this.editName = '';
-    this.editType = '浇水';
-    this.editDays = '7';
+    this.editName = ''
+    this.editType = '浇水'
+    this.editDays = '7'
     this.editTimes = '4'
   }
 
   build() {
+    // 这里管理的是旧版周期模板（PlanTpl），和新 care template 体系并存。
     Stack() {
-      // 蒙层
       Column() {
         Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => {
           this.onClose()
         })
       }
 
-      // 底部面板
       Column({ space: 8 }) {
         Row() {
           Text('周期模板').fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
@@ -62,14 +62,8 @@ export struct TemplateManagerSheet {
             this.onClose()
           })
         }
-        .padding({
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: 6
-        })
+        .padding({ left: 16, right: 16, top: 12, bottom: 6 })
 
-        // 新建模板块
         Column() {
           Row() {
             Text(this.showCreate ? '收起新建' : '新建模板').fontSize(13).fontColor(0xFF1565C0)
@@ -84,15 +78,9 @@ export struct TemplateManagerSheet {
             this.NewTplForm()
           }
         }
-        .padding({
-          left: 16,
-          right: 16,
-          top: 6,
-          bottom: 8
-        })
+        .padding({ left: 16, right: 16, top: 6, bottom: 8 })
         .backgroundColor(0xFFFFFFFF)
 
-        // 模板列表
         if (this.templates.length === 0) {
           Column() {
             Text('暂无模板，点击“新建模板”添加').fontSize(13).fontColor(0xFF90A4AE).margin({ top: 10 })
@@ -114,19 +102,8 @@ export struct TemplateManagerSheet {
       }
       .width('100%')
       .backgroundColor(0xFFFFFFFF)
-      .borderRadius({
-        topLeft: 20,
-        topRight: 20,
-        bottomLeft: 0,
-        bottomRight: 0
-      })
-      // .position({ x: 0, y: 'calc(100% - 70%)' })
-      .shadow({
-        radius: 24,
-        color: 0x33000000,
-        offsetX: 0,
-        offsetY: -6
-      })
+      .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 0, bottomRight: 0 })
+      .shadow({ radius: 24, color: 0x33000000, offsetX: 0, offsetY: -6 })
       .animation({ duration: 200, curve: Curve.Sharp })
     }
     .width('100%').height('100%').alignContent(Alignment.Bottom)
@@ -157,12 +134,7 @@ export struct TemplateManagerSheet {
           })
           .backgroundColor(0xFF2E7D32)
           .fontColor(0xFFFFFFFF)
-          .padding({
-            left: 16,
-            right: 16,
-            top: 8,
-            bottom: 8
-          })
+          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .borderRadius(20)
 
         Blank()
@@ -170,34 +142,22 @@ export struct TemplateManagerSheet {
         Button('应用到当前植物')
           .type(ButtonType.Capsule)
           .onClick(() => {
-            // 创建后应用场景通常从列表点“应用”；这里保留占位，可按需改成创建即应用
-            // 这里不做动作
           })
           .backgroundColor(0xFFE0E0E0)
           .fontColor(0xFF263238)
-          .padding({
-            left: 16,
-            right: 16,
-            top: 8,
-            bottom: 8
-          })
+          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .borderRadius(20)
       }.margin({ top: 8 })
     }
     .padding(10).borderRadius(12).backgroundColor('#ffffff')
-    .shadow({
-      radius: 12,
-      color: 0x14000000,
-      offsetX: 0,
-      offsetY: 3
-    })
+    .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
   }
 
   @Builder
   TplItem(t: PlanTpl) {
+    // 每个模板项只有两种状态：展示态和编辑态，避免在列表里混入更多临时状态机。
     Column() {
       if (this.editingId !== t.id) {
-        // 显示态
         Row() {
           Column() {
             Text(t.name).fontSize(15).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
@@ -218,7 +178,6 @@ export struct TemplateManagerSheet {
           }
         }.width('96%').alignItems(VerticalAlign.Center).justifyContent(FlexAlign.SpaceBetween)
       } else {
-        // 编辑态
         Column() {
           this.KV('名称', this.editName, (v: string) => {
             this.editName = v
@@ -243,12 +202,7 @@ export struct TemplateManagerSheet {
               })
               .backgroundColor(0xFF1565C0)
               .fontColor(0xFFFFFFFF)
-              .padding({
-                left: 16,
-                right: 16,
-                top: 8,
-                bottom: 8
-              })
+              .padding({ left: 16, right: 16, top: 8, bottom: 8 })
               .borderRadius(20)
 
             Button('取消')
@@ -258,12 +212,7 @@ export struct TemplateManagerSheet {
               })
               .backgroundColor(0xFFE0E0E0)
               .fontColor(0xFF263238)
-              .padding({
-                left: 16,
-                right: 16,
-                top: 8,
-                bottom: 8
-              })
+              .padding({ left: 16, right: 16, top: 8, bottom: 8 })
               .borderRadius(20)
               .margin({ left: 10 })
           }.margin({ top: 6 })
@@ -274,12 +223,7 @@ export struct TemplateManagerSheet {
     .padding(12)
     .borderRadius(14)
     .backgroundColor(0xFFFFFFFF)
-    .shadow({
-      radius: 12,
-      color: 0x14000000,
-      offsetX: 0,
-      offsetY: 3
-    })
+    .shadow({ radius: 12, color: 0x14000000, offsetX: 0, offsetY: 3 })
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
   }

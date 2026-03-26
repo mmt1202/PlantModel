@@ -1,4 +1,8 @@
 /** -------- 数据模型（V2） -------- */
+/** 
+ * 这些类型是页面、弹层和数据库查询之间共享的轻量数据结构。
+ * 约定上只保留字段和少量构造逻辑，复杂业务规则放到页面或 ViewModel 中处理。
+ */
 @ObservedV2
 export class Plant {
   @Trace id: number
@@ -56,6 +60,7 @@ export class PlantTask {
 
 @ObservedV2
 export class PlantDraft {
+  // Draft 用来承接表单编辑态，避免直接修改列表里的实体对象。
   @Trace name: string = ''
   @Trace species: string = ''
   @Trace location: string = ''
@@ -63,6 +68,7 @@ export class PlantDraft {
 
 @ObservedV2
 export class TaskDraft {
+  // 新建任务先拼装草稿，再交给页面统一校验和落库。
   @Trace plantId: number = 0
   @Trace type: string = '浇水'
   @Trace planDate: string = ''
@@ -84,6 +90,7 @@ export class LogEntry {
 }
 
 export class _DayCell {
+  // 日历组件的渲染单元，和真实任务记录拆开后更利于补空白占位格。
   key: string
   day: number // 1..31（0 表示占位）
   inMonth: number // 1: 当前月；0: 其他月
@@ -118,6 +125,7 @@ export class Metric {
 }
 
 // —— 生长指标数据类型（若你工程里已有等价类型，可删去此定义，保持字段一致即可）——
+// PlantMetric 与 Metric 字段几乎一致，主要用于兼容不同页面中已有的命名。
 @ObservedV2
 export
 class PlantMetric {
@@ -146,6 +154,7 @@ export interface CareTemplate {
 }
 
 export interface CareRule {
+  // 一条规则描述某种养护行为的生成节奏，例如“每 7 天生成一次，覆盖未来 90 天”。
   id: number;
   templateId: number;
   type: string;
