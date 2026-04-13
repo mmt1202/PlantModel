@@ -1,33 +1,46 @@
 // /viewmodel/LightExposureViewModel.ets
-// 手动记录视图模型（DB 持久化版）
-
+// 光照记录视图模型
+// 负责光照会话的管理、数据持久化和统计计算
+// 完整的光照会话管理
 import LightProfile from "../model/LightProfile";
 import ExposureSession from "../model/ExposureSession";
 import DailyLightStat from "../model/DailyLightStat";
 import { LightLevel, LightStatus, levelWeight, clampRate, ymd, genId } from "../model/LightTypes";
 import { RdbManager } from "./RdbManager";
-import { relationalStore } from '@kit.ArkData';
+import { relationalStore } from "@kit.ArkData";
+import { AppStorage } from "@kit.ArkUI";
 
+/**
+ * 光照记录视图模型
+ * 负责管理光照会话、数据持久化和统计计算
+ */
 @ObservedV2
 export class LightExposureViewModel {
-  // 状态
-  @Trace plantId: number = 0;
-  @Trace profile: LightProfile = new LightProfile(0);
-  @Trace sessions: ExposureSession[] = [];
-  @Trace dailyStats: DailyLightStat[] = [];
-  @Trace hasActive: boolean = false;
-  @Trace activeSession: ExposureSession | undefined = undefined;
+  // 状态属性
+  @Trace plantId: number = 0; // 植物 ID
+  @Trace profile: LightProfile = new LightProfile(0); // 光照配置档案
+  @Trace sessions: ExposureSession[] = []; // 所有光照会话记录
+  @Trace dailyStats: DailyLightStat[] = []; // 每日统计数据
+  @Trace hasActive: boolean = false; // 是否有进行中的光照会话
+  @Trace activeSession: ExposureSession | undefined = undefined; // 当前进行中的会话
   @Trace tick: number = 0; // 用于驱动 UI 刷新的时钟信号
 
-  private rdbManager: RdbManager = RdbManager.getInstance();
+  private rdbManager: RdbManager = RdbManager.getInstance(); // 数据库管理器
 
+  /**
+   * 构造函数
+   * @param plantId 植物 ID
+   */
   constructor(plantId: number) {
     this.plantId = plantId;
-    this.profile = LightProfile.defaultFor(plantId);
+    this.profile = LightProfile.defaultFor(plantId); // 初始化默认光照配置
   }
 
-  // 初始化：从 DB 加载数据
-  // 初始化时把 profile、历史 session 和当天统计一次性恢复到内存，页面后续只和 VM 交互。
+  /**
+   * 初始化方法
+   * 从数据库加载数据，包括光照配置、历史会话和当天统计
+   * 页面后续只与 ViewModel 交互，不直接访问数据库
+   */
   async init(): Promise<void> {
     if (!this.rdbManager.rdbStore) {
       return;
@@ -35,7 +48,7 @@ export class LightExposureViewModel {
     // 1. 加载 Profile
     const rsProfile = await this.rdbManager.rdbStore.querySql(
       `SELECT targetLuxMinLow, targetLuxMinHigh, preferredLevel FROM ${RdbManager.T_LIGHT_PROFILE} WHERE plantId = ?`,
-      [this.plantId]
+      [this.plantId],
     );
     if (rsProfile.goToNextRow()) {
       this.profile.targetLuxMinLow = rsProfile.getLong(0);
@@ -50,7 +63,7 @@ export class LightExposureViewModel {
         targetLuxMinLow: def.targetLuxMinLow,
         targetLuxMinHigh: def.targetLuxMinHigh,
         preferredLevel: def.preferredLevel,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       });
       this.profile = def;
     }
@@ -59,7 +72,7 @@ export class LightExposureViewModel {
     // 2. 加载 Sessions
     const rsSession = await this.rdbManager.rdbStore.querySql(
       `SELECT id, startAt, endAt, durationMin, level, luxMinutes FROM ${RdbManager.T_EXPOSURE_SESSION} WHERE plantId = ? ORDER BY startAt DESC`,
-      [this.plantId]
+      [this.plantId],
     );
     const loadedSessions: ExposureSession[] = [];
     while (rsSession.goToNextRow()) {
@@ -78,7 +91,7 @@ export class LightExposureViewModel {
     // 3. 检查是否有进行中的任务 (endAt === 0)
     // 按 startAt DESC 排的，如果有进行中的，应该在最前面（或者混在其中，但逻辑上应该只有一个）
     // 我们找最新的一个 endAt == 0
-    const active = this.sessions.find(s => s.endAt === 0);
+    const active = this.sessions.find((s) => s.endAt === 0);
     if (active) {
       this.activeSession = active;
       this.hasActive = true;
@@ -91,13 +104,20 @@ export class LightExposureViewModel {
     this.rebuildDailyStats();
   }
 
-  // 刷新进度（由 UI 定时器调用）
+  /**
+   * 刷新进度
+   * 由 UI 定时器调用，用于触发 UI 实时更新
+   * 通过增加 tick 值来驱动响应式更新
+   */
   refreshProgress(): void {
-    this.tick++;
+    this.tick++; // 增加 tick 值，触发 UI 刷新
   }
 
-  // 开始手动会话
-  // 开始手动会话：先写数据库里的进行中记录，再同步内存态和 AppStorage 标记。
+  /**
+   * 开始手动光照会话
+   * 先在数据库中创建进行中记录，再同步内存状态和 AppStorage 标记
+   * @param level 光照级别（弱光/中光/强光）
+   */
   async startManual(level: LightLevel): Promise<void> {
     if (this.hasActive) {
       return;
@@ -115,7 +135,7 @@ export class LightExposureViewModel {
         endAt: 0,
         durationMin: 0,
         level: s.level,
-        luxMinutes: 0
+        luxMinutes: 0,
       });
       // 同步状态到 AppStorage
       AppStorage.setOrCreate<boolean>(`lighting_${this.plantId}`, true);
@@ -127,8 +147,10 @@ export class LightExposureViewModel {
     this.refreshProgress();
   }
 
-  // 结束当前会话
-  // 结束当前会话时会反算持续分钟数和 luxMinutes，然后只增量刷新当天统计。
+  /**
+   * 结束当前光照会话
+   * 自动计算持续时间和光照量，然后刷新当天统计
+   */
   async endManualWithAutoDuration(): Promise<void> {
     if (!this.hasActive || this.activeSession === undefined) {
       return;
@@ -136,7 +158,7 @@ export class LightExposureViewModel {
     const endAt: number = Date.now();
     const durMin: number = Math.max(1, Math.floor((endAt - this.activeSession.startAt) / 60000));
     const luxMin: number = this.computeLuxMinutes(this.activeSession.level, durMin);
-    
+
     this.activeSession.finishWith(endAt, luxMin);
 
     // 更新 DB
@@ -144,10 +166,10 @@ export class LightExposureViewModel {
       const val: relationalStore.ValuesBucket = {
         endAt: endAt,
         durationMin: durMin,
-        luxMinutes: luxMin
+        luxMinutes: luxMin,
       };
       const pred = new relationalStore.RdbPredicates(RdbManager.T_EXPOSURE_SESSION);
-      pred.equalTo('id', this.activeSession.id);
+      pred.equalTo("id", this.activeSession.id);
       await this.rdbManager.rdbStore.update(val, pred);
 
       // 同步状态到 AppStorage
@@ -156,13 +178,17 @@ export class LightExposureViewModel {
 
     this.activeSession = undefined;
     this.hasActive = false;
-    
+
     // 更新统计
     this.updateDailyStatFor(new Date(endAt));
   }
 
-  // 直接补记
-  // 直接补记用于补录历史/刚完成的光照，不会进入“进行中”状态。
+  /**
+   * 直接补记光照记录
+   * 用于补录历史或刚完成的光照，不会进入"进行中"状态
+   * @param level 光照级别
+   * @param minutes 光照时长（分钟）
+   */
   async addManualInstant(level: LightLevel, minutes: number): Promise<void> {
     const endAt: number = Date.now();
     const s: ExposureSession = ExposureSession.createInstant(this.plantId, level, minutes, endAt);
@@ -177,7 +203,7 @@ export class LightExposureViewModel {
         endAt: s.endAt,
         durationMin: s.durationMin,
         level: s.level,
-        luxMinutes: s.luxMinutes
+        luxMinutes: s.luxMinutes,
       });
     }
 
@@ -185,12 +211,15 @@ export class LightExposureViewModel {
     this.updateDailyStatFor(new Date(endAt));
   }
 
-  // 删除记录
-  // 删除记录后需要顺手纠正 active 状态和对应日期的聚合结果。
+  /**
+   * 删除光照记录
+   * 删除后会纠正进行中状态和对应日期的统计结果
+   * @param id 要删除的会话 ID
+   */
   async deleteSession(id: string): Promise<void> {
     if (this.rdbManager.rdbStore) {
       const pred = new relationalStore.RdbPredicates(RdbManager.T_EXPOSURE_SESSION);
-      pred.equalTo('id', id);
+      pred.equalTo("id", id);
       await this.rdbManager.rdbStore.delete(pred);
     }
 
@@ -202,25 +231,34 @@ export class LightExposureViewModel {
     }
 
     // 更新内存列表
-    const s = this.sessions.find(x => x.id === id);
-    this.sessions = this.sessions.filter(x => x.id !== id);
+    const s = this.sessions.find((x) => x.id === id);
+    this.sessions = this.sessions.filter((x) => x.id !== id);
     if (s && s.endAt > 0) {
       this.updateDailyStatFor(new Date(s.endAt));
     }
   }
 
-  // lux-min 近似计算
+  /**
+   * 计算光照量（lux-min）
+   * 基于光照级别和时长计算等效光照量
+   * @param level 光照级别
+   * @param minutes 光照时长（分钟）
+   * @returns 计算后的光照量（lux-min）
+   */
   computeLuxMinutes(level: LightLevel, minutes: number): number {
-    const basePerMin: number = 100; 
-    const w: number = levelWeight(level);
-    return Math.floor(minutes * basePerMin * w);
+    const basePerMin: number = 100; // 基础光照强度/分钟
+    const w: number = levelWeight(level); // 光照级别权重
+    return Math.floor(minutes * basePerMin * w); // 计算并取整
   }
 
-  // 重建所有每日统计
-  // 从 sessions 全量重建每日统计，适合初始化或需要兜底校正时使用。
+  /**
+   * 重建所有每日统计
+   * 从所有光照会话中重新计算每日统计数据
+   * 适合初始化或需要兜底校正时使用
+   */
   private rebuildDailyStats(): void {
     const map = new Map<string, DailyLightStat>();
-    
+
     // 遍历所有已完成会话 (endAt > 0)
     for (const s of this.sessions) {
       if (s.endAt === 0) continue;
@@ -249,14 +287,18 @@ export class LightExposureViewModel {
     this.dailyStats = arr;
   }
 
-  // 增量更新某一天的统计，避免每次结束会话都重扫全部历史。
+  /**
+   * 增量更新某一天的统计
+   * 只更新指定日期的统计数据，避免每次结束会话都重扫全部历史
+   * @param day 要更新的日期
+   */
   private updateDailyStatFor(day: Date): void {
     // 简单起见，直接重新计算当天的
     // 也可以复用 rebuildDailyStats 的逻辑，但为了性能只更新一天
     const key = ymd(day);
     let totalLux = 0;
     let totalMin = 0;
-    
+
     for (const s of this.sessions) {
       if (s.endAt > 0 && ymd(new Date(s.endAt)) === key) {
         totalLux += s.luxMinutes;
@@ -273,41 +315,50 @@ export class LightExposureViewModel {
     this.calcStatStatus(stat);
 
     // 更新数组
-    const idx = this.dailyStats.findIndex(d => d.date === key);
+    const idx = this.dailyStats.findIndex((d) => d.date === key);
     if (idx >= 0) {
       // 替换（触发观察更新需要替换数组或使用 splice，ArkTS V2 建议直接修改数组元素属性或替换数组）
       // 这里直接替换数组元素
-      this.dailyStats[idx] = stat; 
+      this.dailyStats[idx] = stat;
     } else {
       this.dailyStats.push(stat);
     }
   }
 
+  /**
+   * 计算统计状态
+   * 根据光照量计算达标率和状态（不足/适中/过强）
+   * @param stat 每日统计对象
+   */
   private calcStatStatus(stat: DailyLightStat): void {
-    const high = this.profile.targetLuxMinHigh;
-    const rate = clampRate(high <= 0 ? 0 : stat.luxMinutes / high);
+    const high = this.profile.targetLuxMinHigh; // 目标上限
+    const rate = clampRate(high <= 0 ? 0 : stat.luxMinutes / high); // 计算达标率并限制在 0-1 之间
     stat.rate = rate;
-    
+
+    // 根据达标率判断状态
     if (rate < 0.6) {
-      stat.status = LightStatus.INSUFF;
+      stat.status = LightStatus.INSUFF; // 不足
     } else if (rate > 1.0) {
-      stat.status = LightStatus.STRONG;
+      stat.status = LightStatus.STRONG; // 过强
     } else {
-      stat.status = LightStatus.OK;
+      stat.status = LightStatus.OK; // 适中
     }
   }
 
-  // 获取今日达标（0..100）
-  // 今日达标率会把“已完成历史 + 正在进行中的实时贡献”一起算进去。
+  /**
+   * 获取今日达标率
+   * 计算今日光照的达标百分比（0-100）
+   * 包含已完成的历史记录和正在进行中的实时贡献
+   */
   get todayRatePercent(): number {
     // 依赖 tick，确保每秒更新
     const _ = this.tick;
-    
+
     const key: string = ymd(new Date());
     let totalLux: number = 0;
 
     // 查找今日已完成
-    const stat = this.dailyStats.find(s => s.date === key);
+    const stat = this.dailyStats.find((s) => s.date === key);
     if (stat) {
       totalLux = stat.luxMinutes;
     }
@@ -325,60 +376,68 @@ export class LightExposureViewModel {
     return Math.floor(rate * 100);
   }
 
+  /**
+   * 获取今日光照状态
+   * 计算今日光照的状态（不足/适中/过强）
+   * 包含已完成的历史记录和正在进行中的实时贡献
+   */
   get todayStatus(): LightStatus {
-    const _ = this.tick; // 依赖 tick
+    const _ = this.tick; // 依赖 tick，确保实时更新
     const key: string = ymd(new Date());
-    const stat = this.dailyStats.find(s => s.date === key);
-    
+    const stat = this.dailyStats.find((s) => s.date === key);
+
     // 此时也要考虑 active session 带来的变化吗？
     // 通常状态是基于总量的，所以应该考虑
     let totalLux = stat ? stat.luxMinutes : 0;
-    
+
     if (this.hasActive && this.activeSession) {
       const now: number = Date.now();
       const durMin: number = Math.max(1, Math.floor((now - this.activeSession.startAt) / 60000));
       totalLux += this.computeLuxMinutes(this.activeSession.level, durMin);
     }
-    
+
     const high = this.profile.targetLuxMinHigh;
     const rate = clampRate(high <= 0 ? 0 : totalLux / high);
-    
+
     if (rate < 0.6) return LightStatus.INSUFF;
     if (rate > 1.0) return LightStatus.STRONG;
     return LightStatus.OK;
   }
 
-  // 最近 7 天
-  // 最近 7 天的数据专门服务图表展示；今天如果有 active session，会临时叠加实时值。
+  /**
+   * 获取最近 7 天的统计数据
+   * 专门用于图表展示
+   * 今天如果有进行中的光照会话，会临时叠加实时值
+   */
   get sevenDays(): DailyLightStat[] {
     const result: DailyLightStat[] = [];
     const base: Date = new Date();
     for (let i: number = 6; i >= 0; i--) {
       const d: Date = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i);
       const key: string = ymd(d);
-      
-      const found = this.dailyStats.find(s => s.date === key);
+
+      const found = this.dailyStats.find((s) => s.date === key);
       if (found) {
         // 如果是今天，需要加上 active 的部分用于显示吗？
         // 图表通常显示已完成的，或者包含实时的。为了一致性，最好包含实时的。
         if (i === 0 && this.hasActive && this.activeSession) {
-           // 克隆一个临时的 stat 用于显示
-           const temp = new DailyLightStat(found.id);
-           temp.plantId = found.plantId;
-           temp.date = found.date;
-           temp.luxMinutes = found.luxMinutes;
-           temp.durationMin = found.durationMin;
-           temp.maxLux = found.maxLux;
-           temp.rate = found.rate;
-           temp.status = found.status;
-           const now = Date.now();
-           const durMin = Math.max(1, Math.floor((now - this.activeSession.startAt) / 60000));
-           const extraLux = this.computeLuxMinutes(this.activeSession.level, durMin);
-           temp.luxMinutes += extraLux;
-           this.calcStatStatus(temp);
-           result.push(temp);
+          // 克隆一个临时的 stat 用于显示
+          const temp = new DailyLightStat(found.id);
+          temp.plantId = found.plantId;
+          temp.date = found.date;
+          temp.luxMinutes = found.luxMinutes;
+          temp.durationMin = found.durationMin;
+          temp.maxLux = found.maxLux;
+          temp.rate = found.rate;
+          temp.status = found.status;
+          const now = Date.now();
+          const durMin = Math.max(1, Math.floor((now - this.activeSession.startAt) / 60000));
+          const extraLux = this.computeLuxMinutes(this.activeSession.level, durMin);
+          temp.luxMinutes += extraLux;
+          this.calcStatStatus(temp);
+          result.push(temp);
         } else {
-           result.push(found);
+          result.push(found);
         }
       } else {
         // 没数据，造一个空的
@@ -399,7 +458,7 @@ export class LightExposureViewModel {
           stat.plantId = this.plantId;
           stat.date = key;
           // status default OK? No, should be INSUFF if 0
-          stat.status = LightStatus.INSUFF; 
+          stat.status = LightStatus.INSUFF;
           result.push(stat);
         }
       }
@@ -407,8 +466,13 @@ export class LightExposureViewModel {
     return result;
   }
 
-  // 更新目标配置
-  // 更新目标配置后，今日状态和达标率都可能变化，所以最后会刷新当天统计。
+  /**
+   * 更新光照目标配置
+   * 更新后会自动切换光照偏好级别，并刷新当天统计
+   * @param low 目标下限（lux-min）
+   * @param high 目标上限（lux-min）
+   * @param preferred 偏好的光照级别
+   */
   async updateProfile(low: number, high: number, preferred: LightLevel): Promise<void> {
     // 自动切换逻辑：根据 low 值所在的范围，动态建议/切换强度偏好
     let finalPreferred = preferred;
@@ -431,10 +495,10 @@ export class LightExposureViewModel {
         targetLuxMinLow: low,
         targetLuxMinHigh: high,
         preferredLevel: finalPreferred,
-        updatedAt: this.profile.updatedAt
+        updatedAt: this.profile.updatedAt,
       };
       const pred = new relationalStore.RdbPredicates(RdbManager.T_LIGHT_PROFILE);
-      pred.equalTo('plantId', this.plantId);
+      pred.equalTo("plantId", this.plantId);
       // 应该是 update，因为 init 时已经 ensure 了一条
       const rows = await this.rdbManager.rdbStore.update(val, pred);
       if (rows === 0) {
