@@ -1,7 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-  <circle cx="12" cy="12" r="4" fill="#FFB74D" stroke="#FFA726" stroke-width="2"/>
-  <line x1="12" y1="2" x2="12" y2="5" stroke="#FFA726" stroke-width="2" stroke-linecap="round"/>
-  <line x1="12" y1="19" x2="12" y2="22" stroke="#FFA726" stroke-width="2" stroke-linecap="round"/>
-  <line x1="2" y1="12" x2="5" y2="12" stroke="#FFA726" stroke-width="2" stroke-linecap="round"/>
-  <line x1="19" y1="12" x2="22" y2="12" stroke="#FFA726" stroke-width="2" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="sunSmallGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="4" fill="url(#sunSmallGradient1)" stroke="#F57F17" stroke-width="2"/>
+  <line x1="12" y1="2" x2="12" y2="5" stroke="#F57F17" stroke-width="2" stroke-linecap="round"/>
+  <line x1="12" y1="19" x2="12" y2="22" stroke="#F57F17" stroke-width="2" stroke-linecap="round"/>
+  <line x1="2" y1="12" x2="5" y2="12" stroke="#F57F17" stroke-width="2" stroke-linecap="round"/>
+  <line x1="19" y1="12" x2="22" y2="12" stroke="#F57F17" stroke-width="2" stroke-linecap="round"/>
 </svg>

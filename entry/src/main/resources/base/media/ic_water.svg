@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <path d="M16 4C16 4 8 14 8 19a8 8 0 0 0 16 0c0-5-8-15-8-15z" fill="#64B5F6" opacity="0.3"/>
-  <path d="M16 4C16 4 8 14 8 19a8 8 0 0 0 16 0c0-5-8-15-8-15z" stroke="#42A5F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M16 14c-2 3-4 5.5-4 7.5a4 4 0 0 0 8 0c0-2-2-4.5-4-7.5z" fill="#42A5F5" opacity="0.5"/>
+  <defs>
+    <linearGradient id="waterGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#90CAF9"/>
+      <stop offset="100%" stop-color="#42A5F5"/>
+    </linearGradient>
+    <linearGradient id="waterGradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#BBDEFB"/>
+      <stop offset="100%" stop-color="#64B5F6"/>
+    </linearGradient>
+  </defs>
+  <path d="M16 4C16 4 8 14 8 19a8 8 0 0 0 16 0c0-5-8-15-8-15z" fill="url(#waterGradient1)" stroke="#1976D2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 14c-2 3-4 5.5-4 7.5a4 4 0 0 0 8 0c0-2-2-4.5-4-7.5z" fill="url(#waterGradient2)" opacity="0.6"/>
+  <circle cx="16" cy="12" r="1.5" fill="#FFFFFF" opacity="0.8"/>
 </svg>

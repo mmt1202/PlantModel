@@ -289,6 +289,7 @@ export class RdbManager {
       rs.close()
     } catch (e) {
       // 失败降级：返回空 map
+      console.error(`获取活跃光照会话失败：${(e as Error).message}`)
     }
     return map
   }

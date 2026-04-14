@@ -3,6 +3,7 @@
 // 记录一次完整的光照过程：从开始到结束，包括时长、光照强度等信息
 
 import { LightLevel, genId } from './LightTypes';
+import { LightConstants, WaterConstants } from '../constants/AppConstants';
 
 /**
  * 光照会话类
@@ -56,7 +57,7 @@ export default class ExposureSession {
   finishWith(endAt: number, luxMinutes: number): void {
     this.endAt = endAt;
     // 计算持续时间（分钟），至少为 1 分钟
-    const dur: number = Math.max(1, Math.floor((this.endAt - this.startAt) / 60000));
+    const dur: number = Math.max(LightConstants.MIN_DURATION_MIN, Math.floor((this.endAt - this.startAt) / WaterConstants.MILLIS_PER_SECOND));
     this.durationMin = dur;
     this.luxMinutes = luxMinutes;
   }
@@ -75,7 +76,7 @@ export default class ExposureSession {
     s.level = level;
     s.endAt = endAt;
     // 根据结束时间和时长反推开始时间
-    s.startAt = endAt - minutes * 60000;  // 分钟转毫秒
+    s.startAt = endAt - minutes * WaterConstants.MILLIS_PER_SECOND;  // 分钟转毫秒
     s.durationMin = minutes;
     s.luxMinutes = 0; // 由外部计算后赋值
     return s;

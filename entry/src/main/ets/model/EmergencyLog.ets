@@ -8,7 +8,7 @@ export default class EmergencyLog {
   title: string = '';
   startedAt: number = 0;
   reviewAt: number = 0;
-  stepsChecked: Array<boolean> = new Array<boolean>(); // 三步完成状态
+  stepsChecked: Array<boolean> = [false, false, false]; // 三步完成状态
   note: string = '';
   completed: boolean = false;
 

@@ -3,6 +3,7 @@
 // 每株植物的光照偏好和目标设置
 
 import { LightLevel } from './LightTypes';
+import { LightConstants } from '../constants/AppConstants';
 
 /**
  * 光照配置档案类
@@ -11,9 +12,9 @@ import { LightLevel } from './LightTypes';
 @ObservedV2
 export default class LightProfile {
   @Trace plantId: number = 0;                 // 关联的植物 ID
-  @Trace targetLuxMinLow: number = 12000;     // 达标下限（lux-minutes）
-  @Trace targetLuxMinHigh: number = 20000;    // 达标上限（满分参考值）
-  @Trace highLuxThreshold: number = 25000;    // 视为"过强"的阈值（手动近似）
+  @Trace targetLuxMinLow: number = LightConstants.TARGET_LUX_MIN_LOW;     // 达标下限（lux-minutes）
+  @Trace targetLuxMinHigh: number = LightConstants.TARGET_LUX_MIN_HIGH;    // 达标上限（满分参考值）
+  @Trace highLuxThreshold: number = LightConstants.TARGET_LUX_THRESHOLD;    // 视为"过强"的阈值（手动近似）
   @Trace preferredLevel: LightLevel = LightLevel.MID; // 偏好的光照级别
   @Trace updatedAt: number = 0;              // 更新时间戳
 

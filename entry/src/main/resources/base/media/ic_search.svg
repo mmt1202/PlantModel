@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <circle cx="14" cy="14" r="7" fill="#E8F5E9" stroke="#66BB6A" stroke-width="2.5"/>
-  <line x1="19" y1="19" x2="26" y2="26" stroke="#66BB6A" stroke-width="3" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="searchGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7986CB"/>
+      <stop offset="100%" stop-color="#5C6BC0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="14" cy="14" r="7" fill="#E8EAF6" stroke="url(#searchGradient1)" stroke-width="2.5"/>
+  <line x1="19" y1="19" x2="26" y2="26" stroke="url(#searchGradient1)" stroke-width="3" stroke-linecap="round"/>
 </svg>

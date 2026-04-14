@@ -22,7 +22,7 @@ export class EnvSimulatorViewModel {
   isAnimating: boolean = false;
 
   constructor(plantId: string) {
-    this.plantId = plantId ? plantId : 'PLANT_DEMO';
+    this.plantId = plantId && plantId.trim() ? plantId : 'PLANT_DEMO';
   }
 
   // 模拟器是纯计算型 VM：参数变化即刷新派生状态，不依赖数据库。
@@ -103,5 +103,5 @@ export class EnvSimulatorViewModel {
 function clamp(v: number, lo: number, hi: number): number {
   if (v < lo) return lo;
   if (v > hi) return hi;
-  return Math.round(v);
+  return v;
 }

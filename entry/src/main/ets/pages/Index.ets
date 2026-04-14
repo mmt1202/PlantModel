@@ -1370,7 +1370,11 @@ struct Index {
     .zIndex(1000)
     .borderRadius(16)
     .backgroundColor(type === 'ok' ? 0xFFE8F5E9 : (type === 'warn' ? 0xFFFFF3E0 : 0xFFE3F2FD))
-    .position({ x: 12, y: 70 })
+    .alignSelf(ItemAlign.Start)
+    .margin({
+      left: 12,
+      top: 70
+    })
     .shadow({
       radius: 12,
       color: 0x18000000,

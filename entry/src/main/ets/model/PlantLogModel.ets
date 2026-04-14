@@ -7,10 +7,10 @@
  */
 @ObservedV2
 export class PlantLog {
-  @Trace id: number; // 日志唯一标识
-  @Trace plantId: number; // 关联的植物 ID
-  @Trace note: string; // 日志内容/备注
-  @Trace createdAt: number; // 创建时间戳
+  @Trace id: number           // 日志唯一标识
+  @Trace plantId: number       // 关联的植物 ID
+  @Trace note: string          // 日志内容/备注
+  @Trace createdAt: number     // 创建时间戳
 
   /**
    * 构造函数
@@ -23,7 +23,7 @@ export class PlantLog {
     this.id = id;
     this.plantId = plantId;
     this.note = note;
-    this.createdAt = createdAt;
+    this.createdAt = createdAt
   }
 }
 
@@ -33,11 +33,11 @@ export class PlantLog {
  */
 @ObservedV2
 export class LogPhoto {
-  @Trace id: number; // 照片唯一标识
-  @Trace logId: number; // 关联的日志 ID
-  @Trace path: string; // 原图路径（filesDir 下）
-  @Trace thumbPath: string; // 缩略图路径（可与原图相同；若无缩略图，则传原图）
-  @Trace createdAt: number; // 创建时间戳
+  @Trace id: number           // 照片唯一标识
+  @Trace logId: number         // 关联的日志 ID
+  @Trace path: string          // 原图路径（filesDir 下）
+  @Trace thumbPath: string     // 缩略图路径（可与原图相同；若无缩略图，则传原图）
+  @Trace createdAt: number     // 创建时间戳
 
   /**
    * 构造函数
@@ -52,6 +52,6 @@ export class LogPhoto {
     this.logId = logId;
     this.path = path;
     this.thumbPath = thumbPath;
-    this.createdAt = createdAt;
+    this.createdAt = createdAt
   }
 }

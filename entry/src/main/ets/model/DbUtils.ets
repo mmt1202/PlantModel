@@ -16,6 +16,7 @@ export async function runInTransaction(store: relationalStore.RdbStore, fn: () =
     await store.commit()
   } catch (e) {
     await store.rollBack()
+    console.error(`事务执行失败：${(e as Error).message}`)
     throw e as Error
   }
 }

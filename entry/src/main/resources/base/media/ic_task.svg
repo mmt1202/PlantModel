@@ -1,9 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <rect x="6" y="4" width="20" height="24" rx="4" fill="#E8F5E9" stroke="#66BB6A" stroke-width="2"/>
-  <line x1="10" y1="10" x2="22" y2="10" stroke="#66BB6A" stroke-width="2" stroke-linecap="round"/>
-  <line x1="10" y1="15" x2="22" y2="15" stroke="#66BB6A" stroke-width="2" stroke-linecap="round"/>
-  <line x1="10" y1="20" x2="16" y2="20" stroke="#66BB6A" stroke-width="2" stroke-linecap="round"/>
-  <rect x="10" y="8" width="2" height="4" rx="1" fill="#4CAF50"/>
-  <rect x="10" y="13" width="2" height="4" rx="1" fill="#4CAF50"/>
-  <rect x="10" y="18" width="2" height="4" rx="1" fill="#4CAF50"/>
+  <defs>
+    <linearGradient id="taskGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#CE93D8"/>
+      <stop offset="100%" stop-color="#BA68C8"/>
+    </linearGradient>
+    <linearGradient id="taskGradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E1BEE7"/>
+      <stop offset="100%" stop-color="#CE93D8"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="4" width="20" height="24" rx="4" fill="url(#taskGradient1)" stroke="#7B1FA2" stroke-width="2"/>
+  <line x1="10" y1="10" x2="22" y2="10" stroke="#6A1B9A" stroke-width="2" stroke-linecap="round"/>
+  <line x1="10" y1="15" x2="22" y2="15" stroke="#6A1B9A" stroke-width="2" stroke-linecap="round"/>
+  <line x1="10" y1="20" x2="16" y2="20" stroke="#6A1B9A" stroke-width="2" stroke-linecap="round"/>
+  <rect x="10" y="8" width="2" height="4" rx="1" fill="url(#taskGradient2)"/>
+  <rect x="10" y="13" width="2" height="4" rx="1" fill="url(#taskGradient2)"/>
+  <rect x="10" y="18" width="2" height="4" rx="1" fill="url(#taskGradient2)"/>
 </svg>

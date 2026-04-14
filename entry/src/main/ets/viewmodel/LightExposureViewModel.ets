@@ -8,6 +8,7 @@ import DailyLightStat from "../model/DailyLightStat";
 import { LightLevel, LightStatus, levelWeight, clampRate, ymd, genId } from "../model/LightTypes";
 import { RdbManager } from "./RdbManager";
 import { relationalStore } from "@kit.ArkData";
+import { LightConstants, WaterConstants } from "../constants/AppConstants";
 
 /**
  * 光照记录视图模型
@@ -164,7 +165,10 @@ export class LightExposureViewModel {
       return;
     }
     const endAt: number = Date.now();
-    const durMin: number = Math.max(1, Math.floor((endAt - this.activeSession.startAt) / 60000));
+    const durMin: number = Math.max(
+      LightConstants.MIN_DURATION_MIN,
+      Math.floor((endAt - this.activeSession.startAt) / WaterConstants.MILLIS_PER_SECOND),
+    );
     const luxMin: number = this.computeLuxMinutes(this.activeSession.level, durMin);
 
     this.activeSession.finishWith(endAt, luxMin);

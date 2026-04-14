@@ -2,6 +2,8 @@
 // 浇水用量估算相关枚举、工具函数与核心计算
 // 支持 ArkTS / ArkUI V2 兼容
 
+import { WaterConstants } from "../constants/AppConstants";
+
 /**
  * 介质类型枚举
  * 表示土壤/介质的保水能力
@@ -44,18 +46,18 @@ export enum PlantKind {
  */
 export function retentionFactor(t: RetentionType): number {
   if (t === RetentionType.SANDY) {
-    return 0.8; // 砂砾：保水能力差
+    return WaterConstants.RETENTION_SANDY; // 砂砾：保水能力差
   }
   if (t === RetentionType.PEATY) {
-    return 1.2; // 泥炭：保水能力强
+    return WaterConstants.RETENTION_PEATY; // 泥炭：保水能力强
   }
   if (t === RetentionType.ORCHID) {
-    return 0.7; // 兰花介质：保水能力差
+    return WaterConstants.RETENTION_ORCHID; // 兰花介质：保水能力差
   }
   if (t === RetentionType.COCO) {
-    return 1.1; // 椰糠：保水能力较强
+    return WaterConstants.RETENTION_COCO; // 椰糠：保水能力较强
   }
-  return 1.0; // GENERAL：保水能力中等
+  return WaterConstants.RETENTION_GENERAL; // GENERAL：保水能力中等
 }
 
 /**
@@ -65,9 +67,9 @@ export function retentionFactor(t: RetentionType): number {
  */
 export function strategyFactor(s: StrategyType): number {
   if (s === StrategyType.FULL) {
-    return 0.35; // 彻底浸润：用水量较大
+    return WaterConstants.STRATEGY_FULL; // 彻底浸润：用水量较大
   }
-  return 0.2; // MAINT：日常保养，用水量较小
+  return WaterConstants.STRATEGY_MAINT; // MAINT：日常保养，用水量较小
 }
 
 /**
@@ -77,18 +79,18 @@ export function strategyFactor(s: StrategyType): number {
  */
 export function plantFactor(k: PlantKind): number {
   if (k === PlantKind.SUCC) {
-    return 0.7; // 多肉：需水量少
+    return WaterConstants.PLANT_SUCC; // 多肉：需水量少
   }
   if (k === PlantKind.ORCHID) {
-    return 0.8; // 兰花：需水量较少
+    return WaterConstants.PLANT_ORCHID; // 兰花：需水量较少
   }
   if (k === PlantKind.FLOWER) {
-    return 1.1; // 开花植物：需水量较多
+    return WaterConstants.PLANT_FLOWER; // 开花植物：需水量较多
   }
   if (k === PlantKind.FRUIT) {
-    return 1.2; // 果类植物：需水量多
+    return WaterConstants.PLANT_FRUIT; // 果类植物：需水量多
   }
-  return 1.0; // FOLIAGE：需水量中等
+  return WaterConstants.PLANT_FOLIAGE; // FOLIAGE：需水量中等
 }
 
 // —— 标签转换函数 ——
@@ -159,6 +161,7 @@ export function plantLabel(k: PlantKind): string {
  * @param rt 介质类型
  * @param st 浇水策略
  * @param pk 植株类型
+ * 体积 V≈π*(d/2)^2*h（ml≈cm³） 可用水量 ≈ V * porosity(0.55) * strategy * plant * retention
  * @returns 估算的用水量范围（ml）
  */
 export function estimateWaterML(
@@ -171,16 +174,16 @@ export function estimateWaterML(
   // 计算花盆体积（cm³ ≈ ml）
   const V: number = Math.PI * Math.pow(d / 2.0, 2.0) * h;
   // 土壤孔隙率（一般为 0.55）
-  const porosity: number = 0.55;
+  const porosity: number = WaterConstants.SOIL_POROSITY;
   // 计算中间值
   const midFloat: number =
     V * porosity * strategyFactor(st) * plantFactor(pk) * retentionFactor(rt);
   // 四舍五入到整数
   const mid: number = roundInt(midFloat);
   // 计算下限（中间值的 85%）
-  const low: number = roundInt(midFloat * 0.85);
+  const low: number = roundInt(midFloat * WaterConstants.WATER_RATIO_LOW);
   // 计算上限（中间值的 115%）
-  const high: number = roundInt(midFloat * 1.15);
+  const high: number = roundInt(midFloat * WaterConstants.WATER_RATIO_HIGH);
   // 返回估算结果
   return { low, mid, high };
 }

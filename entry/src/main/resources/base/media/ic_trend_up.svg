@@ -1,4 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <path d="M4 24L10 18L16 22L24 12L28 8" stroke="#64B5F6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M22 8h6v6" stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="#90CAF9"/>
+  <defs>
+    <linearGradient id="trendUpGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7986CB"/>
+      <stop offset="100%" stop-color="#5C6BC0"/>
+    </linearGradient>
+    <linearGradient id="trendUpGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9FA8DA"/>
+      <stop offset="100%" stop-color="#7986CB"/>
+    </linearGradient>
+  </defs>
+  <path d="M4 24L10 18L16 22L24 12L28 8" stroke="url(#trendUpGradient1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 8h6v6" stroke="url(#trendUpGradient2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>

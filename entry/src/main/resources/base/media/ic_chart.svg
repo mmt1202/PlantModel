@@ -1,5 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <rect x="6" y="8" width="6" height="16" rx="3" fill="#81C784" stroke="#66BB6A" stroke-width="1.5"/>
-  <rect x="13" y="4" width="6" height="20" rx="3" fill="#66BB6A" stroke="#4CAF50" stroke-width="1.5"/>
-  <rect x="20" y="10" width="6" height="14" rx="3" fill="#A5D6A7" stroke="#81C784" stroke-width="1.5"/>
+  <defs>
+    <linearGradient id="chartGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4DD0E1"/>
+      <stop offset="100%" stop-color="#26C6DA"/>
+    </linearGradient>
+    <linearGradient id="chartGradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#80DEEA"/>
+      <stop offset="100%" stop-color="#4DD0E1"/>
+    </linearGradient>
+    <linearGradient id="chartGradient3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#B2EBF2"/>
+      <stop offset="100%" stop-color="#80DEEA"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="8" width="6" height="16" rx="3" fill="url(#chartGradient1)" stroke="#0097A7" stroke-width="1.5"/>
+  <rect x="13" y="4" width="6" height="20" rx="3" fill="url(#chartGradient2)" stroke="#00838F" stroke-width="1.5"/>
+  <rect x="20" y="10" width="6" height="14" rx="3" fill="url(#chartGradient3)" stroke="#0097A7" stroke-width="1.5"/>
 </svg>

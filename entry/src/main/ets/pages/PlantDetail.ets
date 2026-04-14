@@ -96,6 +96,11 @@ export struct PlantDetail {
           })
         }
         GridItem() {
+          this.ActionCard($r('app.media.ic_water'), '浇水记录', () => {
+            this.pageStack.pushPathByName('WateringPage', this.plant!.id)
+          })
+        }
+        GridItem() {
           this.ActionCard($r('app.media.ic_water'), '浇水估算', () => {
             this.pageStack.pushPathByName('WaterEstimatorPage', this.plant!.id)
           })
@@ -103,6 +108,16 @@ export struct PlantDetail {
         GridItem() {
           this.ActionCard($r('app.media.ic_refresh'), '应急与轮换', () => {
             this.pageStack.pushPathByName('EmergencyAndRotatePage', this.plant!.id)
+          })
+        }
+        GridItem() {
+          this.ActionCard($r('app.media.ic_calendar'), '配土计划', () => {
+            this.pageStack.pushPathByName('MixPlannerPage', this.plant!)
+          })
+        }
+        GridItem() {
+          this.ActionCard($r('app.media.ic_sun_small'), '环境模拟', () => {
+            this.pageStack.pushPathByName('EnvSimulatorPage', this.plant!.id)
           })
         }
       }

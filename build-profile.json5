@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.cer",
+          "certpath": "C:/Users/Administrator.DESKTOP-D0LGLNU/.ohos/config/default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BA068E009D1D2BAD88C882105896B54C00FD9BC380FA81D093807E5D375922CA2B88A7ED1E3B331",
-          "profile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p7b",
+          "keyPassword": "0000001B24A7951E30598D33D10AD73829F2981C53C915330855422C2C499AA6FC215CB926FE0A053BEC47",
+          "profile": "C:/Users/Administrator.DESKTOP-D0LGLNU/.ohos/config/default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p12",
-          "storePassword": "0000001BECCBE344C9933F678C73069D76D5E50249E5BC652D695568021FE5439EF1235A3DC41BA3EA7F69"
+          "storeFile": "C:/Users/Administrator.DESKTOP-D0LGLNU/.ohos/config/default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p12",
+          "storePassword": "0000001B8378720E546A9455504948758B11CBB1AED64DCCC0B9A054FFB295F8C7F9FD3CD61DA52EDACBF4"
         }
       },
       {
@@ -20,11 +20,11 @@
         "material": {
           "certpath": "D:/app/plant.cer",
           "keyAlias": "plant",
-          "keyPassword": "00000018E936D91817146C959C600332B6CDAAB5EFC38A4A1743A850D75A067D66FE28C6EF3776FE",
+          "keyPassword": "0000001899848BB7FCB8615239E3D179D6E621479FB56493691CD66637EB520148356B6078259A3F",
           "profile": "D:/app/plantRelease.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "D:/app/plant.p12",
-          "storePassword": "000000183B6E0B3CE0ABBC00C63D413CF82C2768CA4BA886D2836DAC482D4A08BB95116ADB8CB65C"
+          "storePassword": "00000018F7ACED303F63F5843C3289C403079358D15E77E3B8AE41C4FD1D2F10E5E24B59159ABD4A"
         }
       }
     ],
