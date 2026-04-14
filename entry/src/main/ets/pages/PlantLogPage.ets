@@ -49,6 +49,11 @@ export struct PlantLogPage {
   @Local previewLogId: number = 0
   listScroller = new Scroller()
   private addImageFileViewModel = AddImageFileViewModel.getInstance(this.ctx);
+  // 按钮按压状态
+  @Local addLogPressed: boolean = false
+  @Local sortPressed: boolean = false
+  @Local deletePressed: boolean = false
+  @Local cancelPressed: boolean = false
 
   async aboutToAppear() {
     this.dateISO = this.todayISO()
@@ -368,6 +373,15 @@ export struct PlantLogPage {
         .onClick(() => {
           this.sortAsc = !this.sortAsc
         })
+        .scale(this.sortPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+        .animation({ duration: 100, curve: Curve.EaseOut })
+        .onTouch((e: TouchEvent) => {
+          if (e.type === TouchType.Down) {
+            this.sortPressed = true
+          } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+            this.sortPressed = false
+          }
+        })
       // Text(`${this.plantName} · 日志`).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
       Stack() {
 
@@ -391,6 +405,15 @@ export struct PlantLogPage {
                   this.selectMode = false
                 }
               })
+              .scale(this.deletePressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+              .animation({ duration: 100, curve: Curve.EaseOut })
+              .onTouch((e: TouchEvent) => {
+                if (e.type === TouchType.Down) {
+                  this.deletePressed = true
+                } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                  this.deletePressed = false
+                }
+              })
             Text('取消选择')
               .fontSize(12)
               .fontColor(0xFF263238)
@@ -407,6 +430,15 @@ export struct PlantLogPage {
                 this.selectMode = false
               })
               .margin({ left: 8 })
+              .scale(this.cancelPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+              .animation({ duration: 100, curve: Curve.EaseOut })
+              .onTouch((e: TouchEvent) => {
+                if (e.type === TouchType.Down) {
+                  this.cancelPressed = true
+                } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                  this.cancelPressed = false
+                }
+              })
           }
         } else {
           Text('长按进入多选')
@@ -493,6 +525,15 @@ export struct PlantLogPage {
                   this.onAddLog(this.noteText.trim(), this.dateISO);
                   this.noteText = ''
                 })
+                .scale(this.addLogPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+                .animation({ duration: 100, curve: Curve.EaseOut })
+                .onTouch((e: TouchEvent) => {
+                  if (e.type === TouchType.Down) {
+                    this.addLogPressed = true
+                  } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                    this.addLogPressed = false
+                  }
+                })
             }
           }.padding({ left: 16, right: 16, bottom: 8 })
 
@@ -544,6 +585,10 @@ export struct PlantLogPage {
             .scrollBar(BarState.Off).height('80%')
             .padding({ left: 16, right: 16, bottom: 16 })
             .edgeEffect(EdgeEffect.Spring)
+            .animation({
+              duration: 300,
+              curve: Curve.EaseInOut
+            })
           }
         }
         .width('100%')

@@ -113,13 +113,17 @@ export class AddImageFileViewModel {
   }
 
   // 把 PixelMap 转成 JPEG 二进制，再交给统一写文件逻辑。
-  private pixelMapToBuffer(pixelMap: image.PixelMap, displayName: string): void {
+  private async pixelMapToBuffer(pixelMap: image.PixelMap, displayName: string): Promise<void> {
     const imagePackerApi: image.ImagePacker = image.createImagePacker();
     const packOpts: image.PackingOption = { format: 'image/jpeg', quality: 100 };
 
-    imagePackerApi.packToData(pixelMap, packOpts).then((data: ArrayBuffer) => {
-      this.writeDistributedFile(data, displayName);
-    });
+    try {
+      const data: ArrayBuffer = await imagePackerApi.packToData(pixelMap, packOpts);
+      await this.writeDistributedFile(data, displayName);
+    } finally {
+      // 释放 PixelMap 内存，避免 OOM
+      await pixelMap.release();
+    }
   }
 
   // 文件落到 distributedFilesDir，后续如果需要跨设备或富文本引用会更方便。

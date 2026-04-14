@@ -17,9 +17,26 @@ export struct MetricSheet {
   // —— 视图控制 —— //
   @Local chartKey: 'score' | 'height' | 'width' = 'score' // 迷你图维度
   @Local sortAsc: boolean = false // 列表排序（默认时间新→旧）
+  // 背景遮罩动画
+  @Local maskOpacity: number = 0
+  // 图表动画
+  @Local chartAnimated: boolean = false
+  // 按钮按压状态
+  @Local addPressed: boolean = false
+  @Local clearPressed: boolean = false
 
   aboutToAppear(): void {
     this.dateISO = this.todayISO()
+    // 背景遮罩渐显动画
+    animateTo({ duration: 250, curve: Curve.EaseInOut }, () => {
+      this.maskOpacity = 1
+    })
+    // 图表柱状图生长动画
+    setTimeout(() => {
+      animateTo({ duration: 500, curve: Curve.EaseOut }, () => {
+        this.chartAnimated = true
+      })
+    }, 200)
   }
 
   // ================== 视图 ================== //
@@ -28,9 +45,13 @@ export struct MetricSheet {
       // 指标抽屉是成长指标页的轻量版：支持快速录入、迷你趋势和历史删除。
       // 蒙层
       Column() {
-        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => {
-          this.onClose()
-        })
+        Blank()
+          .width('100%')
+          .height('100%')
+          .backgroundColor(`rgba(0,0,0,${0.6 * this.maskOpacity})`)
+          .onClick(() => {
+            this.onClose()
+          })
       }
 
       // 抽屉
@@ -136,6 +157,15 @@ export struct MetricSheet {
                 this.hStr = '';
                 this.wStr = '' // 清空数值，分数保留
               })
+              .scale(this.addPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+              .animation({ duration: 100, curve: Curve.EaseOut })
+              .onTouch((e: TouchEvent) => {
+                if (e.type === TouchType.Down) {
+                  this.addPressed = true
+                } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                  this.addPressed = false
+                }
+              })
 
             Text('清空')
               .fontSize(14)
@@ -153,6 +183,15 @@ export struct MetricSheet {
                 this.hStr = '';
                 this.wStr = '';
                 this.sStr = '8'
+              })
+              .scale(this.clearPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+              .animation({ duration: 100, curve: Curve.EaseOut })
+              .onTouch((e: TouchEvent) => {
+                if (e.type === TouchType.Down) {
+                  this.clearPressed = true
+                } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                  this.clearPressed = false
+                }
               })
           }
           .margin({ top: 6 })
@@ -194,7 +233,11 @@ export struct MetricSheet {
         offsetX: 0,
         offsetY: -6
       })
-      .animation({ duration: 200, curve: Curve.Sharp })
+      .animation({
+        duration: 300,
+        curve: Curve.Friction,
+        playMode: PlayMode.Normal
+      })
     }
     .width('100%').height('100%').alignContent(Alignment.Bottom)
   }
@@ -275,9 +318,10 @@ export struct MetricSheet {
               Column() {
                 Blank()
                   .width(14)
-                  .height(this.barHeight(m))           // 由方法计算，避免在 Builder 内写 let/const
+                  .height(this.chartAnimated ? this.barHeight(m) : 0)
                   .borderRadius(6)
                   .backgroundColor(this.barColor())
+                  .animation({ duration: 400, curve: Curve.EaseOut })
                 // x 轴标注（每隔若干显示一次）
                 Text(this.tickLabel(m.createdAt))
                   .fontSize(9).fontColor(0x80607278).margin({ top: 4 })

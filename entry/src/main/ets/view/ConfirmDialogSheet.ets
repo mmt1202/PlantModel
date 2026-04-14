@@ -4,13 +4,29 @@ export struct ConfirmDialogSheet {
   @Param @Require text: string
   @Event onCancel: () => void
   @Event onConfirm: () => void
+  // 按钮按压状态
+  @Local cancelPressed: boolean = false
+  @Local confirmPressed: boolean = false
+  // 背景遮罩动画
+  @Local maskOpacity: number = 0
+
+  aboutToAppear(): void {
+    // 背景遮罩渐显动画
+    animateTo({ duration: 250, curve: Curve.EaseInOut }, () => {
+      this.maskOpacity = 1
+    })
+  }
 
   build() {
     Stack() {
       Column() {
-        Blank().width('100%').height('100%').backgroundColor(0x66000000).onClick(() => {
-          this.onCancel()
-        })
+        Blank()
+          .width('100%')
+          .height('100%')
+          .backgroundColor(`rgba(0,0,0,${0.6 * this.maskOpacity})`)
+          .onClick(() => {
+            this.onCancel()
+          })
       }
 
       Column() {
@@ -31,6 +47,15 @@ export struct ConfirmDialogSheet {
               top: 8,
               bottom: 8
             })
+            .scale(this.cancelPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+            .animation({ duration: 100, curve: Curve.EaseOut })
+            .onTouch((e: TouchEvent) => {
+              if (e.type === TouchType.Down) {
+                this.cancelPressed = true
+              } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                this.cancelPressed = false
+              }
+            })
           Button('确认')
             .type(ButtonType.Capsule)
             .onClick(() => {
@@ -46,6 +71,15 @@ export struct ConfirmDialogSheet {
               bottom: 8
             })
             .margin({ left: 12 })
+            .scale(this.confirmPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+            .animation({ duration: 100, curve: Curve.EaseOut })
+            .onTouch((e: TouchEvent) => {
+              if (e.type === TouchType.Down) {
+                this.confirmPressed = true
+              } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                this.confirmPressed = false
+              }
+            })
         }.margin({ top: 14 })
       }
       .padding(16)
@@ -59,7 +93,11 @@ export struct ConfirmDialogSheet {
       })
       // .position({ x: '', y: '30%' })
       .width('90%')
-      .animation({ duration: 180, curve: Curve.EaseInOut })
+      .animation({
+        duration: 300,
+        curve: Curve.Friction,
+        playMode: PlayMode.Normal
+      })
     }.width('100%').height('100%')
   }
 }

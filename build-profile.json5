@@ -7,23 +7,24 @@
         "material": {
           "certpath": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B529622914AD5334E720911A5AF46374A13BFA13C01BFDE45599C7E8B1D29E1866D4F3D46391D21",
+          "keyPassword": "0000001BA068E009D1D2BAD88C882105896B54C00FD9BC380FA81D093807E5D375922CA2B88A7ED1E3B331",
           "profile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\Administrator.DESKTOP-D0LGLNU\\.ohos\\config\\default_PlantDiary_788ZPOFrHe2VHHNx6_g6kYPHcajafUN75g7wTmtxLSM=.p12",
-          "storePassword": "0000001B2405FC4DF3D9CCEF99995B1F16C9369862779F565F3C9D86282763C5B830A4D8EFB9D980B50186"
+          "storePassword": "0000001BECCBE344C9933F678C73069D76D5E50249E5BC652D695568021FE5439EF1235A3DC41BA3EA7F69"
         }
       },
       {
         "name": "pulisher",
+        "type": "HarmonyOS",
         "material": {
-          "storeFile": "D:/app/plant.p12",
-          "storePassword": "000000182BEABA99DAEDA8CFED736590F46743D4C1801BF31F8B41160CD1AF453C6BE49D70290C75",
+          "certpath": "D:/app/plant.cer",
           "keyAlias": "plant",
-          "keyPassword": "000000180F227A55C10FCF628CBB335569B97FFCC4BD4F70A0FBC5FFB49C881E34B0D5F19F46CC1D",
-          "signAlg": "SHA256withECDSA",
+          "keyPassword": "00000018E936D91817146C959C600332B6CDAAB5EFC38A4A1743A850D75A067D66FE28C6EF3776FE",
           "profile": "D:/app/plantRelease.p7b",
-          "certpath": "D:/app/plant.cer"
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "D:/app/plant.p12",
+          "storePassword": "000000183B6E0B3CE0ABBC00C63D413CF82C2768CA4BA886D2836DAC482D4A08BB95116ADB8CB65C"
         }
       }
     ],
@@ -31,8 +32,8 @@
       {
         "name": "default",
         "signingConfig": "default",
-        "targetSdkVersion": "5.0.5(17)",
-        "compatibleSdkVersion": "5.0.5(17)",
+        "targetSdkVersion": "6.0.0(20)",
+        "compatibleSdkVersion": "6.0.0(20)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {

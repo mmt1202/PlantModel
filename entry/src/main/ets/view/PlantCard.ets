@@ -27,6 +27,10 @@ export struct PlantCard {
   @Local photos: Array<LogPhoto> = []
   @Local isLighting: boolean = false
   @Local lightOpacity: number = 0.3
+  // 图标按钮按压状态
+  @Local metricPressed: boolean = false
+  @Local editPressed: boolean = false
+  @Local deletePressed: boolean = false
 
   async aboutToAppear() {
     // 卡片自身会补拉最近日志和照片，用来展示封面图和补光状态。
@@ -148,15 +152,48 @@ export struct PlantCard {
         Blank()
 
         Row({ space: 8 }) {
-          Text('📱').fontSize(16).onClick(() => {
-            this.onOpenMetric(this.p.id)
-          })
-          Text('✏️').fontSize(16).onClick(() => {
-            this.onEdit()
-          })
-          Text('🗏').fontSize(16).onClick(() => {
-            this.onDeleteAsk()
-          })
+          Text('📱')
+            .fontSize(16)
+            .scale(this.metricPressed ? { x: 0.85, y: 0.85 } : { x: 1, y: 1 })
+            .animation({ duration: 120, curve: Curve.EaseInOut })
+            .onClick(() => {
+              this.onOpenMetric(this.p.id)
+            })
+            .onTouch((e: TouchEvent) => {
+              if (e.type === TouchType.Down) {
+                this.metricPressed = true
+              } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                this.metricPressed = false
+              }
+            })
+          Text('✏️')
+            .fontSize(16)
+            .scale(this.editPressed ? { x: 0.85, y: 0.85 } : { x: 1, y: 1 })
+            .animation({ duration: 120, curve: Curve.EaseInOut })
+            .onClick(() => {
+              this.onEdit()
+            })
+            .onTouch((e: TouchEvent) => {
+              if (e.type === TouchType.Down) {
+                this.editPressed = true
+              } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                this.editPressed = false
+              }
+            })
+          Text('🗏')
+            .fontSize(16)
+            .scale(this.deletePressed ? { x: 0.85, y: 0.85 } : { x: 1, y: 1 })
+            .animation({ duration: 120, curve: Curve.EaseInOut })
+            .onClick(() => {
+              this.onDeleteAsk()
+            })
+            .onTouch((e: TouchEvent) => {
+              if (e.type === TouchType.Down) {
+                this.deletePressed = true
+              } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                this.deletePressed = false
+              }
+            })
         }
       }.width('100%').justifyContent(FlexAlign.SpaceBetween)
 
@@ -267,7 +304,7 @@ export struct PlantCard {
 
   @Builder
   QuickChip(type: string) {
-    // 快捷按钮只是帮用户快速创建今日任务，真正落库仍由父页面统一完成。
+    // 快捷按钮只是帮用户快速创建今日任务,真正落库仍由父页面统一完成。
     Text(type)
       .fontSize(12)
       .fontColor(0xFFFFFFFF)
@@ -277,6 +314,12 @@ export struct PlantCard {
       .margin({ right: 8 })
       .onClick(() => {
         this.onQuickAdd(type)
+      })
+      .onTouch((e: TouchEvent) => {
+        if (e.type === TouchType.Down) {
+          animateTo({ duration: 80, curve: Curve.EaseOut }, () => {
+          })
+        }
       })
   }
 }

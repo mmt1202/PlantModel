@@ -153,7 +153,7 @@ export struct PlantListPage {
         List({ space: 8 }) {
           ForEach(this.filteredAndSortedPlants(), (p: Plant) => {
             ListItem() {
-              // PlantCard 只负责展示和抛事件，实际增删改统一交回上层页面处理。
+              // PlantCard 只负责展示和抛事件,实际增删改统一交回上层页面处理。
               PlantCard({
                 p: p,
                 done: this.plantTaskDone(p.id),
@@ -189,6 +189,10 @@ export struct PlantListPage {
         }).width('100%').height('calc(100% - 105vp)')
         .edgeEffect(EdgeEffect.Spring)
         .scrollBar(BarState.Off)
+        .animation({
+          duration: 300,
+          curve: Curve.EaseInOut
+        })
       }
     }.height('100%').width('100%')
 

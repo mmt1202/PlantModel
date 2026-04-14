@@ -14,9 +14,19 @@ export struct EditPlantSheet {
   @Event onBulkSchedule: (type: string, everyDays: number, times: number) => void
   @Event onOpenTpl: () => void
   @Event onOpenLogs: () => void // ← 新增
+  // 按钮按压状态
+  @Local savePressed: boolean = false
+  @Local deletePressed: boolean = false
+  @Local waterPressed: boolean = false
+  // 背景遮罩动画
+  @Local maskOpacity: number = 0
 
   aboutToAppear(): void {
     this.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE);
+    // 背景遮罩渐显动画
+    animateTo({ duration: 250, curve: Curve.EaseInOut }, () => {
+      this.maskOpacity = 1
+    })
   }
 
   aboutToDisappear(): void {
@@ -27,9 +37,13 @@ export struct EditPlantSheet {
   build() {
     Stack() {
       Column() {
-        Blank().backgroundColor(0x66000000).width('100%').height('100%').onClick(() => {
-          this.onClose()
-        })
+        Blank()
+          .backgroundColor(`rgba(0,0,0,${0.6 * this.maskOpacity})`)
+          .width('100%')
+          .height('100%')
+          .onClick(() => {
+            this.onClose()
+          })
       }
 
       Column() {
@@ -99,6 +113,15 @@ export struct EditPlantSheet {
                 bottom: 8
               })
               .borderRadius(20)
+              .scale(this.savePressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+              .animation({ duration: 100, curve: Curve.EaseOut })
+              .onTouch((e: TouchEvent) => {
+                if (e.type === TouchType.Down) {
+                  this.savePressed = true
+                } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                  this.savePressed = false
+                }
+              })
 
             if (this.editingId !== 0) {
               Button('删除')
@@ -116,6 +139,15 @@ export struct EditPlantSheet {
                 })
                 .borderRadius(20)
                 .margin({ left: 12 })
+                .scale(this.deletePressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+                .animation({ duration: 100, curve: Curve.EaseOut })
+                .onTouch((e: TouchEvent) => {
+                  if (e.type === TouchType.Down) {
+                    this.deletePressed = true
+                  } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                    this.deletePressed = false
+                  }
+                })
             }
 
             // Blank()
@@ -134,6 +166,15 @@ export struct EditPlantSheet {
                 bottom: 8
               })
               .borderRadius(20)
+              .scale(this.waterPressed ? { x: 0.95, y: 0.95 } : { x: 1, y: 1 })
+              .animation({ duration: 100, curve: Curve.EaseOut })
+              .onTouch((e: TouchEvent) => {
+                if (e.type === TouchType.Down) {
+                  this.waterPressed = true
+                } else if (e.type === TouchType.Up || e.type === TouchType.Cancel) {
+                  this.waterPressed = false
+                }
+              })
           }.margin({ top: 10 })
         }
         .padding({
@@ -157,7 +198,11 @@ export struct EditPlantSheet {
         offsetX: 0,
         offsetY: -6
       })
-      .animation({ duration: 220, curve: Curve.Sharp })
+      .animation({
+        duration: 300,
+        curve: Curve.Friction,
+        playMode: PlayMode.Normal
+      })
     }.width('100%').height('100%').alignContent(Alignment.Bottom)
   }
 

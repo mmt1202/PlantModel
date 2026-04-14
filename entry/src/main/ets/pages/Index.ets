@@ -342,12 +342,12 @@ struct Index {
         logIds as Array<number>
       )
       while (rs2.goToNextRow()) {
-        const p1: string = rs2.getString(0)
-        const p2: string = rs2.getString(1)
-        if (p1 && p1.length > 0) {
+        const p1: string | null = rs2.getString(0)
+        const p2: string | null = rs2.getString(1)
+        if (p1 !== null && p1.length > 0) {
           allFiles.push(p1)
         }
-        if (p2 && p2.length > 0) {
+        if (p2 !== null && p2.length > 0) {
           allFiles.push(p2)
         }
       }
@@ -382,13 +382,19 @@ struct Index {
     })
 
     // 4) 事务提交成功后，统一删除所有本地图片文件
+    let failedFiles: Array<string> = []
     let i: number = 0
     while (i < allFiles.length) {
       try {
         await fs.unlink(allFiles[i])
-      } catch (_e) { /* 忽略单文件错误 */
+      } catch (e) {
+        failedFiles.push(allFiles[i])
       }
       i = i + 1
+    }
+
+    if (failedFiles.length > 0) {
+      this.showBanner(`有 ${failedFiles.length} 个文件删除失败`, 'warn')
     }
 
     await this.reloadAll()

@@ -3,5 +3,7 @@
     "ets.hmsPath": "d:\\DevEco Studio\\sdk\\default\\hms",
     "typescript.validate.enable": false,
     "typescript.suggest.enabled": false,
-    "chatgpt.openOnStartup": true
+    "chatgpt.openOnStartup": true,
+    "markdown.extension.completion.enabled": false,
+    "markdown.extension.tableFormatter.enabled": false
 }

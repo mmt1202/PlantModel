@@ -238,6 +238,10 @@ export struct TaskListPage {
           })
           .scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring)
+          .animation({
+            duration: 300,
+            curve: Curve.EaseInOut
+          })
         }
       }
       // else {

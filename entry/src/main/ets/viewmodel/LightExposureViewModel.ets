@@ -8,7 +8,6 @@ import DailyLightStat from "../model/DailyLightStat";
 import { LightLevel, LightStatus, levelWeight, clampRate, ymd, genId } from "../model/LightTypes";
 import { RdbManager } from "./RdbManager";
 import { relationalStore } from "@kit.ArkData";
-import { AppStorage } from "@kit.ArkUI";
 
 /**
  * 光照记录视图模型
@@ -88,12 +87,21 @@ export class LightExposureViewModel {
     rsSession.close();
     this.sessions = loadedSessions;
 
-    // 3. 检查是否有进行中的任务 (endAt === 0)
-    // 按 startAt DESC 排的，如果有进行中的，应该在最前面（或者混在其中，但逻辑上应该只有一个）
-    // 我们找最新的一个 endAt == 0
-    const active = this.sessions.find((s) => s.endAt === 0);
-    if (active) {
-      this.activeSession = active;
+    // 3. 检查并清理异常的进行中会话 (endAt === 0)
+    // 理论上只应该有一个进行中的会话，但如果出现异常可能有多个
+    const activeSessions = this.sessions.filter((s) => s.endAt === 0);
+    if (activeSessions.length > 1) {
+      // 保留最新的（第一个），其他的标记为异常结束
+      const latest = activeSessions[0];
+      for (let i = 1; i < activeSessions.length; i++) {
+        const abnormal = activeSessions[i];
+        // 强制结束异常会话
+        await this.forceCloseAbnormalSession(abnormal);
+      }
+      this.activeSession = latest;
+      this.hasActive = true;
+    } else if (activeSessions.length === 1) {
+      this.activeSession = activeSessions[0];
       this.hasActive = true;
     } else {
       this.hasActive = false;
@@ -209,6 +217,37 @@ export class LightExposureViewModel {
 
     this.sessions = [s, ...this.sessions];
     this.updateDailyStatFor(new Date(endAt));
+  }
+
+  /**
+   * 强制关闭异常的进行中会话
+   * 用于清理多个进行中会话的异常情况
+   * @param session 要关闭的会话
+   */
+  private async forceCloseAbnormalSession(session: ExposureSession): Promise<void> {
+    const endAt: number = Date.now();
+    const durMin: number = Math.max(1, Math.floor((endAt - session.startAt) / 60000));
+    const luxMin: number = this.computeLuxMinutes(session.level, durMin);
+
+    // 更新数据库
+    if (this.rdbManager.rdbStore) {
+      const val: relationalStore.ValuesBucket = {
+        endAt: endAt,
+        durationMin: durMin,
+        luxMinutes: luxMin,
+      };
+      const pred = new relationalStore.RdbPredicates(RdbManager.T_EXPOSURE_SESSION);
+      pred.equalTo("id", session.id);
+      await this.rdbManager.rdbStore.update(val, pred);
+    }
+
+    // 更新内存中的会话对象
+    session.finishWith(endAt, luxMin);
+
+    // 从内存列表中移除（因为已经不是进行中了）
+    this.sessions = this.sessions.filter((s) => s.id !== session.id);
+
+    console.warn(`强制关闭异常会话：${session.id}, 时长：${durMin}分钟`);
   }
 
   /**

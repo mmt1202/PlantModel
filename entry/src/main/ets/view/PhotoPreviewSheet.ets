@@ -8,6 +8,11 @@ export struct PhotoPreviewSheet {
   @Local index: number = 0
   @Local scaleImage: number = 1.0 // 1.0 / 1.8 切换
   @Local bgDark: number = 0xE6000000
+  // 预览动画
+  @Local previewScale: number = 0
+  @Local previewOpacity: number = 0
+  @Local imageTranslateX: number = 0
+  @Local imageOpacity: number = 1
 
   aboutToAppear(): void {
     // 起始下标越界保护
@@ -19,6 +24,13 @@ export struct PhotoPreviewSheet {
       i = this.files.length > 0 ? this.files.length - 1 : 0
     }
     this.index = i
+    // 预览打开动画
+    setTimeout(() => {
+      animateTo({ duration: 300, curve: Curve.EaseOut }, () => {
+        this.previewScale = 1
+        this.previewOpacity = 1
+      })
+    }, 50)
   }
 
   private total(): number {
@@ -39,15 +51,43 @@ export struct PhotoPreviewSheet {
 
   private stepPrev(): void {
     if (this.index > 0) {
-      this.index = this.index - 1;
-      this.scaleImage = 1.0
+      // 切换动画:先向右滑出
+      animateTo({ duration: 150, curve: Curve.EaseInOut }, () => {
+        this.imageTranslateX = 50
+        this.imageOpacity = 0
+      })
+      setTimeout(() => {
+        this.index = this.index - 1
+        this.scaleImage = 1.0
+        this.imageTranslateX = -50
+        this.imageOpacity = 0
+        // 再滑入
+        animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+          this.imageTranslateX = 0
+          this.imageOpacity = 1
+        })
+      }, 150)
     }
   }
 
   private stepNext(): void {
     if (this.index + 1 < this.files.length) {
-      this.index = this.index + 1;
-      this.scaleImage = 1.0
+      // 切换动画:先向左滑出
+      animateTo({ duration: 150, curve: Curve.EaseInOut }, () => {
+        this.imageTranslateX = -50
+        this.imageOpacity = 0
+      })
+      setTimeout(() => {
+        this.index = this.index + 1
+        this.scaleImage = 1.0
+        this.imageTranslateX = 50
+        this.imageOpacity = 0
+        // 再滑入
+        animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+          this.imageTranslateX = 0
+          this.imageOpacity = 1
+        })
+      }, 150)
     }
   }
 
@@ -62,10 +102,15 @@ export struct PhotoPreviewSheet {
   build() {
     // 蒙层 + 顶部工具条 + 中部图片 + 底部计数
     Column() {
-      // 半透明背景，可点空白退出
-      Blank().width('100%').height('100%').backgroundColor(this.bgDark).onClick(() => {
-        this.onClose()
-      })
+      // 半透明背景,可点空白退出
+      Blank()
+        .width('100%')
+        .height('100%')
+        .backgroundColor(this.bgDark)
+        .opacity(this.previewOpacity)
+        .onClick(() => {
+          this.onClose()
+        })
 
       // 顶部工具条
       Row() {
@@ -142,7 +187,10 @@ export struct PhotoPreviewSheet {
             .objectFit(ImageFit.Contain)
             .width('100%')
             .height('100%')
-            .scale({ x: this.scaleImage, y: this.scaleImage })
+            .scale({ x: this.scaleImage * this.previewScale, y: this.scaleImage * this.previewScale })
+            .translate({ x: this.imageTranslateX, y: 0 })
+            .opacity(this.imageOpacity)
+            .animation({ duration: 250, curve: Curve.EaseInOut })
             .onClick(() => {
               this.toggleZoom()
             })
