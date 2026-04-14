@@ -112,8 +112,9 @@ export struct GrowthComparePage {
       Column({ space: 12 }) {
         if (this.photos.length === 0) {
           Column() {
-            Text('📸')
-              .fontSize(56)
+            Image($r('app.media.ic_camera'))
+              .width(56)
+              .height(56)
               .opacity(0.3);
             Text('还没有照片')
               .fontSize(16)

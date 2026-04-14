@@ -86,9 +86,10 @@ export struct CalendarView {
       Column() {
         // 标题与切月（内嵌/抽屉共用）
         Row() {
-          Text("‹")
-            .fontSize(20)
-            .fontColor(0xff1565c0)
+          Image($r('app.media.ic_arrow_left'))
+            .width(20)
+            .height(20)
+            .fillColor(0xff1565c0)
             .onClick(() => {
               this.prevMonth();
             })
@@ -97,9 +98,10 @@ export struct CalendarView {
             .fontWeight(FontWeight.Medium)
             .fontColor(0xff263238)
             .margin({ left: 10, right: 10 })
-          Text("›")
-            .fontSize(20)
-            .fontColor(0xff1565c0)
+          Image($r('app.media.ic_arrow_right'))
+            .width(20)
+            .height(20)
+            .fillColor(0xff1565c0)
             .onClick(() => {
               this.nextMonth();
             })

@@ -925,7 +925,7 @@ struct Index {
                 this.Header()
               },
             })
-          }.tabBar(this.TabChip('植物', '🌱', 0))
+          }.tabBar(this.TabChip('植物', $r('app.media.ic_plant'), 0))
 
           TabContent() {
             TaskListPage({
@@ -941,7 +941,7 @@ struct Index {
                 this.confirmVisible = true
               }
             })
-          }.tabBar(this.TabChip('任务', '📋', 1))
+          }.tabBar(this.TabChip('任务', $r('app.media.ic_task'), 1))
 
           TabContent() {
           }.tabBar(this.Fab(() => {
@@ -975,7 +975,7 @@ struct Index {
                 this.confirmVisible = true
               }
             })
-          }.tabBar(this.TabChip('日历', '📅', 3))
+          }.tabBar(this.TabChip('日历', $r('app.media.ic_calendar'), 3))
 
           TabContent() {
             StatsPage({
@@ -993,7 +993,7 @@ struct Index {
                 this.pageStack.pushPathByName('MixPlannerPage', p)
               }
             })
-          }.tabBar(this.TabChip('统计', '📊', 4))
+          }.tabBar(this.TabChip('统计', $r('app.media.ic_chart'), 4))
 
         }
         .barWidth('100%')
@@ -1262,7 +1262,7 @@ struct Index {
         })
 
         Row() {
-          Text('🔎').fontSize(18).margin({ right: 8 })
+          Image($r('app.media.ic_search')).width(18).height(18).margin({ right: 8 })
           TextInput({ placeholder: '搜索植物/品种/位置', text: this.keyword })
             .placeholderColor('#747474')
             .fontColor('#000000')
@@ -1283,11 +1283,12 @@ struct Index {
   }
 
   @Builder
-  TabChip(text: string, icon: string, idx: number) {
+  TabChip(text: string, icon: Resource, idx: number) {
     Column({ space: 4 }) {
-      Text(icon)
-        .fontSize(22)
-        .fontColor(this.tabBarIndex === idx ? 0xFF4CAF50 : 0xFF90A4AE)
+      Image(icon)
+        .width(22)
+        .height(22)
+        .fillColor(this.tabBarIndex === idx ? 0xFF4CAF50 : 0xFF90A4AE)
       Text(text)
         .fontSize(12)
         .fontWeight(this.tabBarIndex === idx ? FontWeight.Medium : FontWeight.Regular)
@@ -1349,7 +1350,7 @@ struct Index {
   Banner(text: string, type: 'ok' | 'warn' | 'info') {
     Row() {
       if (type === 'ok') {
-        Text('✓').fontSize(14).fontWeight(FontWeight.Medium).fontColor(0xFF2E7D32).margin({ right: 8 })
+        Image($r('app.media.ic_success')).width(14).height(14).margin({ right: 8 })
       }
       if (type === 'warn') {
         Text('!').fontSize(14).fontWeight(FontWeight.Medium).fontColor(0xFFEF6C00).margin({ right: 8 })

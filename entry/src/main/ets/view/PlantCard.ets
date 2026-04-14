@@ -138,9 +138,12 @@ export struct PlantCard {
           Row({ space: 8 }) {
             Text(this.p.name).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
             if (AppStorage.get<boolean>(`lighting_${this.p.id}`) ?? false) {
-              Text('☀️ 光照中')
-                .fontSize(10)
-                .fontColor(0xFFFFFFFF)
+              Row({ space: 4 }) {
+                Image($r('app.media.ic_sun_small')).width(10).height(10)
+                Text('光照中')
+                  .fontSize(10)
+                  .fontColor(0xFFFFFFFF)
+              }
                 .backgroundColor(0xFFFFA000)
                 .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                 .borderRadius(8)
@@ -152,8 +155,9 @@ export struct PlantCard {
         Blank()
 
         Row({ space: 8 }) {
-          Text('📱')
-            .fontSize(16)
+          Image($r('app.media.ic_trending'))
+            .width(16)
+            .height(16)
             .scale(this.metricPressed ? { x: 0.85, y: 0.85 } : { x: 1, y: 1 })
             .animation({ duration: 120, curve: Curve.EaseInOut })
             .onClick(() => {
@@ -166,8 +170,9 @@ export struct PlantCard {
                 this.metricPressed = false
               }
             })
-          Text('✏️')
-            .fontSize(16)
+          Image($r('app.media.ic_edit'))
+            .width(16)
+            .height(16)
             .scale(this.editPressed ? { x: 0.85, y: 0.85 } : { x: 1, y: 1 })
             .animation({ duration: 120, curve: Curve.EaseInOut })
             .onClick(() => {
@@ -180,8 +185,9 @@ export struct PlantCard {
                 this.editPressed = false
               }
             })
-          Text('🗏')
-            .fontSize(16)
+          Image($r('app.media.ic_delete'))
+            .width(16)
+            .height(16)
             .scale(this.deletePressed ? { x: 0.85, y: 0.85 } : { x: 1, y: 1 })
             .animation({ duration: 120, curve: Curve.EaseInOut })
             .onClick(() => {

@@ -85,13 +85,13 @@ export struct LogRowItem {
 
         Blank()
         Row() {
-          Text('📤').fontSize(16).onClick(() => {
+          Image($r('app.media.ic_upload')).width(16).height(16).onClick(() => {
             this.onPickPhotos(this.lg.id)
           }).margin({ right: 10 })
-          Text('📲').fontSize(16).onClick(() => {
+          Image($r('app.media.ic_capture')).width(16).height(16).onClick(() => {
             this.onCapturePhoto(this.lg.id)
           }).margin({ right: 10 })
-          Text('🗏').fontSize(16).onClick(() => {
+          Image($r('app.media.ic_delete')).width(16).height(16).onClick(() => {
             if (this.selectMode) {
               this.toggleSelect(this.lg.id)
             } else {

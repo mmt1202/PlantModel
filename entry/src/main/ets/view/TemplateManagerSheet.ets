@@ -58,7 +58,7 @@ export struct TemplateManagerSheet {
         Row() {
           Text('周期模板').fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238)
           Blank()
-          Text('✕').fontColor('#000000').fontSize(18).onClick(() => {
+          Image($r('app.media.ic_close')).width(18).height(18).onClick(() => {
             this.onClose()
           })
         }

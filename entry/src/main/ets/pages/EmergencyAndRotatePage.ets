@@ -512,8 +512,9 @@ export struct EmergencyAndRotatePage {
 
       if (this.rotVM.logs.length === 0) {
         Column() {
-          Text("📅")
-            .fontSize(40)
+          Image($r('app.media.ic_calendar'))
+            .width(40)
+            .height(40)
             .opacity(0.3)
           Text("暂无记录")
             .fontSize(14)
@@ -533,7 +534,7 @@ export struct EmergencyAndRotatePage {
             (x: RotateLog) => {
               ListItem() {
                 Row() {
-                  Text("🔄").fontSize(18)
+                  Image($r('app.media.ic_refresh')).width(18).height(18)
                   Text(this.rotVM.fmtDate(x.ts))
                     .fontSize(16)
                     .fontWeight(FontWeight.Medium)

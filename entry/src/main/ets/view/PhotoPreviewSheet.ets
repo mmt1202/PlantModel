@@ -143,8 +143,9 @@ export struct PhotoPreviewSheet {
             this.onDelete(this.index)
           })
 
-        Text('✕').fontColor('#000000')
-          .fontSize(18).fontColor(0xFFFFFFFF)
+        Image($r('app.media.ic_close'))
+          .width(18).height(18)
+          .fillColor(0xFFFFFFFF)
           .padding({
             left: 12,
             right: 12,
@@ -168,9 +169,9 @@ export struct PhotoPreviewSheet {
         // 上一张
         Column() {
           if (this.canPrev()) {
-            Text('‹').fontSize(28).fontColor(0xFFFFFFFF)
+            Image($r('app.media.ic_arrow_left')).width(28).height(28).fillColor(0xFFFFFFFF)
           } else {
-            Text(' ').fontSize(28).fontColor(0x00FFFFFF)
+            Image($r('app.media.ic_arrow_left')).width(28).height(28).fillColor(0x00FFFFFF)
           }
         }
         .width('12%')
@@ -201,9 +202,9 @@ export struct PhotoPreviewSheet {
         // 下一张
         Column() {
           if (this.canNext()) {
-            Text('›').fontSize(28).fontColor(0xFFFFFFFF)
+            Image($r('app.media.ic_arrow_right')).width(28).height(28).fillColor(0xFFFFFFFF)
           } else {
-            Text(' ').fontSize(28).fontColor(0x00FFFFFF)
+            Image($r('app.media.ic_arrow_right')).width(28).height(28).fillColor(0x00FFFFFF)
           }
         }
         .width('12%')

@@ -353,7 +353,7 @@ export struct TaskListPage {
       })
 
       Row() {
-        Text('🔎').fontSize(18).margin({ right: 8 })
+        Image($r('app.media.ic_search')).width(18).height(18).margin({ right: 8 })
         TextInput({ placeholder: '搜索任务类型/植物名称', text: this.keyword }).placeholderColor('#747474').fontColor('#000000')
           .onChange((v: string) => {
             this.keyword = v

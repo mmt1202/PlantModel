@@ -130,8 +130,8 @@ export struct GrowthIndicatorPage {
   PlantInfoCard() {
     Column({ space: 12 }) {
       Row({ space: 12 }) {
-        this.StatCard('📊', '记录数', this.metrics.length.toString(), 0xFF4CAF50)
-        this.StatCard('📈', '最新健康', this.metrics.length > 0 ? this.metrics[this.metrics.length - 1].score.toString() : '-', 0xFF2196F3)
+        this.StatCard($r('app.media.ic_chart'), '记录数', this.metrics.length.toString(), 0xFF4CAF50)
+        this.StatCard($r('app.media.ic_trend_up'), '最新健康', this.metrics.length > 0 ? this.metrics[this.metrics.length - 1].score.toString() : '-', 0xFF2196F3)
       }
     }
     .width('100%')
@@ -142,9 +142,9 @@ export struct GrowthIndicatorPage {
   }
 
   @Builder
-  StatCard(icon: string, label: string, value: string, color: ResourceColor) {
+  StatCard(icon: Resource, label: string, value: string, color: ResourceColor) {
     Column({ space: 8 }) {
-      Text(icon).fontSize(24)
+      Image(icon).width(24).height(24)
       Text(label).fontSize(12).fontColor(0xFF78909C)
       Text(value).fontSize(20).fontWeight(FontWeight.Bold).fontColor(color)
     }

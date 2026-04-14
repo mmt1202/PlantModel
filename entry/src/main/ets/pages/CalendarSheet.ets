@@ -75,11 +75,11 @@ struct CalendarSheet1 {
               Row() {
                 Row() {
                   // 头部
-                  Text('◀').fontSize(18)
+                  Image($r('app.media.ic_arrow_left')).width(18).height(18)
                     .padding({ left: 8, right: 8, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10A0A0A0)
                     .onClick(() => { const p = this.prevMonth(this.year, this.month); this.onChangeMonth(p[0], p[1]) })
                   Text(this.titleOfYM(this.year, this.month)).fontSize(16).fontWeight(FontWeight.Medium).fontColor(0xFF263238).margin({ left: 10, right: 10 })
-                  Text('▶').fontSize(18)
+                  Image($r('app.media.ic_arrow_right')).width(18).height(18)
                     .padding({ left: 8, right: 8, top: 6, bottom: 6 }).borderRadius(12).backgroundColor(0x10A0A0A0)
                     .onClick(() => { const n = this.nextMonth(this.year, this.month); this.onChangeMonth(n[0], n[1]) })
                 }

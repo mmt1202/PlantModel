@@ -17,7 +17,7 @@ export struct TaskItem {
   build() {
     // 任务项保持很轻,只做展示和交互回调;真正状态以上层重载结果为准。
     Row() {
-      Text(this.t.done === 1 ? '✔' : '○').fontSize(20)
+      Image(this.t.done === 1 ? $r('app.media.ic_check') : $r('app.media.ic_circle')).width(20).height(20)
         .scale(this.t.done === 1 ? { x: 1.2, y: 1.2 } : { x: 1, y: 1 })
         .animation({ duration: 200, curve: Curve.EaseOut })
         .onClick(() => {
@@ -42,7 +42,7 @@ export struct TaskItem {
       }.margin({ left: 10 })
   
       Blank()
-      Text('🗏').fontSize(16).onClick(() => {
+      Image($r('app.media.ic_delete')).width(16).height(16).onClick(() => {
         this.onDeleteAsk()
       })
     }

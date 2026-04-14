@@ -687,7 +687,7 @@ export struct PlantLogPage {
   Banner(text: string, type: string) {
     Row() {
       if (type === 'ok') {
-        Text('✓').fontSize(14).fontWeight(FontWeight.Medium).fontColor(0xFF2E7D32).margin({ right: 8 })
+        Image($r('app.media.ic_success')).width(14).height(14).margin({ right: 8 })
       }
       if (type === 'warn') {
         Text('!').fontSize(14).fontWeight(FontWeight.Medium).fontColor(0xFFEF6C00).margin({ right: 8 })

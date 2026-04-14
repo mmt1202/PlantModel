@@ -52,8 +52,8 @@ export struct PlantDetail {
         Text(this.plant!.species).fontSize(16).fontColor(0xFF546E7A)
       }
       if (this.plant!.location.length > 0) {
-        Row() {
-          Text('📍').fontSize(14)
+        Row({ space: 4 }) {
+          Image($r('app.media.ic_location')).width(14).height(14)
           Text(this.plant!.location).fontSize(14).fontColor(0xFF78909C)
         }
       }
@@ -76,32 +76,32 @@ export struct PlantDetail {
         .fontColor(0xFF263238)
       Grid() {
         GridItem() {
-          this.ActionCard('🌱', '养护日志', () => {
+          this.ActionCard($r('app.media.ic_journal'), '养护日志', () => {
             this.pageStack.pushPathByName('PlantLogPage', this.plant!.id)
           })
         }
         GridItem() {
-          this.ActionCard('☀️', '光照记录', () => {
+          this.ActionCard($r('app.media.ic_sun'), '光照记录', () => {
             this.pageStack.pushPathByName('LightExposurePage', this.plant!)
           })
         }
         GridItem() {
-          this.ActionCard('📊', '生长指标', () => {
+          this.ActionCard($r('app.media.ic_chart'), '生长指标', () => {
             this.pageStack.pushPathByName('GrowthIndicatorPage', this.plant!)
           })
         }
         GridItem() {
-          this.ActionCard('📸', '成长对比', () => {
+          this.ActionCard($r('app.media.ic_camera'), '成长对比', () => {
             this.pageStack.pushPathByName('GrowthComparePage', this.plant!)
           })
         }
         GridItem() {
-          this.ActionCard('💧', '浇水估算', () => {
+          this.ActionCard($r('app.media.ic_water'), '浇水估算', () => {
             this.pageStack.pushPathByName('WaterEstimatorPage', this.plant!.id)
           })
         }
         GridItem() {
-          this.ActionCard('🔄', '应急与轮换', () => {
+          this.ActionCard($r('app.media.ic_refresh'), '应急与轮换', () => {
             this.pageStack.pushPathByName('EmergencyAndRotatePage', this.plant!.id)
           })
         }
@@ -115,10 +115,11 @@ export struct PlantDetail {
   }
 
   @Builder
-  ActionCard(icon: string, title: string, onClick: () => void) {
+  ActionCard(icon: Resource, title: string, onClick: () => void) {
     Column({ space: 8 }) {
-      Text(icon)
-        .fontSize(32)
+      Image(icon)
+        .width(32)
+        .height(32)
       Text(title)
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
