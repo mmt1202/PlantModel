@@ -12,6 +12,12 @@
 - [CareFilterSheet.ets](file://entry/src/main/ets/view/CareFilterSheet.ets)
 </cite>
 
+## 更新摘要
+**变更内容**
+- 更新了植物列表页面的滚动动画改进部分，新增页面级滚动动画配置
+- 增强了导航流畅性的说明，包括 EdgeEffect.Spring 和动画持续时间设置
+- 完善了用户体验优化建议，涵盖滚动交互和视觉反馈
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -29,6 +35,7 @@ PlantListPage 是植物养护应用的主页列表页，负责展示植物卡片
 - 列表渲染与交互解耦：列表仅负责展示与事件透传，核心业务逻辑在上层页面集中处理。
 - 本地状态与计算分离：筛选与排序状态在列表页本地维护，但计算逻辑尽量简单，避免在渲染过程中重复计算。
 - 子组件职责单一：PlantCard 负责卡片展示与交互，内部异步加载日志与照片，维持自身状态。
+- **页面级滚动动画优化**：通过 EdgeEffect.Spring 和动画配置提升导航流畅性和视觉体验。
 
 ## 项目结构
 PlantListPage 位于页面层，通过依赖注入的方式接收全局植物与任务数据，并通过事件回调将用户操作传递给上层 Index 页面统一处理。Index 页面负责数据库初始化、数据加载与持久化、以及各类页面跳转与弹窗控制。
@@ -37,7 +44,7 @@ PlantListPage 位于页面层，通过依赖注入的方式接收全局植物与
 graph TB
 subgraph "页面层"
 Index["Index 页面<br/>负责数据加载与事件处理"]
-PlantListPage["PlantListPage 列表页<br/>负责展示与筛选/排序"]
+PlantListPage["PlantListPage 列表页<br/>负责展示与筛选/排序<br/>页面级滚动动画优化"]
 end
 subgraph "视图层"
 PlantCard["PlantCard 卡片组件<br/>负责展示与交互"]
@@ -69,7 +76,7 @@ Index --> RdbManager
 - [PlantListPage.ets:116-199](file://entry/src/main/ets/pages/PlantListPage.ets#L116-L199)
 
 ## 核心组件
-- PlantListPage：列表页主体，负责筛选、排序、渲染卡片、透传事件。
+- PlantListPage：列表页主体，负责筛选、排序、渲染卡片、透传事件，**新增页面级滚动动画配置**。
 - PlantCard：单个植物卡片，负责展示封面、进度、快捷操作与功能入口。
 - PlantModel：数据模型，包括 Plant、PlantTask、Metric 等。
 - RdbManager：数据库初始化与索引管理，提供统一的数据库访问能力。
@@ -83,11 +90,12 @@ Index --> RdbManager
 - [Index.ets:41-1382](file://entry/src/main/ets/pages/Index.ets#L41-L1382)
 
 ## 架构总览
-PlantListPage 采用“列表展示 + 事件透传”的架构模式：
+PlantListPage 采用"列表展示 + 事件透传"的架构模式：
 - 列表数据源来自上层 Index，包含植物列表与全量任务列表。
 - 列表页本地维护筛选与排序状态，渲染前对数据进行本地过滤与排序。
 - 每个 PlantCard 仅负责展示与交互，不直接访问数据库。
 - 用户操作通过事件回调交由 Index 统一处理，保证数据一致性与事务安全。
+- **页面级滚动动画优化**：通过 EdgeEffect.Spring 和动画配置提升导航流畅性。
 
 ```mermaid
 sequenceDiagram
@@ -104,6 +112,7 @@ PC->>LP : 触发事件回调
 LP->>IDX : onOpenDetail/onEdit/onDeleteAsk...
 IDX->>IDX : 执行增删改查/页面跳转
 IDX-->>LP : 刷新数据并重新渲染
+Note over LP : 页面级滚动动画<br/>EdgeEffect.Spring + 300ms EaseInOut
 ```
 
 **图表来源**
@@ -126,7 +135,7 @@ IDX-->>LP : 刷新数据并重新渲染
   - Header：BuilderParam，用于透传统一的搜索与标题区域
 - 计算逻辑
   - plantTaskDone/plantTaskTotal/plantRatePct/ratioString：基于 allTasks 计算单个植物的任务完成数、总数与完成率
-  - speciesChips：从 plants 中提取去重后的物种列表，始终包含“全部”
+  - speciesChips：从 plants 中提取去重后的物种列表，始终包含"全部"
   - filteredAndSortedPlants：先按 selectedSpecies 过滤，再按 sortKey 排序
 - 渲染结构
   - Header 区域（透传）
@@ -134,9 +143,14 @@ IDX-->>LP : 刷新数据并重新渲染
   - 排序芯片行
   - 空状态提示或 List 渲染 PlantCard
   - ListItem 包裹卡片，并在点击时触发 onOpenDetail
+- **页面级滚动动画配置**
+  - List 配置：edgeEffect(EdgeEffect.Spring) + scrollBar(BarState.Off)
+  - 动画设置：duration: 300ms, curve: Curve.EaseInOut
+  - 物种芯片与排序芯片均使用 animateTo 实现平滑过渡（120ms）
 - 交互细节
   - 物种芯片与排序芯片均使用 animateTo 实现平滑过渡
   - List 使用 EdgeEffect.Spring 与关闭滚动条，提升视觉体验
+  - **页面级滚动动画**：300ms 缓动曲线提供流畅的滚动体验
 
 ```mermaid
 flowchart TD
@@ -174,9 +188,10 @@ SortRate --> Return
   - 底部进度条与完成数/总数展示
   - 快速操作：浇水、施肥、修剪
 - 交互细节
-  - 按钮触摸反馈：按下缩放与动画过渡
+  - 按钮触摸反馈：按下缩放与动画过渡（120ms 缓动）
   - 卡片整体触摸反馈与点击事件
   - 快捷按钮仅创建任务草稿，最终落库由上层统一处理
+  - **进度条动画**：220ms 缓动曲线提供平滑的进度更新效果
 
 ```mermaid
 sequenceDiagram
@@ -219,7 +234,7 @@ PC-->>PC : 更新 logs/photos
 - [Index.ets:1233-1283](file://entry/src/main/ets/pages/Index.ets#L1233-L1283)
 
 ## 依赖关系分析
-PlantListPage 与 PlantCard 的依赖关系清晰，遵循“列表负责展示，卡片负责交互”的原则：
+PlantListPage 与 PlantCard 的依赖关系清晰，遵循"列表负责展示，卡片负责交互"的原则：
 - PlantListPage 依赖 PlantModel 与 Index 的事件回调
 - PlantCard 依赖 RdbManager 与 AppStorage，负责自身状态与数据加载
 - Index 作为中枢，负责数据库初始化、数据加载、事件处理与页面跳转
@@ -234,6 +249,8 @@ class PlantListPage {
 +filteredAndSortedPlants()
 +SpeciesChip()
 +SortChip()
++.animation({duration : 300, curve : EaseInOut})
++.edgeEffect(Spring)
 }
 class PlantCard {
 +p : Plant
@@ -243,6 +260,7 @@ class PlantCard {
 +aboutToAppear()
 +loadLogsWithPhotos()
 +checkLightingStatus()
++progress animation 220ms
 }
 class Index {
 +plants : Array<Plant>
@@ -275,6 +293,7 @@ PlantCard --> Index : "读取状态"
 - 列表渲染优化
   - List 使用 EdgeEffect.Spring 与关闭滚动条，减少不必要的绘制
   - ListItem 包裹 PlantCard，避免过度嵌套带来的性能损耗
+  - **页面级滚动动画优化**：300ms 缓动曲线提供流畅的滚动体验，同时保持良好的性能表现
 - 数据加载与状态同步
   - PlantCard 在 aboutToAppear 中异步加载日志与照片，避免阻塞渲染
   - 补光状态通过 AppStorage 广播，首页刷新后可立即恢复视觉反馈
@@ -298,6 +317,10 @@ PlantCard --> Index : "读取状态"
 - 卡片状态异常
   - 检查 AppStorage 中补光状态是否正确同步
   - 确认 PlantCard 的 loadLogsWithPhotos 是否成功返回日志与照片
+- **滚动动画问题**
+  - 检查 List 的 edgeEffect(Spring) 配置是否正确
+  - 确认动画持续时间（300ms）和缓动曲线（EaseInOut）设置
+  - 验证 scrollBar(Off) 配置是否影响滚动体验
 
 **章节来源**
 - [Index.ets:898-903](file://entry/src/main/ets/pages/Index.ets#L898-L903)
@@ -306,7 +329,15 @@ PlantCard --> Index : "读取状态"
 - [ConfirmDialogSheet.ets:1-103](file://entry/src/main/ets/view/ConfirmDialogSheet.ets#L1-L103)
 
 ## 结论
-PlantListPage 通过清晰的职责划分与事件透传机制，实现了高效、可维护的植物列表展示与交互。PlantCard 将展示与交互下沉至子组件，配合 Index 的统一事件处理，确保了数据一致性与用户体验。通过本地筛选与排序、异步数据加载与索引优化，系统在性能与可扩展性方面表现良好。建议在后续迭代中进一步完善批量操作与无障碍访问支持。
+PlantListPage 通过清晰的职责划分与事件透传机制，实现了高效、可维护的植物列表展示与交互。PlantCard 将展示与交互下沉至子组件，配合 Index 的统一事件处理，确保了数据一致性与用户体验。通过本地筛选与排序、异步数据加载与索引优化，系统在性能与可扩展性方面表现良好。
+
+**更新** 最新的滚动动画改进显著提升了导航流畅性：
+- 页面级滚动动画配置（300ms 缓动曲线）
+- EdgeEffect.Spring 提供自然的滚动反馈
+- 统一的动画时长（120ms）确保交互响应性
+- 关闭滚动条减少视觉干扰，提升专注度
+
+建议在后续迭代中进一步完善批量操作与无障碍访问支持。
 
 ## 附录
 - 搜索过滤功能实现要点
@@ -322,6 +353,7 @@ PlantListPage 通过清晰的职责划分与事件透传机制，实现了高效
 - 响应式布局与无障碍
   - 建议为按钮与芯片增加焦点状态与语音朗读支持
   - 对于小屏设备，可考虑将筛选与排序控件改为抽屉式布局
+  - **滚动动画优化**：页面级滚动动画配置提升了整体导航体验，建议在其他页面也考虑类似的动画优化策略
 
 **章节来源**
 - [Index.ets:742-758](file://entry/src/main/ets/pages/Index.ets#L742-L758)

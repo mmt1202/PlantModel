@@ -11,6 +11,12 @@
 - [LightExposurePage.ets](file://entry/src/main/ets/pages/LightExposurePage.ets)
 </cite>
 
+## 更新摘要
+**变更内容**
+- 新增强制关闭异常会话的方法，解决应用崩溃或意外终止导致的并发活动会话问题
+- 增强初始化阶段的异常会话清理机制
+- 完善异常会话状态管理与数据一致性保障
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -31,10 +37,11 @@
 - 光照会话生命周期管理（从开始到结束的状态转换）
 - 光照数据的查询、更新与删除操作实现细节
 - 光照统计分析算法与图表展示逻辑
+- 异常会话处理与数据一致性保障机制
 - 集成指南与使用示例
 
 ## 项目结构
-光照监控功能位于应用的主模块中，采用“页面-视图模型-模型-数据库管理器”的分层设计：
+光照监控功能位于应用的主模块中，采用"页面-视图模型-模型-数据库管理器"的分层设计：
 - 页面层：LightExposurePage负责用户交互与UI展示
 - 视图模型层：LightExposureViewModel负责业务逻辑、状态管理与数据持久化
 - 模型层：ExposureSession、DailyLightStat、LightProfile、LightTypes等承载数据结构与工具
@@ -65,8 +72,8 @@ DB --> Store["关系型数据库<br/>ArkData"]
 - [RdbManager.ets:4-24](file://entry/src/main/ets/viewmodel/RdbManager.ets#L4-L24)
 
 ## 核心组件
-- LightExposureViewModel：光照记录的中枢，负责会话管理、统计计算、数据库交互与UI驱动
-- ExposureSession：单次光照会话的数据载体，支持“开始/结束”与“即时记录”两种模式
+- LightExposureViewModel：光照记录的中枢，负责会话管理、统计计算、数据库交互与UI驱动，包含异常会话处理机制
+- ExposureSession：单次光照会话的数据载体，支持"开始/结束"与"即时记录"两种模式
 - DailyLightStat：每日光照统计，包含累计luxMinutes、时长、达标率与状态
 - LightProfile：光照目标配置，包含目标上下限与偏好级别
 - LightTypes：光照级别与状态枚举、标签与颜色映射、权重与工具函数
@@ -74,7 +81,7 @@ DB --> Store["关系型数据库<br/>ArkData"]
 
 **章节来源**
 - [LightExposureViewModel.ets:16-36](file://entry/src/main/ets/viewmodel/LightExposureViewModel.ets#L16-L36)
-- [ExposureSession.ets:14-33](file://entry/src/main/ets/model/ExposureSession.ets#L14-L33)
+- [ExposureSession.ets:14-83](file://entry/src/main/ets/model/ExposureSession.ets#L14-L83)
 - [DailyLightStat.ets:11-28](file://entry/src/main/ets/model/DailyLightStat.ets#L11-L28)
 - [LightProfile.ets:11-27](file://entry/src/main/ets/model/LightProfile.ets#L11-L27)
 - [LightTypes.ets:5-70](file://entry/src/main/ets/model/LightTypes.ets#L5-L70)
@@ -83,10 +90,11 @@ DB --> Store["关系型数据库<br/>ArkData"]
 ## 架构总览
 光照监控的端到端流程如下：
 - 页面初始化：LightExposurePage创建并注入LightExposureViewModel
-- 视图模型初始化：加载光照配置、历史会话与重建每日统计
+- 视图模型初始化：加载光照配置、历史会话与重建每日统计，包含异常会话清理
 - 用户交互：开始/结束光照、补记光照、删除记录
 - 数据持久化：通过RdbManager写入数据库，同时维护内存状态
 - 统计计算：按日聚合luxMinutes与durationMin，计算达标率与状态
+- 异常处理：强制关闭异常进行中会话，确保数据一致性
 - UI更新：通过tick驱动与AppStorage同步，实现实时进度与状态展示
 
 ```mermaid
@@ -101,6 +109,7 @@ VM->>DB : 查询光照配置/会话/统计
 DB->>Store : SQL查询
 Store-->>DB : 结果集
 DB-->>VM : 返回数据
+VM->>VM : 检查并清理异常进行中会话
 VM-->>Page : 初始化完成
 Page->>VM : startManual()/addManualInstant()/deleteSession()
 VM->>DB : insert/update/delete
@@ -241,7 +250,7 @@ class LightTypes {
   - endManualWithAutoDuration：自动计算时长与luxMinutes，更新会话并刷新统计
   - addManualInstant：补记历史，不进入进行中
   - deleteSession：删除记录并修正统计
-  - forceCloseAbnormalSession：强制结束异常进行中会话
+  - **forceCloseAbnormalSession：强制结束异常进行中会话**（新增）
 - 统计计算：
   - computeLuxMinutes：基于levelWeight与分钟数计算luxMinutes
   - rebuildDailyStats：全量重建每日统计
@@ -252,6 +261,8 @@ class LightTypes {
   - todayRatePercent：今日达标率（0-100）
   - todayStatus：今日状态
   - sevenDays：近7日统计（含今日实时叠加）
+
+**更新** 新增异常会话处理机制，在初始化阶段自动检测并清理多个进行中会话，确保系统状态一致性
 
 ```mermaid
 classDiagram
@@ -365,13 +376,13 @@ Page["LightExposurePage"] --> VM
   - 通过tick驱动响应式更新，减少不必要的重绘
 - 异常处理：
   - 初始化阶段检测并清理异常进行中会话，保证状态一致性
-
-[本节为通用性能讨论，不直接分析具体文件]
+  - **新增异常会话强制关闭机制，防止并发活动会话导致的数据不一致**
 
 ## 故障排查指南
 - 异常进行中会话：
   - 现象：hasActive=true但activeSession为空或存在多个进行中
   - 处理：init阶段自动清理多余进行中会话，保留最新；必要时调用forceCloseAbnormalSession
+  - **新增**：forceCloseAbnormalSession方法可强制结束异常会话，确保数据一致性
 - 删除记录后状态异常：
   - 现象：删除进行中会话后状态未清空
   - 处理：deleteSession会同步修正activeSession与AppStorage标记
@@ -392,8 +403,7 @@ Page["LightExposurePage"] --> VM
 - 统计计算采用增量更新策略，兼顾准确性与性能
 - UI通过tick驱动实时更新，用户体验流畅
 - 数据持久化与内存状态严格同步，异常处理完善
-
-[本节为总结性内容，不直接分析具体文件]
+- **新增异常会话强制关闭机制，有效解决应用崩溃或意外终止导致的并发活动会话问题，确保系统状态一致性**
 
 ## 附录
 
@@ -423,6 +433,14 @@ Page["LightExposurePage"] --> VM
 
 **章节来源**
 - [RdbManager.ets:105-170](file://entry/src/main/ets/viewmodel/RdbManager.ets#L105-L170)
+
+### 异常会话处理机制
+- **forceCloseAbnormalSession方法**：用于强制结束异常的进行中会话
+- 处理流程：计算会话时长与luxMinutes → 更新数据库 → 更新内存状态 → 从会话列表移除
+- 日志输出：强制关闭异常会话的警告信息，便于调试与监控
+
+**章节来源**
+- [LightExposureViewModel.ets:227-251](file://entry/src/main/ets/viewmodel/LightExposureViewModel.ets#L227-L251)
 
 ### 集成指南与使用示例
 - 在页面中创建并注入ViewModel

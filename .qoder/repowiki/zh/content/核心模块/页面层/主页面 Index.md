@@ -15,6 +15,12 @@
 - [WateringViewModel.ets](file://entry/src/main/ets/viewmodel/WateringViewModel.ets)
 </cite>
 
+## 更新摘要
+**变更内容**
+- 更新植物删除操作的数据库稳健性实现，增加失败文件删除跟踪和横幅提示
+- 完善删除操作的错误处理机制，确保用户获得及时的反馈信息
+- 增强数据一致性保障，防止部分删除成功而部分失败的情况
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -30,6 +36,8 @@
 ## 简介
 本文件聚焦于主页面 Index 的设计与实现，阐述其作为应用状态中枢的角色定位：统一负责数据库初始化、全局状态同步、Tab 导航与页面间数据传递、交互提示与动画、植物卡片状态管理、光照会话同步、任务筛选机制等。文档以循序渐进的方式，结合代码级可视化图示，帮助开发者快速理解并高效维护该模块。
 
+**更新** 本版本特别关注数据库操作稳健性的改进，特别是在植物删除过程中对文件删除失败情况的跟踪和用户反馈机制。
+
 ## 项目结构
 Index 位于入口页面目录，承担以下职责：
 - 应用状态中枢：集中管理数据库连接、全局状态、弹层与导航栈
@@ -37,6 +45,7 @@ Index 位于入口页面目录，承担以下职责：
 - 导航容器：承载 Tab 导航与页面栈，统一分发事件
 - 全局弹层宿主：统一挂载模板、指标、确认对话框等抽屉/弹窗
 - 页面间数据传递：通过 Provider/Consumer 与事件回调实现松耦合通信
+- **数据库稳健性**：确保删除操作的原子性和完整性，提供失败反馈
 
 ```mermaid
 graph TB
@@ -71,7 +80,7 @@ VM --> MODELS
 
 ## 核心组件
 - 数据库管理器 RdbManager：负责数据库初始化、建表与索引、默认模板数据注入、光照会话查询等
-- Index 主页面：集中状态、生命周期、导航与弹层控制
+- Index 主页面：集中状态、生命周期、导航与弹层控制，**增强数据库操作稳健性**
 - 模型层 Plant/Task/Metric 等：轻量数据结构，支持响应式观察
 - 子页面与视图：PlantListPage、PlantCard、PlantTaskFilterSheet、CareTemplateSheet、TemplateManagerSheet、ConfirmDialogSheet 等
 - ViewModel：如 WateringViewModel，承载特定业务的内存态与计算逻辑
@@ -83,17 +92,19 @@ VM --> MODELS
 - [WateringViewModel.ets:11-96](file://entry/src/main/ets/viewmodel/WateringViewModel.ets#L11-L96)
 
 ## 架构总览
-Index 采用“状态中枢 + 导航容器 + 弹层宿主”的架构模式：
+Index 采用"状态中枢 + 导航容器 + 弹层宿主"的架构模式：
 - 状态中枢：Index 维护全局状态（植物、任务、模板、指标、筛选条件、弹层可见性等）
 - 导航容器：Tabs + Navigation 提供 Tab 切换与页面栈管理
 - 弹层宿主：统一挂载抽屉/对话框，避免页面间重复实现
 - 数据流：数据库初始化完成后一次性加载植物、任务、模板等全局数据，避免局部状态不一致
+- **稳健性保障**：删除操作采用事务处理，文件删除失败时提供用户反馈
 
 ```mermaid
 sequenceDiagram
 participant UI as "Index 主页面"
 participant DB as "RdbManager"
 participant Store as "RdbStore"
+participant FS as "文件系统"
 participant Page as "子页面"
 UI->>DB : initDb(ctx)
 DB->>Store : getRdbStore(config)
@@ -103,11 +114,17 @@ UI->>Store : querySql(加载植物/任务/模板)
 UI->>UI : refreshActiveSessions()
 UI->>Page : pushPathByName/事件回调
 Page-->>UI : 回调(pop)/更新状态
+Note over UI,FS : 删除植物时的稳健性流程
+UI->>Store : runInTransaction(删除表记录)
+Store-->>UI : 事务提交成功
+UI->>FS : 删除本地文件失败文件收集
+UI->>UI : showBanner(显示删除结果)
 ```
 
 **图表来源**
 - [Index.ets:116-141](file://entry/src/main/ets/pages/Index.ets#L116-L141)
 - [RdbManager.ets:27-170](file://entry/src/main/ets/viewmodel/RdbManager.ets#L27-L170)
+- [Index.ets:319-402](file://entry/src/main/ets/pages/Index.ets#L319-L402)
 
 **章节来源**
 - [Index.ets:116-141](file://entry/src/main/ets/pages/Index.ets#L116-L141)
@@ -140,7 +157,7 @@ SyncLight --> Done(["initialized=true"])
 - [RdbManager.ets:173-276](file://entry/src/main/ets/viewmodel/RdbManager.ets#L173-L276)
 
 ### 全局状态同步与光照会话
-- 光照会话同步：Index 在加载植物后调用 refreshActiveSessions，从 RdbManager 获取“进行中”会话集合，写入 AppStorage，供 PlantCard 实时渲染“正在补光”状态
+- 光照会话同步：Index 在加载植物后调用 refreshActiveSessions，从 RdbManager 获取"进行中"会话集合，写入 AppStorage，供 PlantCard 实时渲染"正在补光"状态
 - 卡片联动：PlantCard 通过 AppStorage 读取 lighting_{id}，并在激活时启动呼吸动画
 
 ```mermaid
@@ -223,7 +240,7 @@ Reload --> End
 ### 植物卡片状态管理
 - 卡片状态：PlantCard 从 Index 的全局任务列表计算完成数/总数/完成率，避免重复查询
 - 补光状态：通过 AppStorage 读取 lighting_{id}，激活时启动呼吸动画
-- 快速操作：快捷“浇水/施肥/修剪”按钮将草稿任务交由 Index 创建
+- 快速操作：快捷"浇水/施肥/修剪"按钮将草稿任务交由 Index 创建
 
 ```mermaid
 classDiagram
@@ -318,7 +335,8 @@ IDX->>IDX : loadTasks()/showBanner()
 
 ### 删除确认与事务安全
 - 删除确认：ConfirmDialogSheet 提供统一确认弹层
-- 事务删除：Index.deletePlant 使用 runInTransaction 包裹，确保“表数据删除 + 文件删除”的原子性
+- 事务删除：Index.deletePlant 使用 runInTransaction 包裹，确保"表数据删除 + 文件删除"的原子性
+- **稳健性改进**：删除植物时，先删除数据库记录，然后在事务提交成功后统一删除本地文件，并跟踪失败的文件删除操作
 
 ```mermaid
 sequenceDiagram
@@ -330,9 +348,14 @@ IDX->>CONF : show confirm dialog
 CONF-->>IDX : onConfirm()
 IDX->>DB : runInTransaction(delete...)
 DB-->>IDX : commit()
-IDX->>FS : unlink(文件)
-IDX->>IDX : reloadAll()/showBanner()
+Note over IDX,FS : 事务提交成功后处理文件删除
+IDX->>FS : 删除本地文件收集失败文件
+FS-->>IDX : 失败文件列表
+IDX->>IDX : showBanner(显示删除结果)
+IDX->>IDX : reloadAll()
 ```
+
+**更新** 删除操作现在包含更完善的错误处理：事务提交成功后，系统会尝试删除所有相关的本地文件，并收集删除失败的文件列表。如果发现有文件删除失败，会通过横幅向用户显示警告信息，让用户知道哪些文件未能成功删除。
 
 **图表来源**
 - [Index.ets:1067-1083](file://entry/src/main/ets/pages/Index.ets#L1067-L1083)
@@ -382,15 +405,21 @@ PAGES --> IDX
 - 索引优化：为常用查询建立复合索引（如任务按 plantId+createdAt、日志按 plantId+createdAt），提升查询效率
 - 动画与提示：横幅与 FAB 动画时长适中，避免过度消耗帧率
 - 内存管理：ViewModel 仅维护必要内存态，避免大对象常驻；删除文件失败时记录并提示，避免阻塞主线程
-
-[本节为通用指导，无需具体文件引用]
+- **稳健性优化**：文件删除操作采用批量处理，失败文件单独收集，不影响整体删除流程的执行
 
 ## 故障排查指南
 - 数据库初始化失败：检查 initDb 是否正确执行、表与索引是否创建成功、上下文是否有效
 - 光照状态不同步：确认 refreshActiveSessions 是否被调用、AppStorage 键是否正确
 - 删除植物失败：检查事务是否回滚、文件删除异常是否被捕获并提示
+- **文件删除失败**：检查 failedFiles 数组是否为空，确认文件权限和存储空间
 - 任务筛选无效：确认 PlantTaskFilterSheet 的 onApply 是否正确更新 Index 的 filter 状态
 - 横幅不消失：检查 showBanner 的定时器与动画回调是否执行
+
+**更新** 新增文件删除失败的排查要点：
+- 检查 failedFiles.length 是否大于 0
+- 确认文件权限设置是否正确
+- 验证存储空间是否充足
+- 查看系统日志获取具体的错误信息
 
 **章节来源**
 - [Index.ets:116-124](file://entry/src/main/ets/pages/Index.ets#L116-L124)
@@ -400,7 +429,9 @@ PAGES --> IDX
 - [Index.ets:715-723](file://entry/src/main/ets/pages/Index.ets#L715-L723)
 
 ## 结论
-Index 通过“状态中枢 + 导航容器 + 弹层宿主”的架构，实现了数据库初始化、全局状态同步、Tab 导航与页面间数据传递、交互提示与动画、植物卡片状态管理、光照会话同步、任务筛选与模板生成等核心能力。其统一的数据加载与事务处理策略，确保了数据一致性与性能稳定性；清晰的事件回调与 Provider/Consumer 机制，降低了组件间的耦合度，便于扩展与维护。
+Index 通过"状态中枢 + 导航容器 + 弹层宿主"的架构，实现了数据库初始化、全局状态同步、Tab 导航与页面间数据传递、交互提示与动画、植物卡片状态管理、光照会话同步、任务筛选与模板生成等核心能力。其统一的数据加载与事务处理策略，确保了数据一致性与性能稳定性；清晰的事件回调与 Provider/Consumer 机制，降低了组件间的耦合度，便于扩展与维护。
+
+**更新** 特别值得一提的是，Index 在数据库操作稳健性方面进行了重要改进。删除植物的操作现在不仅保证了数据库层面的原子性，还增强了对文件系统操作的容错能力。通过跟踪失败的文件删除并及时向用户反馈，系统提供了更加可靠和透明的数据管理体验。这种改进体现了现代应用开发中对用户体验和数据完整性双重重视的设计理念。
 
 ## 附录
 - 数据模型：Plant/Task/Metric/PlanTpl 等轻量结构，支持响应式观察
