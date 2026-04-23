@@ -103,3 +103,12 @@
 3. **路由跳转错误**
    - 错误：硬编码路由名称
    - 解决：使用路由常量统一管理
+
+## ArkTS V2 状态管理与数据开发规范
+有关 V2 状态管理及相关辅助接口（如 AppStorageV2, PersistenceV2, @ObservedV2, @Monitor 等）的详细规则，请参考：[arkts-v2-state-rules.md](./arkts-v2-state-rules.md)
+
+## TypeScript ESLint 通用规则规范
+有关 `@typescript-eslint` 推荐规则及强类型约束、异步调用、对象循环等规范，请参考：[typescript-eslint-rules.md](./typescript-eslint-rules.md)
+
+## ArkTS/ArkUI 性能优化通用规则规范
+有关 `@performance` 规则集及组件复用、列表渲染、动画优化、按需加载等最佳实践，请参考：[performance-rules.md](./performance-rules.md)

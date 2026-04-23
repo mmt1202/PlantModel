@@ -66,9 +66,9 @@ export function statusColor(status: LightStatus): string {
 export function levelWeight(level: LightLevel): number {
   // 手动近似权重：弱光=1.0，中光=1.5，强光=2.0
   // 权重越高，相同时间内积累的光照量越多
-  if (level === LightLevel.LOW) { return LightConstants.LEVEL_WEIGHT_LOW; }
-  if (level === LightLevel.MID) { return LightConstants.LEVEL_WEIGHT_MID; }
-  return LightConstants.LEVEL_WEIGHT_HIGH;
+  if (level === LightLevel.LOW) { return 1.0; }
+  if (level === LightLevel.MID) { return 1.5; }
+  return 2.0;
 }
 
 // ---- 日期工具函数（不依赖外部库） ----

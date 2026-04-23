@@ -8,7 +8,7 @@ import DailyLightStat from "../model/DailyLightStat";
 import { LightLevel, LightStatus, levelWeight, clampRate, ymd, genId } from "../model/LightTypes";
 import { RdbManager } from "./RdbManager";
 import { relationalStore } from "@kit.ArkData";
-import { LightConstants, WaterConstants } from "../constants/AppConstants";
+import { LightConstants, WaterConstants } from '../constants/AppConstants';
 
 /**
  * 光照记录视图模型
@@ -165,10 +165,7 @@ export class LightExposureViewModel {
       return;
     }
     const endAt: number = Date.now();
-    const durMin: number = Math.max(
-      LightConstants.MIN_DURATION_MIN,
-      Math.floor((endAt - this.activeSession.startAt) / WaterConstants.MILLIS_PER_SECOND),
-    );
+    const durMin: number = Math.max(LightConstants.MIN_DURATION_MIN, Math.floor((endAt - this.activeSession.startAt) / WaterConstants.MILLIS_PER_SECOND));
     const luxMin: number = this.computeLuxMinutes(this.activeSession.level, durMin);
 
     this.activeSession.finishWith(endAt, luxMin);
@@ -232,7 +229,7 @@ export class LightExposureViewModel {
     const endAt: number = Date.now();
     const durMin: number = Math.max(1, Math.floor((endAt - session.startAt) / 60000));
     const luxMin: number = this.computeLuxMinutes(session.level, durMin);
-
+    
     // 更新数据库
     if (this.rdbManager.rdbStore) {
       const val: relationalStore.ValuesBucket = {
@@ -244,13 +241,13 @@ export class LightExposureViewModel {
       pred.equalTo("id", session.id);
       await this.rdbManager.rdbStore.update(val, pred);
     }
-
+    
     // 更新内存中的会话对象
     session.finishWith(endAt, luxMin);
-
+    
     // 从内存列表中移除（因为已经不是进行中了）
     this.sessions = this.sessions.filter((s) => s.id !== session.id);
-
+    
     console.warn(`强制关闭异常会话：${session.id}, 时长：${durMin}分钟`);
   }
 
