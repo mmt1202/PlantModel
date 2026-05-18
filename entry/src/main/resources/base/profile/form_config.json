@@ -1,0 +1,24 @@
+{
+  "forms": [
+    {
+      "name": "task_card_2x2",
+      "description": "$string:form_task_card_desc",
+      "src": "./ets/view/card/TaskCard2x2.ets",
+      "uiSyntax": "arkts",
+      "type": "2x2",
+      "defaultDimension": "2x2",
+      "supportDimensions": [
+        "2x2"
+      ],
+      "metaData": {
+        "description": "今日任务速览卡片",
+        "apiVersion": "API 23",
+        "source": "PlantDiary",
+        "refreshInterval": 1800,
+        "updateEnabled": true,
+        "updateDuration": 1800,
+        "scheduledUpdateTime": "08:00"
+      }
+    }
+  ]
+}
