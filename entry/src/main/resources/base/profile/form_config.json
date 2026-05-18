@@ -2,7 +2,6 @@
   "forms": [
     {
       "name": "task_card_2x2",
-      "displayName": "今日任务",
       "description": "$string:form_task_card_desc",
       "src": "./ets/view/card/TaskCard2x2.ets",
       "uiSyntax": "arkts",

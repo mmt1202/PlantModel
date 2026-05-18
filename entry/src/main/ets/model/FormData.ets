@@ -6,12 +6,13 @@
 /**
  * 卡片任务项数据结构
  */
+@ObservedV2
 export class FormTaskItem {
-  id: number;
-  plantId: number;
-  plantName: string;
-  type: string;
-  planDate: string;
+  @Trace id: number
+  @Trace plantId: number
+  @Trace plantName: string
+  @Trace type: string
+  @Trace planDate: string
 
   constructor(id: number, plantId: number, plantName: string, type: string, planDate: string) {
     this.id = id;
@@ -26,12 +27,13 @@ export class FormTaskItem {
  * 卡片数据主模型
  * 包含今日任务统计和待办任务列表
  */
+@ObservedV2
 export class FormData {
-  todayTaskCount: number = 0;
-  completedCount: number = 0;
-  pendingCount: number = 0;
-  tasks: Array<FormTaskItem> = [];
-  lastUpdateTime: number = 0;
+  @Trace todayTaskCount: number = 0        // 今日任务总数
+  @Trace completedCount: number = 0        // 已完成任务数
+  @Trace pendingCount: number = 0          // 待完成任务数
+  @Trace tasks: Array<FormTaskItem> = []   // 待办任务列表（最多显示 3 条）
+  @Trace lastUpdateTime: number = 0        // 最后更新时间戳
 
   constructor() {
     this.lastUpdateTime = Date.now();
