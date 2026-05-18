@@ -11,6 +11,10 @@
     {
       "name": "EntryAbility_label",
       "value": "PlantDiary"
+    },
+    {
+      "name": "form_task_card_desc",
+      "value": "今日任务速览 - 快速查看并完成植物养护任务"
     }
   ]
 }

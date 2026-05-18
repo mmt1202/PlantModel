@@ -45,6 +45,21 @@
             "resource": "$profile:backup_config"
           }
         ],
+      },
+      {
+        "name": "PlantFormExtension",
+        "srcEntry": "./ets/formextensionability/PlantFormExtension.ets",
+        "type": "form",
+        "exported": true,
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ],
+        "permissions": [
+          "ohos.permission.INTERNET"
+        ]
       }
     ]
   }

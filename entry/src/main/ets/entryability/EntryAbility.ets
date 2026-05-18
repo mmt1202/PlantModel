@@ -2,6 +2,8 @@ import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.Ab
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { formInfo } from '@kit.FormKit';
+import { RdbManager } from '../viewmodel/RdbManager';
 
 const DOMAIN = 0x0000;
 
@@ -10,7 +12,8 @@ export default class EntryAbility extends UIAbility {
     try {
       this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     } catch (err) {
-      hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
+      const error = err as BusinessError;
+      hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(error));
     }
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
@@ -20,10 +23,8 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
-    let windowClass: window.Window = windowStage.getMainWindowSync(); // 获取应用主窗口
-    // 1. 设置窗口全屏
+    let windowClass: window.Window = windowStage.getMainWindowSync();
     let isLayoutFullScreen = true;
     windowClass.setWindowLayoutFullScreen(isLayoutFullScreen).then(() => {
       hilog.info(0x0000, 'testTag', 'Succeeded in setting the window layout to full-screen mode.');
@@ -31,14 +32,14 @@ export default class EntryAbility extends UIAbility {
       hilog.error(0x0000, 'testTag',
         'Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
     });
-    let type_1 = window.AvoidAreaType.TYPE_SYSTEM; // 状态栏避让
+    let type_1 = window.AvoidAreaType.TYPE_SYSTEM;
     let avoidArea_1 = windowClass.getWindowAvoidArea(type_1);
 
-    let topRectHeight = avoidArea_1.topRect.height; // 获取状态栏区域高度
+    let topRectHeight = avoidArea_1.topRect.height;
     hilog.info(0x0000, 'testTag', '%{public}s', `liheng topRectHeight${px2vp(topRectHeight)}`);
     AppStorage.setOrCreate('topRectHeight', px2vp(topRectHeight));
 
-    let type_2 = window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR; // 导航条避让
+    let type_2 = window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR;
     let avoidArea_2 = windowClass.getWindowAvoidArea(type_2);
     let bottomRectHeight = avoidArea_2.bottomRect.height
     AppStorage.setOrCreate('bottomRectHeight', px2vp(bottomRectHeight))
@@ -63,17 +64,30 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageDestroy(): void {
-    // Main window is destroyed, release UI related resources
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
   }
 
   onForeground(): void {
-    // Ability has brought to foreground
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    this.refreshFormCards();
   }
 
   onBackground(): void {
-    // Ability has back to background
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+  }
+
+  private async refreshFormCards(): Promise<void> {
+    try {
+      const want: Want = {
+        bundleName: 'com.example.plantdiary',
+        abilityName: 'PlantFormExtension'
+      };
+
+      await formInfo.requestFormReady(this.context, want);
+      hilog.info(DOMAIN, 'testTag', 'Form cards refresh requested');
+    } catch (err) {
+      const error = err as BusinessError;
+      hilog.error(DOMAIN, 'testTag', 'Failed to refresh form cards: %{public}s', JSON.stringify(error));
+    }
   }
 }

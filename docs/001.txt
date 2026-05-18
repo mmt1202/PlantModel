@@ -1,0 +1,296 @@
+ArkTS开发规范汇总
+ 一、类型安全规范
+ 对象字面量类型声明
+所有对象字面量必须对应明确声明的类或接口类型。
+适用场景：map、filter、reduce等数组方法的回调函数、函数返回值、变量赋值、参数传递。
+修复方法：为箭头函数添加明确的返回类型注解；使用临时变量并声明类型；确保接口或类型定义存在且可访问。
+ 3 组件属性类型检查
+组件的所有属性和方法参数必须有明确的类型定义。
+ 二、ArkTS V2状态管理与数据开发规范
+ 核心状态装饰器规范
+1 @ObservedV2 与 @Trace (类属性变化观测)
+规则说明：使用@ObservedV2装饰类，配合@Trace装饰类内部需要观测的属性，实现深层状态的精准观测。
+最佳实践：仅对需要触发UI更新或状态监听的属性使用@Trace；避免在@ObservedV2类的构造函数中执行复杂的副作用。
+2 @Computed (计算属性)
+规则说明：用于声明计算属性，依赖的其他@Trace属性变化时自动重新计算。
+约束：@Computed装饰的方法必须有返回值；不要在@Computed方法内部修改其他状态变量（保持纯函数特性）。
+3 @Monitor 与 @SyncMonitor (状态变量修改监听)
+@Monitor (异步监听)：用于监听@Trace属性或状态变量的变化，在当前事件循环末尾或下一次渲染前异步执行。适合处理耗时操作或不需要立即响应的逻辑。
+@SyncMonitor (同步监听)：状态变化时立即同步执行回调。
+约束：避免在@SyncMonitor中执行耗时操作，以免阻塞UI线程；防止在监听回调中再次修改被监听的属性，导致死循环。
+4 @Type (标记类属性的类型)
+规则说明：在状态序列化、反序列化或复杂类型推断场景中，使用@Type明确指定类属性的类型，确保类型安全。
+ 2 全局与持久化状态存储
+ 21 AppStorageV2 (应用全局UI状态存储)
+规则说明：用于在整个应用生命周期内存储和共享跨组件的UI状态。
+最佳实践：尽量按模块或功能划分存储的键值，避免命名冲突；对于不需要持久化的全局状态，优先使用AppStorageV2。
+ 22 PersistenceV2 (持久化存储UI状态)
+规则说明：用于将关键UI状态持久化到本地磁盘，应用重启后可恢复。
+约束：仅持久化必要的数据（如用户偏好、登录状态等），避免将大量业务数据存入PersistenceV2，以免影响性能。
+ 3 辅助接口与高级用法
+ 31 对象观测与代理
+getTarget：获取被代理对象的原始目标对象，常用于需要传递非代理对象给底层C++/第三方库的场景。
+makeObserved：将普通对象转换为可观测对象。
+canBeObserved：检查一个对象是否可以被转换为可观测对象，在调用makeObserved前建议进行安全校验。
+ 32 动态监听管理
+addMonitor / clearMonitor：在运行时动态添加或移除状态监听器。
+规范：必须成对使用，在组件销毁或不再需要监听时，务必调用clearMonitor清理，防止内存泄漏。
+ 33 状态同步与更新控制
+applySync：强制同步执行状态变更及相关的计算属性更新。
+flushUpdates / flushUIUpdates：手动触发状态或UI的批量更新，通常用于规避异步更新带来的时序问题或在特定性能优化场景下使用。
+ 4 常见错误及解决方案
+1 内存泄漏：使用了addMonitor但在生命周期结束时未调用clearMonitor。
+   解决：在aboutToDisappear等销毁生命周期中清理监听。
+2 UI阻塞：在@SyncMonitor中执行了复杂的网络请求或大量计算。
+   解决：将耗时操作移至@Monitor或使用异步Promise。
+3 循环依赖更新：在@Computed或@Monitor中直接/间接修改了自身依赖的值。
+   解决：梳理数据流向，确保状态更新是单向的。
+ 三、ArkTS特定语法与ArkUI组件开发规范
+ ArkTS特定语法支持
+1 强制识别@Entry和@Component装饰器
+要求所有页面组件必须使用@Entry装饰，且根组件必须为容器组件（如Column/Row）
+自定义组件必须使用@Component装饰，且包含build函数
+2 状态管理装饰器解析
+对@State、@Prop、@Link装饰的变量添加类型检查
+检测@Prop变量是否与父组件@State类型一致，禁止类型不匹配
+3 支持ArkTS扩展语法
+识别ArkTS特有的资源引用语法（如$r('appstringxxx')）
+对ArkTS枚举类型（enum）生成自动补全提示
+ 2 ArkUI组件开发规范
+1 组件结构约束
+禁止在build函数中使用switch语句，强制使用if条件判断
+容器组件（如Column/Row）必须包含子组件，禁止空容器
+2 样式配置规则
+组件样式必须通过链式调用配置（如width(100)height(200)）
+禁止直接修改系统组件内部属性（如Button的text属性需通过content参数设置）
+3 事件处理规范
+所有事件处理函数必须使用箭头函数（() => {}），确保this指向正确
+对常用事件（如onClick、onChange）生成标准代码模板
+ 3 状态管理规则
+1 状态传递规范
+父组件@State到子组件@Prop的同步必须显式声明类型
+禁止在子组件中修改@Prop变量后调用父组件方法（避免双向绑定）
+2 状态变更检测
+对@State变量的修改操作添加自动依赖跟踪
+检测@State变量是否在非UI线程中被修改（避免渲染异常）
+3 复杂类型支持
+对@State装饰的数组/对象类型启用深度变化检测
+限制@Prop嵌套层级不超过5层
+ 4 资源文件规范
+1 颜色资源规则
+强制要求：所有颜色值必须使用十六进制格式（RRGGBB 或 AARRGGBB）
+禁止使用：rgba()、rgb()、hsl()等CSS颜色格式
+透明度处理：使用8位十六进制格式，前两位表示透明度（AA=不透明，00=完全透明）
+示例：
+  正确："FF0000"（红色）、"80FF0000"（50%透明红色）
+  错误："rgba(255, 0, 0, 05)"、"rgb(255, 0, 0)"
+2 资源命名规范
+颜色资源名称使用下划线分隔的小写字母
+图片资源使用ic_前缀表示图标
+字符串资源使用语义化命名
+3 资源文件结构
+base目录存放默认资源
+dark目录存放深色主题资源
+确保深浅主题资源名称一致
+ 5 命名规则
+1 组件命名
+自定义组件必须使用大驼峰命名法，且以"Component"结尾（如LoginComponent）
+页面组件必须以"Page"结尾（如MainPage）
+2 状态变量命名
+@State变量必须以"state"开头（如stateCount）
+@Prop变量必须以"prop"开头（如propUserName）
+3 路由常量命名
+路由名称常量必须全大写，使用下划线分隔（如NAV_LOGIN_PAGE）
+ 6 代码质量约束
+1 函数复杂度
+单个函数代码行数不超过80行
+循环嵌套不超过3层，条件判断不超过4层
+2 资源管理
+禁止在build函数中直接使用this$r()，必须通过变量缓存
+对图片资源添加尺寸校验（如width/height必须为合法值）
+3 错误处理
+强制使用trycatch包裹异步操作（如网络请求）
+对可能为空的值添加非空断言（!）
+ 7 智能代码生成规则
+1 组件模板
+输入"@component"自动生成包含build函数的组件模板
+输入"@page"生成包含路由注解的页面模板
+2 状态管理模板
+输入"@state"生成包含初始值的状态变量声明
+输入"@prop"生成与父组件同步的状态变量声明
+3 路由配置模板
+输入"@zroute"生成包含权限控制的路由配置模板
+ 8 开发效率规则
+1 自动依赖注入
+对ZRouter的路由跳转方法自动导入命名空间
+检测未使用的ArkUI组件并提示删除
+2 跨文件导航
+点击@ZRoute注解自动跳转到对应页面组件
+点击@Prop变量自动定位到父组件@State声明
+3 性能分析
+对频繁更新的@State变量添加性能优化提示
+检测可能导致内存泄漏的定时器未清除操作
+ 9 常见错误及解决方案
+1 颜色资源错误
+错误：使用 "rgba(0, 0, 0, 008)" 格式
+解决：转换为十六进制 "14000000"（008 * 255 ≈ 20 = 0x14）
+透明度转换公式：十六进制值 = Mathround(透明度 * 255)toString(16)padStart(2, '0')
+2 状态管理错误
+错误：在子组件中直接修改@Prop变量
+解决：使用@Link或通过回调函数通知父组件
+3 路由跳转错误
+错误：硬编码路由名称
+解决：使用路由常量统一管理
+ 四、TypeScript ESLint通用规则规范
+ 推荐规则集
+1 @typescripteslint/recommended
+规则说明：启用@typescripteslint官方推荐规则集，作为TypeScript项目的基础代码质量约束。
+适用建议：新项目默认启用，作为统一的静态检查基线；与严格类型检查配合使用，减少隐式错误和不安全写法。
+ 2 异步与边界类型规则
+ 21 @typescripteslint/awaitthenable
+规则说明：不允许对非Thenable值使用await。
+约束：仅对Promise或实现了then()方法的对象使用await；对同步函数返回值禁止直接await，避免误导性代码。
+ 22 @typescripteslint/explicitfunctionreturntype
+规则说明：函数和类方法必须显式声明返回类型。
+约束：普通函数、箭头函数、类方法都应补充返回类型；避免依赖复杂推导结果，提高可读性和重构安全性。
+ 23 @typescripteslint/explicitmoduleboundarytypes
+规则说明：所有导出函数、公共类方法及模块边界成员必须显式声明参数类型和返回类型。
+约束：对外暴露的API禁止依赖隐式推断；公共方法的入参与返回值必须具备稳定、可审查的类型定义。
+ 3 类型导入与类型约束规则
+ 31 @typescripteslint/consistenttypeimports
+规则说明：统一类型导入风格，推荐使用import type导入纯类型。
+约束：类型和运行时值应明确区分，避免混合导入；纯类型引用统一使用import type，提升可读性和构建优化能力。
+ 32 @typescripteslint/nounnecessarytypeconstraint
+规则说明：禁止在泛型中添加无意义的约束条件。
+约束：如无实际限制需求，不要写T extends unknown、T extends any；泛型约束必须服务于属性访问、方法调用或类型收窄需求。
+ 4 类型安全高风险规则
+ 41 @typescripteslint/noexplicitany
+规则说明：禁止显式使用any类型。
+约束：优先使用明确接口、联合类型、泛型或unknown；必须避免用any绕过类型系统。
+ 42 @typescripteslint/nounsafeargument
+规则说明：禁止将any类型值作为函数参数传入。
+约束：参数传递前必须完成类型校验或显式收窄；对外部输入数据应先解析再使用。
+ 43 @typescripteslint/nounsafeassignment
+规则说明：禁止将any类型值赋值给变量、对象属性或结构化目标。
+约束：接收不可信数据时，优先定义中间类型或使用校验函数；禁止将未确认类型的数据直接注入业务状态。
+ 44 @typescripteslint/nounsafecall
+规则说明：禁止调用any类型表达式。
+约束：调用前必须确认目标是可调用类型；对动态函数引用应先进行类型守卫。
+ 45 @typescripteslint/nounsafememberaccess
+规则说明：禁止访问any类型值的成员。
+约束：属性读取前必须完成类型收窄或断言到明确接口；外部JSON、接口响应、存储读取结果都不应直接点取属性。
+ 46 @typescripteslint/nounsafereturn
+规则说明：函数禁止返回any类型值。
+约束：返回前应转换为明确类型，或使用受控的unknown + 校验流程；导出函数尤其要避免将不安全值直接透出。
+ 5 循环、对象与上下文规则
+ 51 @typescripteslint/nodynamicdelete
+规则说明：不允许对computed key表达式使用delete。
+约束：禁止使用delete obj[key]这类动态删除方式；如需移除字段，优先构造新对象或使用受控映射结构。
+ 52 @typescripteslint/noforinarray
+规则说明：禁止使用forin遍历数组。
+约束：数组遍历应使用forof、普通for、forEach、map等方式；避免把数组索引当作字符串键处理，防止继承属性干扰。
+ 53 @typescripteslint/nothisalias
+规则说明：禁止将this赋值给其他变量。
+约束：禁止使用const self = this、const that = this等写法；优先使用箭头函数保持this语义一致。
+ 6 枚举规则
+ 61 @typescripteslint/preferliteralenummember
+规则说明：要求所有枚举成员使用字面量值定义。
+约束：枚举成员应显式写为字符串字面量或数字字面量；避免使用复杂表达式初始化枚举值，确保可读性与稳定性。
+ 7 实施建议
+1 默认基线：所有TypeScript项目默认启用@typescripteslint/recommended。
+2 严格类型：建议与strict: true一起使用，最大化类型系统收益。
+3 边界控制：对API层、状态管理层、存储层重点开启nounsafe*规则。
+4 团队统一：在提交前统一通过ESLint校验，避免风格和安全规则分裂。
+5 渐进治理：旧项目可先以warning接入，再逐步提升为error。
+ 8 常见问题及处理建议
+1 外部接口返回值类型不明确
+问题：接口响应被推断为any，导致触发多条nounsafe*规则。
+建议：为响应结果定义接口，并在进入业务逻辑前完成转换或校验。
+2 公共函数缺少签名
+问题：导出函数未声明参数或返回值类型。
+建议：为所有模块边界函数补全完整签名，避免隐式推导扩散。
+3 数组遍历写法不规范
+问题：使用forin遍历数组。
+建议：改用forof或数组高阶方法，保持语义正确。
+4 历史代码大量使用any
+问题：一次性整改成本过高。
+建议：按模块逐步替换为接口、泛型或unknown，优先整改核心链路。
+ 五、ArkTS/ArkUI性能优化通用规则规范
+ 推荐规则集
+1 @performance/recommended
+规则说明：启用官方推荐的性能规则集，涵盖了高频函数、组件复用、状态管理更新等常见的性能卡点检查。
+适用建议：建议所有应用项目默认开启，在代码编写和CI/CD阶段及时拦截性能劣化风险。
+ 2 组件与渲染性能优化
+ 21 @performance/avoidoverusingcustomcomponentcheck
+规则说明：当在应用中使用自定义组件时，可以优先使用@Builder函数代替自定义组件。
+最佳实践：@Builder函数不会在后端FrameNode节点树上创建一个新的树节点，有助于缩短页面的加载和渲染时长。
+ 22 @performance/hparkuireplacenestedreusablecomponentbybuilder
+规则说明：建议使用@Builder替代嵌套的自定义组件，以减小组件树层级和渲染开销。
+ 23 @performance/hparkuiusereusablecomponent
+规则说明：建议复杂组件的定义尽量使用组件复用（如@Reusable），以降低重复创建组件的开销。
+ 24 @performance/hparkuisuggestreuseidforifelsereusablecomponent
+规则说明：建议使用reuseId标记不同结构的组件构成，提升复用命中率与效率。
+ 25 @performance/hparkuinofuncasargforreusablecomponent
+规则说明：避免使用函数作为复用的自定义组件创建时的入参，以防止每次渲染都生成新函数导致复用失效或冗余更新。
+ 3 列表与循环渲染优化
+ 31 @performance/foreachargscheck
+规则说明：建议在ForEach参数中设置keyGenerator。
+最佳实践：提供稳定且唯一的key生成规则，避免数组更新时发生全量UI重绘。
+ 32 @performance/hparkuinostringifyinlazyforeachkeygenerator
+规则明：在使用LazyForEach进行组件复用的key生成器函数里，不要使用JSONstringify，以免带来高昂的序列化性能开销。
+ 33 @performance/hparkuisetcachecountforlazyforeachgrid
+规则说明：建议在Grid下使用LazyForEach时设置合理的cacheCount，提前加载视口外的少量节点，提升滚动流畅度。
+ 34 @performance/waterflowdatapreloadcheck
+规则说明：建议对WaterFlow子组件进行数据预加载，优化瀑布流场景下的滑动体验。
+ 4 状态管理与更新优化
+ 41 @performance/hparkuinostatevaraccessinloop
+规则说明：避免在for、while等循环逻辑中频繁读取状态变量。
+最佳实践：在循环外将状态变量读取到局部变量中进行操作。
+ 42 @performance/hparkuiuselocalvartoreplacestatevar
+规则说明：建议在复杂计算逻辑中使用临时变量替换状态变量，计算完成后再统一赋值，避免触发多次无用的UI渲染或依赖收集。
+ 43 @performance/hparkuiuseobjectlinktoreplaceprop
+规则说明：建议使用@ObjectLink代替@Prop，减少不必要的深拷贝带来的内存与时间开销。
+ 44 @performance/hparkuiavoidupdateautostatevarinaboutToReuse
+规则说明：避免在aboutToReuse生命周期中对自动更新值的状态变量进行更新，以防触发非预期的冗余渲染。
+ 5 动画与图形优化
+ 51 @performance/hparkuicombinesamearganimateto
+规则说明：建议动画参数相同时，将多个状态更新合并到同一个animateTo中执行。
+ 52 @performance/updatestatevarbetweenanimatetoscheck
+规则说明：不建议在两次animateTo之间进行状态变量更新，这会导致执行下一个animateTo之前产生脏节点，造成冗余更新。
+ 53 @performance/hparkuiusescaletoreplaceattranimateto
+规则说明：建议组件布局改动时使用图形变换属性动画（如scale、translate等），而非直接修改width/height等触发布局重排的属性。
+ 54 @performance/hparkuiusetransitiontoreplaceanimateto
+规则说明：建议组件转场动画使用transition而非animateTo模拟。
+ 55 @performance/monitorinvisibleareainimageanimation
+规则说明：使用ImageAnimation实现帧动画时，建议显式调用monitorInvisibleArea接口，使组件不可见时自动停止播放。
+ 56 @performance/hparkuisuggestuseeffectkitblur
+规则说明：建议使用effectKitcreateEffect实现模糊效果，替代低效的模糊实现方式。
+ 57 @performance/gifhardwaredecodingcheck
+规则说明：在使用@ohos/gifdrawable库解码gif图片时，建议开启硬解码，提升加载与播放性能。
+ 6 模块加载与导入优化
+ 61 @performance/hparkuiloadondemand
+规则说明：建议使用按需加载（动态import()），缩短应用首屏启动时间。
+ 62 @performance/nouseanyimport
+规则说明：建议按需引用使用到的变量代替import * as xxx，以减少ets文件的执行耗时和文件中所有export变量的初始化过程。
+ 63 @performance/hparktsnouseanyexportcurrent 与 @performance/hparktsnouseanyexportother
+规则说明：避免使用export *导出当前模块或其他模块中定义的类型和数据，防止无用代码被打入产物或增加模块解析开销。
+ 7 内存管理与高频逻辑优化
+ 71 @performance/baddeepclonecheck
+规则说明：避免使用不合理的深拷贝，如JSONparse(JSONstringify(foo))和_cloneDeep(foo)。
+ 72 @performance/reusedateinstancescheck
+规则说明：检测在循环或调用频繁的方法中重复创建Date对象，建议重用现有实例或使用时间戳（如Datenow()）进行计算。
+ 73 @performance/highfrequencylogcheck
+规则说明：不建议在高频函数（如onScroll、onTouch、onAreaChange等）中使用Hilog打印日志，以免引发性能瓶颈。
+ 74 @performance/datasharequeryunreleasecheck
+规则说明：建议使用DataShareHelper的query接口查询数据得到结果后及时关闭，避免造成内存泄露。
+ 8 系统接口与原生能力替代
+ 81 @performance/cryptoreplacementcheck
+规则说明：建议使用系统原生接口（@ohossecuritycryptoFramework）替代三方库@ohos/cryptojs所提供的大部分接口，以获取更好的性能与安全性。
+ 82 @performance/hpffrtnousestd
+规则说明：禁止在FFRT worker中使用std::xxx等同步接口，防止阻塞worker线程池。
+ 83 @performance/hparkuiuseonAnimationStartforswiperpreload
+规则说明：建议Swiper预加载机制搭配onAnimationStart接口回调使用，平滑预加载过程。
+ 84 @performance/hparkuisuggestcacheavplayer
+规则说明：建议缓存AVPlayer实例，以减少视频起播时延。
+ 85 @performance/hparkuiusegridlayoutoptions
+规则说明：不允许锁定最高帧率运行，应根据实际业务需求动态调整帧率，兼顾性能与功耗。

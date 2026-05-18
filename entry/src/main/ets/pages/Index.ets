@@ -35,12 +35,15 @@ import { TextCollapseTest } from './EText'
 import { LightExposurePage } from './LightExposurePage'
 import { GrowthComparePage } from './GrowthComparePage'
 import { GrowthIndicatorPage } from './GrowthIndicatorPage'
+import { BreakpointManager, BreakpointType } from '../utils/BreakpointManager'
 
 @Entry
 @ComponentV2
 struct Index {
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
-  // DB
+  private breakpointManager: BreakpointManager = BreakpointManager.getInstance()
+  @Local isTabletMode: boolean = false
+  @Local selectedPlant: Plant | null = null
   @Provider('RdbManager') RdbManager: RdbManager = RdbManager.getInstance()
   @Provider('store') store: relationalStore.RdbStore | null = this.RdbManager.rdbStore
   @Provider('pageStack') pageStack: NavPathStack = new NavPathStack();

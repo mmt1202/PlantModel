@@ -1,0 +1,25 @@
+{
+  "forms": [
+    {
+      "name": "task_card_2x2",
+      "displayName": "今日任务",
+      "description": "$string:form_task_card_desc",
+      "src": "./ets/view/card/TaskCard2x2.ets",
+      "uiSyntax": "arkts",
+      "isDefault": true,
+      "updateEnabled": true,
+      "updateDuration": 1800,
+      "scheduledUpdateTime": "08:00",
+      "defaultDimension": "2*2",
+      "supportDimensions": [
+        "2*2"
+      ],
+      "metadata": [
+        {
+          "name": "description",
+          "value": "今日任务速览卡片"
+        }
+      ]
+    }
+  ]
+}
